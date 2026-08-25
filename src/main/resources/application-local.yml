@@ -1,0 +1,30 @@
+# ── Профиль local ─────────────────────────────────────────────
+# Локальная разработка поверх docker-compose (postgres, redis, minio, mailpit).
+# Все подключения берут дефолты из application.yml, рассчитанные на localhost.
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    com.tzevabest: DEBUG
+    org.flywaydb: INFO
+    org.hibernate.SQL: DEBUG
+
+# В local Swagger UI и все actuator-эндпоинты открыты для удобства отладки.
+springdoc:
+  swagger-ui:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always

@@ -1,0 +1,27 @@
+# ── Профиль test ──────────────────────────────────────────────
+# Интеграционные тесты на Testcontainers. Параметры datasource/redis
+# подставляются контейнерами динамически (@ServiceConnection / DynamicPropertySource),
+# поэтому здесь их не фиксируем.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+  # Тесты не должны слать реальную почту.
+  mail:
+    host: localhost
+    port: 1025
+
+management:
+  health:
+    # В тестах нет SMTP-сервера — иначе mail-индикатор уронит /health в DOWN.
+    mail:
+      enabled: false
+
+logging:
+  level:
+    com.tzevabest: DEBUG
+    org.testcontainers: INFO
+    org.flywaydb: WARN
