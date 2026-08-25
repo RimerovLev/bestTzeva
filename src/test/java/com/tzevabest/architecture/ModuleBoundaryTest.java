@@ -10,10 +10,9 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Ensures module boundaries are respected.
- * <p>
- * Cross-module access is allowed ONLY to {@code service} and {@code dto} packages.
- * Direct access to another module's {@code repository} or {@code domain} is forbidden.
+ * Границы модулей: публичны только пакеты {@code service} и {@code dto}. Доступ к чужим
+ * {@code domain}, {@code repository}, {@code web}, {@code mapper} запрещён. Модуль
+ * {@code common} — общий фундамент (BaseEntity, DTO, web-инфраструктура) — доступен всем.
  */
 class ModuleBoundaryTest {
 
@@ -23,6 +22,9 @@ class ModuleBoundaryTest {
             "common", "iam", "catalog", "inventory", "cart",
             "order", "payment", "shipping", "service", "notification", "admin"
     };
+
+    /** Непубличные подпакеты модуля — доступны только внутри своего модуля. */
+    private static final String[] NON_PUBLIC = {"domain", "repository", "web", "mapper"};
 
     private static JavaClasses classes;
 
@@ -34,45 +36,28 @@ class ModuleBoundaryTest {
     }
 
     @Test
-    void modules_should_not_access_foreign_repository_packages() {
+    void modules_access_foreign_modules_only_via_service_and_dto() {
         for (String module : MODULES) {
-            String ownRepo = BASE + "." + module + ".repository..";
             for (String other : MODULES) {
-                if (other.equals(module)) continue;
-                // common — общий фундамент (BaseEntity, DTO, web-инфраструктура): доступен всем.
-                if (other.equals("common")) continue;
-                String foreignRepo = BASE + "." + other + ".repository..";
+                if (other.equals(module)) {
+                    continue;
+                }
+                // common — общий фундамент, доступен всем модулям.
+                if (other.equals("common")) {
+                    continue;
+                }
+                for (String subpackage : NON_PUBLIC) {
+                    String foreignPackage = BASE + "." + other + "." + subpackage + "..";
 
-                ArchRule rule = noClasses()
-                        .that().resideInAPackage(BASE + "." + module + "..")
-                        .and().resideOutsideOfPackage(ownRepo)
-                        .should().accessClassesThat().resideInAPackage(foreignRepo)
-                        .allowEmptyShould(true)
-                        .because("Module '" + module + "' must not access repository of '" + other + "'. Use its service/dto instead.");
+                    ArchRule rule = noClasses()
+                            .that().resideInAPackage(BASE + "." + module + "..")
+                            .should().accessClassesThat().resideInAPackage(foreignPackage)
+                            .allowEmptyShould(true)
+                            .because("Модуль '" + module + "' не должен обращаться к '" + other + "."
+                                    + subpackage + "'. Публичны только service и dto.");
 
-                rule.check(classes);
-            }
-        }
-    }
-
-    @Test
-    void modules_should_not_access_foreign_domain_packages() {
-        for (String module : MODULES) {
-            String ownDomain = BASE + "." + module + ".domain..";
-            for (String other : MODULES) {
-                if (other.equals(module)) continue;
-                // common.domain (BaseEntity) — общий фундамент, наследуется всеми модулями.
-                if (other.equals("common")) continue;
-                String foreignDomain = BASE + "." + other + ".domain..";
-
-                ArchRule rule = noClasses()
-                        .that().resideInAPackage(BASE + "." + module + "..")
-                        .and().resideOutsideOfPackage(ownDomain)
-                        .should().accessClassesThat().resideInAPackage(foreignDomain)
-                        .allowEmptyShould(true)
-                        .because("Module '" + module + "' must not access domain of '" + other + "'. Use its service/dto instead.");
-
-                rule.check(classes);
+                    rule.check(classes);
+                }
             }
         }
     }

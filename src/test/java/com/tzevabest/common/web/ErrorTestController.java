@@ -97,6 +97,6 @@ class ErrorTestController {
         throw new IllegalStateException("SECRET internal detail: db password leaked");
     }
 
-    record SampleDto(@NotBlank(message = "{sample.name.required}") String name) {
+    record SampleDto(@NotBlank(message = "Name must not be blank.") String name) {
     }
 }

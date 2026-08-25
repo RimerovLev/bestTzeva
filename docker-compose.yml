@@ -20,7 +20,10 @@ services:
   redis:
     image: redis:7
     container_name: tzevabest-redis
-    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    # noeviction: Redis хранит refresh-токены (T-3.1) и корзины (T-6.1) — вытеснять их
+    # нельзя. Истечение — только явными TTL; при нехватке памяти запись упадёт с ошибкой,
+    # а не молча выкинет данные.
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
     healthcheck:
@@ -53,11 +56,15 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    # Два бакета: публичный (каталог/портфолио, anon download) и приватный (фото заявок
+    # клиентов — персональные данные под израильским законом; выдача только по presigned GET).
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
       mc mb --ignore-existing local/${S3_BUCKET:-tzevabest-media};
       mc anonymous set download local/${S3_BUCKET:-tzevabest-media};
+      mc mb --ignore-existing local/${S3_BUCKET_PRIVATE:-tzevabest-private};
+      mc anonymous set none local/${S3_BUCKET_PRIVATE:-tzevabest-private};
       exit 0;
       "
     environment:

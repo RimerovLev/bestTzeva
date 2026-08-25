@@ -18,7 +18,8 @@ import java.time.Instant;
 @Setter
 public class User extends BaseEntity {
 
-    @Column(name = "email", nullable = false)
+    // email ИЛИ phone обязателен (ck_users_contact); поэтому email nullable.
+    @Column(name = "email")
     private String email;
 
     @Column(name = "phone")

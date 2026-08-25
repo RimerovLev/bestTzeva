@@ -23,9 +23,9 @@ public abstract class RestIntegrationTest extends IntegrationTest {
     @Autowired
     protected TestRestTemplate rest;
 
-    /** Роли, от лица которых выполняются запросы в тестах. */
+    /** Роли, от лица которых выполняются запросы в тестах (совпадают с UserRole + ANONYMOUS). */
     protected enum TestRole {
-        ANONYMOUS, CUSTOMER, SPECIALIST, ADMIN
+        ANONYMOUS, CUSTOMER, SUPPORT, WAREHOUSE, MANAGER, ADMIN
     }
 
     /** Заголовки запроса с токеном роли (для ANONYMOUS — без Authorization). */

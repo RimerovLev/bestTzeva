@@ -89,6 +89,8 @@ app:
       access-key: ${S3_ACCESS_KEY:minioadmin}
       secret-key: ${S3_SECRET_KEY:minioadmin}
       bucket: ${S3_BUCKET:tzevabest-media}
+      # Приватный бакет для фото заявок (персональные данные) — только presigned GET.
+      private-bucket: ${S3_BUCKET_PRIVATE:tzevabest-private}
       region: ${S3_REGION:us-east-1}
       # MinIO and other S3-compatible stores require path-style URLs.
       path-style-access: ${S3_PATH_STYLE:true}

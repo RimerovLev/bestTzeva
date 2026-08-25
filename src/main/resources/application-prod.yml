@@ -35,8 +35,14 @@ app:
       access-key: ${S3_ACCESS_KEY}
       secret-key: ${S3_SECRET_KEY}
       bucket: ${S3_BUCKET}
+      private-bucket: ${S3_BUCKET_PRIVATE}
       region: ${S3_REGION}
       path-style-access: ${S3_PATH_STYLE:false}
+
+server:
+  # За ALB: доверяем X-Forwarded-*, иначе getRemoteAddr() вернёт адрес балансировщика
+  # (ломает rate limiting по IP, T-3.4) и URL возврата эквайринга получат http вместо https (T-8.2).
+  forward-headers-strategy: framework
 
 # В проде документация выключена целиком (и Security закрывает пути денайлом).
 springdoc:

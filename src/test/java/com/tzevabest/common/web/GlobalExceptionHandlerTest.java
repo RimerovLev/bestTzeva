@@ -1,5 +1,6 @@
 package com.tzevabest.common.web;
 
+import com.tzevabest.common.web.error.ApiErrorResponder;
 import com.tzevabest.common.web.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         // Исключаем общий WebMvcConfig: его addPathPrefix("/api/v1") иначе префиксует
         // тестовый контроллер и ломает изоляцию среза обработчика ошибок.
         excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = WebMvcConfig.class))
-@Import({GlobalExceptionHandler.class, WebErrorConfig.class})
+@Import({GlobalExceptionHandler.class, ApiErrorResponder.class, WebErrorConfig.class})
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 class GlobalExceptionHandlerTest {
@@ -192,6 +193,35 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.errors").doesNotExist())
                 .andReturn();
         assertThat(utf8(result)).doesNotContain("SECRET internal detail");
+    }
+
+    // ── Фреймворковые 404 / 405 / 415 (раньше уходили в 500) ────────────────────
+
+    @Test
+    void unknown_path_returns_404() throws Exception {
+        mvc.perform(get("/no-such-endpoint").header("Accept-Language", "en"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("common.resource.not_found"));
+    }
+
+    @Test
+    void wrong_method_returns_405() throws Exception {
+        mvc.perform(post("/test-errors/not-found").header("Accept-Language", "en"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("common.method.not_allowed"));
+    }
+
+    @Test
+    void unsupported_media_type_returns_415() throws Exception {
+        mvc.perform(post("/test-errors/body")
+                        .header("Accept-Language", "en")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("plain text"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("common.media_type.not_supported"));
     }
 
     // ── Локализация по Accept-Language ──────────────────────────────────────────

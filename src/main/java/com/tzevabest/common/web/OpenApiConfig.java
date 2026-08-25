@@ -18,9 +18,9 @@ import java.util.List;
  * <ul>
  *   <li>описание, контакты, серверы local/prod;</li>
  *   <li>схема безопасности {@code bearerAuth} (JWT) — включает кнопку Authorize;</li>
- *   <li>две группы документов: {@code public} (всё, кроме {@code /admin/**}) и
- *       {@code admin} (только {@code /admin/**}). Пути указываются относительно
- *       context-path {@code /api/v1}, поэтому матчинг идёт по mapping-путям контроллеров.</li>
+ *   <li>две группы документов: {@code public} (всё, кроме {@code /api/v1/admin/**}) и
+ *       {@code admin} (только {@code /api/v1/admin/**}). Префикс {@code /api/v1} добавляется
+ *       маппингом (не context-path), поэтому в путях групп он присутствует явно.</li>
  * </ul>
  */
 @Configuration

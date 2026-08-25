@@ -1,5 +1,6 @@
 package com.tzevabest.common.web;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -22,6 +23,7 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private static final String[] DOC_PATHS = {
@@ -30,12 +32,17 @@ public class SecurityConfig {
             "/swagger-ui.html"
     };
 
+    private final SecurityProblemSupport problemSupport;
+
     @Bean
     @Profile("!prod")
     SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(problemSupport)
+                        .accessDeniedHandler(problemSupport))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(DOC_PATHS).permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
@@ -50,6 +57,9 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(problemSupport)
+                        .accessDeniedHandler(problemSupport))
                 .authorizeHttpRequests(auth -> auth
                         // Health/info нужны балансировщику и healthcheck.
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
