@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.LoginRequest;
 import com.tzevabest.iam.dto.LogoutRequest;
 import com.tzevabest.iam.dto.MeResponse;

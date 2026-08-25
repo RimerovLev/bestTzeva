@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.service.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

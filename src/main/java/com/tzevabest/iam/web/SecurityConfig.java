@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,8 +31,12 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    /** Служебные роли (роль «не ниже SUPPORT») — допуск в админ-зону. */
+    private static final String[] STAFF_ROLES = {"SUPPORT", "WAREHOUSE", "MANAGER", "ADMIN"};
 
     private static final String[] DOC_PATHS = {
             "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
@@ -75,7 +80,11 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(AUTH_PUBLIC).permitAll()
                         .requestMatchers(AUTH_PROTECTED).authenticated()
-                        // До появления остальных модулей API открыто в dev/test.
+                        // Админ-зона — только служебные роли; тонкие права — @PreAuthorize на сервисах.
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
+                        // Клиентские ресурсы — только аутентифицированным (владение проверяет @ownership).
+                        .requestMatchers("/api/v1/me/**").authenticated()
+                        // До появления остальных модулей остальное открыто в dev/test.
                         .anyRequest().permitAll());
         return http.build();
     }
@@ -88,6 +97,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(DOC_PATHS).denyAll()
                         .requestMatchers(AUTH_PUBLIC).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Всё остальное закрыто; ролевые правила добавят следующие задачи.
                         .anyRequest().authenticated());
         return http.build();
