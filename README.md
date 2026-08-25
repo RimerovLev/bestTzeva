@@ -66,10 +66,7 @@ make clean         # остановить и УДАЛИТЬ volume (данные
 # Сборка
 ./gradlew build
 
-# Запуск без БД (профиль nosql)
-SPRING_PROFILES_ACTIVE=nosql ./gradlew bootRun
-
-# Запуск с PostgreSQL и Redis
+# Запуск с PostgreSQL и Redis (профиль local)
 ./gradlew bootRun
 
 # Тесты

@@ -26,6 +26,7 @@ repositories {
 val mapstructVersion: String by project
 val springdocVersion: String by project
 val archunitVersion: String by project
+val jjwtVersion: String by project
 
 dependencies {
     // --- Spring Boot starters ---
@@ -45,6 +46,11 @@ dependencies {
     // --- OpenAPI ---
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
 
+    // --- JWT (jjwt) ---
+    implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
+
     // --- Lombok ---
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
@@ -57,6 +63,10 @@ dependencies {
 
     // --- Test ---
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    // Apache HttpClient5: TestRestTemplate корректно обрабатывает 401 + тело POST
+    // (JDK-клиент падает «cannot retry due to server authentication, in streaming mode»).
+    testImplementation("org.apache.httpcomponents.client5:httpclient5")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")

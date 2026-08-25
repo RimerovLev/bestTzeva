@@ -4,6 +4,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
@@ -33,6 +34,18 @@ public class WebErrorConfig {
         ms.setFallbackToSystemLocale(false);
         ms.setUseCodeAsDefaultMessage(false);
         return ms;
+    }
+
+    /**
+     * Валидатор бинов, берущий сообщения из нашего {@link MessageSource} — чтобы ключи
+     * вида {@code {common.password.weak}} локализовались по Accept-Language, а не из
+     * дефолтного ValidationMessages.
+     */
+    @Bean
+    public LocalValidatorFactoryBean defaultValidator(MessageSource messageSource) {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.setValidationMessageSource(messageSource);
+        return validator;
     }
 
     @Bean

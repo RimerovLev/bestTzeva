@@ -83,6 +83,17 @@ app:
     rate: ${APP_VAT_RATE:0.18}
   mail:
     from: ${MAIL_FROM:noreply@tzevabest.co.il}
+  jwt:
+    # dev-дефолт длиной >= 32 байт (HS256); в prod задаётся из окружения.
+    secret: ${JWT_SECRET:dev-only-insecure-jwt-secret-change-me-please-32b}
+    issuer: tzeva-best
+    access-ttl: ${JWT_ACCESS_TTL:PT15M}
+    refresh-ttl: ${JWT_REFRESH_TTL:P30D}
+  auth:
+    max-sessions: ${AUTH_MAX_SESSIONS:5}
+    default-locale: he
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   storage:
     s3:
       endpoint: ${S3_ENDPOINT:http://localhost:9000}

@@ -42,6 +42,9 @@ public class User extends BaseEntity {
     @Column(name = "status", nullable = false, length = 32)
     private UserStatus status;
 
+    @Column(name = "locale", nullable = false, length = 5)
+    private String locale = "he";
+
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 

@@ -39,6 +39,12 @@ app:
       region: ${S3_REGION}
       path-style-access: ${S3_PATH_STYLE:false}
 
+  jwt:
+    # В prod секрет обязателен (без дефолта).
+    secret: ${JWT_SECRET}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
 server:
   # За ALB: доверяем X-Forwarded-*, иначе getRemoteAddr() вернёт адрес балансировщика
   # (ломает rate limiting по IP, T-3.4) и URL возврата эквайринга получат http вместо https (T-8.2).
