@@ -70,7 +70,10 @@ public class SecurityConfig {
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setExposedHeaders(List.of("X-Request-Id"));
-        cors.setAllowCredentials(true);
+        // Аутентификация — только через Authorization: Bearer, cookies не используются, поэтому
+        // передавать учётные данные кросс-доменно не нужно. Если появится httpOnly-кука с refresh —
+        // это отдельное архитектурное решение (тогда включить и записать в docs/). R-32.
+        cors.setAllowCredentials(false);
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
