@@ -2,15 +2,18 @@ package com.tzevabest.iam;
 
 import com.tzevabest.iam.dto.LoginRequest;
 import com.tzevabest.iam.dto.RegisterRequest;
+import com.tzevabest.iam.service.AccountLockService;
 import com.tzevabest.iam.service.AuthService;
 import com.tzevabest.notification.service.NotificationSender;
 import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -29,8 +32,21 @@ class AuthLockoutTest extends IntegrationTest {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private AccountLockService accountLock;
+
+    @Autowired
+    private StringRedisTemplate redis;
+
     @MockBean
     private NotificationSender notifications;
+
+    @Test
+    void failure_counter_gets_ttl_even_after_a_single_failure() {
+        accountLock.recordFailure(777L);
+        // TTL проставлен атомарно с первым инкрементом — счётчик не остаётся вечным
+        assertThat(redis.getExpire("auth:login-fails:777")).isPositive();
+    }
 
     @Test
     void notifies_owner_after_repeated_failures_but_does_not_lock() {
