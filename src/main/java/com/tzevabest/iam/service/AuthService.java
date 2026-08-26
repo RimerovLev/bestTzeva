@@ -15,6 +15,7 @@ import com.tzevabest.iam.dto.TokenResponse;
 import com.tzevabest.iam.repository.UserRepository;
 import com.tzevabest.notification.service.NotificationSender;
 import io.jsonwebtoken.JwtException;
+import org.springframework.context.MessageSource;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,7 @@ public class AuthService {
     private final RefreshTokenStore refreshStore;
     private final AccountLockService accountLock;
     private final NotificationSender notifications;
+    private final MessageSource messages;
 
     @Value("${app.auth.default-locale:he}")
     private String defaultLocale;
@@ -215,12 +217,14 @@ public class AuthService {
     private void handleRefreshReuse(long userId) {
         refreshStore.revokeAllForUser(userId);
         users.findById(userId).ifPresent(user -> {
-            String message = "A previously used session token was replayed on your Tzeva Best account. "
-                    + "All sessions were signed out as a precaution.";
+            Locale locale = Locale.forLanguageTag(
+                    (user.getLocale() == null || user.getLocale().isBlank()) ? "he" : user.getLocale());
+            String subject = messages.getMessage("notification.token_replay.subject", null, locale);
+            String body = messages.getMessage("notification.token_replay.body", null, locale);
             if (user.getEmail() != null) {
-                notifications.sendEmail(user.getEmail(), "Tzeva Best — session security alert", message);
+                notifications.sendEmail(user.getEmail(), subject, body);
             } else if (user.getPhone() != null) {
-                notifications.sendSms(user.getPhone(), message);
+                notifications.sendSms(user.getPhone(), body);
             }
         });
     }

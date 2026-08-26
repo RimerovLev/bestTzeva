@@ -13,6 +13,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.UUID;
 
+import org.mockito.ArgumentCaptor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -62,6 +64,21 @@ class AuthLockoutTest extends IntegrationTest {
         // но аккаунт НЕ заблокирован — верный пароль по-прежнему пускает
         assertThatCode(() -> authService.login(new LoginRequest(email, "Passw0rd"), "ua", "1.1.1.1"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void notification_text_uses_user_locale() {
+        String email = "lock-ru-" + UUID.randomUUID().toString().substring(0, 8) + "@tzevabest.test";
+        authService.register(new RegisterRequest(email, null, "Passw0rd", "A", "B", "ru"), "ua", "1.1.1.1");
+
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> authService.login(new LoginRequest(email, "WrongPass9"), "ua", "1.1.1.1"));
+        }
+
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(notifications, atLeastOnce()).sendEmail(eq(email), anyString(), body.capture());
+        // текст на русском (локаль пользователя), а не хардкод-английский
+        assertThat(body.getValue()).contains("попыток");
     }
 
     @Test

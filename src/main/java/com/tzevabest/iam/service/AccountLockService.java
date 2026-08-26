@@ -1,14 +1,17 @@
 package com.tzevabest.iam.service;
 
+import com.tzevabest.iam.domain.User;
 import com.tzevabest.iam.repository.UserRepository;
 import com.tzevabest.notification.service.NotificationSender;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Учёт подозрительной активности по аккаунту: считает неудачные входы подряд по {@code userId} и при
@@ -41,6 +44,7 @@ public class AccountLockService {
     private final StringRedisTemplate redis;
     private final UserRepository users;
     private final NotificationSender notifications;
+    private final MessageSource messages;
 
     /** Зафиксировать неудачный вход; на каждом {@value MAX_FAILURES}-м за окно — уведомить владельца. */
     public void recordFailure(long userId) {
@@ -57,14 +61,24 @@ public class AccountLockService {
     }
 
     private void notifyOwner(long userId) {
+        // Синхронная отправка (отправитель — заглушка в лог). На T-12.2 уйдёт в очередь, чтобы
+        // медленный SMTP не добавлял задержку к обработке входа. Текст — из бандлов по локали
+        // пользователя, а не хардкод (R-13).
         users.findById(userId).ifPresent(user -> {
-            String message = "Multiple failed login attempts were detected on your Tzeva Best account.";
+            Locale locale = localeOf(user);
+            String subject = messages.getMessage("notification.suspicious_login.subject", null, locale);
+            String body = messages.getMessage("notification.suspicious_login.body", null, locale);
             if (user.getEmail() != null) {
-                notifications.sendEmail(user.getEmail(), "Tzeva Best — suspicious sign-in activity", message);
+                notifications.sendEmail(user.getEmail(), subject, body);
             } else if (user.getPhone() != null) {
-                notifications.sendSms(user.getPhone(), message);
+                notifications.sendSms(user.getPhone(), body);
             }
         });
+    }
+
+    private static Locale localeOf(User user) {
+        String locale = user.getLocale();
+        return Locale.forLanguageTag((locale == null || locale.isBlank()) ? "he" : locale);
     }
 
     private static String failKey(long userId) {
