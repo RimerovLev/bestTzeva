@@ -28,7 +28,7 @@ class AppendOnlyLogTest extends IntegrationTest {
     @Test
     void consents_reject_update_and_delete() {
         jdbcTemplate.update("""
-                insert into consents (contact, consent_type, granted) values ('u@x.test', 'DATA_PROCESSING', true)""");
+                insert into consents (contact, consent_type, granted, policy_version) values ('u@x.test', 'DATA_PROCESSING', true, '2026-08-01')""");
         Long id = jdbcTemplate.queryForObject("select id from consents limit 1", Long.class);
 
         assertThatThrownBy(() -> jdbcTemplate.update("update consents set granted = false where id = ?", id))
@@ -43,7 +43,7 @@ class AppendOnlyLogTest extends IntegrationTest {
                 insert into audit_log (action, entity_type) values ('READ', 'user')"""))
                 .doesNotThrowAnyException();
         assertThatCode(() -> jdbcTemplate.update("""
-                insert into consents (contact, consent_type, granted) values ('a@x.test', 'MARKETING', true)"""))
+                insert into consents (contact, consent_type, granted, policy_version) values ('a@x.test', 'MARKETING', true, '2026-08-01')"""))
                 .doesNotThrowAnyException();
     }
 }

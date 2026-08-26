@@ -6,6 +6,7 @@ import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.error.RefreshInProgressException;
 import com.tzevabest.common.web.error.ValidationException;
+import com.tzevabest.iam.domain.ConsentType;
 import com.tzevabest.iam.domain.User;
 import com.tzevabest.iam.domain.UserRole;
 import com.tzevabest.iam.domain.UserStatus;
@@ -49,6 +50,7 @@ public class AuthService {
     private final AccountLockService accountLock;
     private final NotificationSender notifications;
     private final MessageSource messages;
+    private final ConsentService consents;
 
     @Value("${app.auth.default-locale:he}")
     private String defaultLocale;
@@ -92,6 +94,10 @@ public class AuthService {
         } catch (DataIntegrityViolationException e) {
             throw new ConflictException("common.auth.contact_taken");
         }
+
+        // Фиксируем согласие на обработку данных с версией политики и IP (T-14.2, R-24/R-39).
+        consents.record(user.getId(), email != null ? email : phone,
+                ConsentType.DATA_PROCESSING, true, ip, "registration");
 
         return issueTokens(user, userAgent, ip);
     }

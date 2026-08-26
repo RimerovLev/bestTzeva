@@ -92,6 +92,9 @@ app:
   auth:
     max-sessions: ${AUTH_MAX_SESSIONS:5}
     default-locale: he
+  privacy:
+    # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
+    policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}
   web:
     # Базовый URL для ссылок в письмах (подтверждение email, сброс пароля).
     base-url: ${APP_BASE_URL:http://localhost:8080}
