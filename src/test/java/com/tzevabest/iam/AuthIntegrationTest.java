@@ -149,6 +149,63 @@ class AuthIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void logout_revokes_only_the_given_session() throws Exception {
+        // один пользователь, две сессии: register + повторный login
+        String email = "u-" + token() + "@tzevabest.test";
+        ResponseEntity<String> reg = register(body("email", email, "password", "Passw0rd", "first_name", "A", "last_name", "B"));
+        String access1 = field(reg, "access_token");
+        String refresh1 = field(reg, "refresh_token");
+        ResponseEntity<String> login2 = post("/api/v1/auth/login", body("login", email, "password", "Passw0rd"));
+        String refresh2 = field(login2, "refresh_token");
+
+        // выходим из первой сессии по её refresh-токену
+        assertThat(logout(access1, refresh1).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // первая сессия мертва, вторая — жива
+        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh1)).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh2)).getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void logout_without_token_is_rejected() throws Exception {
+        ResponseEntity<String> reg = register(body("email", "u-" + token() + "@tzevabest.test",
+                "password", "Passw0rd", "first_name", "A", "last_name", "B"));
+        String access = field(reg, "access_token");
+
+        // пустое тело logout больше не гасит все сессии — это ошибка валидации
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(access);
+        ResponseEntity<String> logout = rest.exchange("/api/v1/auth/logout", HttpMethod.POST,
+                new HttpEntity<>("{}", headers), String.class);
+        assertThat(logout.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void logout_all_revokes_every_session() throws Exception {
+        String email = "u-" + token() + "@tzevabest.test";
+        ResponseEntity<String> reg = register(body("email", email, "password", "Passw0rd", "first_name", "A", "last_name", "B"));
+        String access1 = field(reg, "access_token");
+        String refresh1 = field(reg, "refresh_token");
+        ResponseEntity<String> login2 = post("/api/v1/auth/login", body("login", email, "password", "Passw0rd"));
+        String refresh2 = field(login2, "refresh_token");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(access1);
+        ResponseEntity<String> logoutAll = rest.exchange("/api/v1/auth/logout-all", HttpMethod.POST,
+                new HttpEntity<>(headers), String.class);
+        assertThat(logoutAll.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // обе сессии мертвы
+        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh1)).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh2)).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void me_requires_authentication() {
         ResponseEntity<String> me = rest.getForEntity("/api/v1/auth/me", String.class);
         assertThat(me.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -172,6 +229,14 @@ class AuthIntegrationTest extends IntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return rest.exchange(path, HttpMethod.POST, new HttpEntity<>(jsonBody, headers), String.class);
+    }
+
+    private ResponseEntity<String> logout(String access, String refresh) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(access);
+        return rest.exchange("/api/v1/auth/logout", HttpMethod.POST,
+                new HttpEntity<>(body("refresh_token", refresh), headers), String.class);
     }
 
     private HttpEntity<Void> bearer(String access) {

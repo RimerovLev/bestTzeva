@@ -112,10 +112,10 @@ public class AuthService {
         return issueTokens(user, userAgent, ip);
     }
 
+    /** Выход из одной сессии: отзывается ровно предъявленный refresh-токен. Массовый отзыв — {@link #logoutAll}. */
     public void logout(long userId, String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            refreshStore.revokeAllForUser(userId);
-            return;
+            return; // токен обязателен на уровне контроллера; без него — no-op, без массового отзыва
         }
         try {
             JwtService.RefreshClaims claims = jwt.parseRefresh(refreshToken);
@@ -129,6 +129,11 @@ public class AuthService {
         } catch (JwtException | IllegalArgumentException ignored) {
             // некорректный токен при logout — молча игнорируем (идемпотентно)
         }
+    }
+
+    /** Явный массовый выход: гасит все сессии пользователя (напр. «выйти на всех устройствах»). */
+    public void logoutAll(long userId) {
+        refreshStore.revokeAllForUser(userId);
     }
 
     public MeResponse me(long userId) {

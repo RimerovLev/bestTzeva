@@ -51,9 +51,16 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@RequestBody(required = false) LogoutRequest request,
+    public void logout(@Valid @RequestBody LogoutRequest request,
                        @AuthenticationPrincipal AuthPrincipal principal) {
-        authService.logout(principal.userId(), request == null ? null : request.refreshToken());
+        authService.logout(principal.userId(), request.refreshToken());
+    }
+
+    /** Массовый отзыв: гасит все сессии текущего пользователя (явное действие, не дефолт logout). */
+    @PostMapping("/logout-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logoutAll(@AuthenticationPrincipal AuthPrincipal principal) {
+        authService.logoutAll(principal.userId());
     }
 
     @GetMapping("/me")
