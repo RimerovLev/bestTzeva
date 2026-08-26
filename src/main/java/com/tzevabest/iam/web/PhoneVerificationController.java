@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.VerifyOtpRequest;
 import com.tzevabest.iam.service.PhoneVerificationService;
@@ -22,6 +23,7 @@ public class PhoneVerificationController {
 
     @PostMapping("/send-otp")
     @ResponseStatus(HttpStatus.ACCEPTED)
+    @RateLimit(key = "user", limit = 3, windowSeconds = 3600)
     public void sendOtp(@AuthenticationPrincipal AuthPrincipal principal) {
         phoneVerification.sendOtp(principal.userId());
     }

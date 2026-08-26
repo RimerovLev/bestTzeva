@@ -44,11 +44,13 @@ app:
     secret: ${JWT_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  security:
+    # CIDR доверенных прокси (ALB). ClientIpResolver берёт реальный IP из X-Forwarded-For
+    # только если непосредственный отправитель входит в этот список (иначе XFF игнорируется).
+    trusted-proxies: ${TRUSTED_PROXIES}
 
-server:
-  # За ALB: доверяем X-Forwarded-*, иначе getRemoteAddr() вернёт адрес балансировщика
-  # (ломает rate limiting по IP, T-3.4) и URL возврата эквайринга получат http вместо https (T-8.2).
-  forward-headers-strategy: framework
+# Примечание: X-Forwarded-Proto/https для URL возврата эквайринга (T-8.2) настраивается там же,
+# отдельно от резолвинга IP, чтобы ForwardedHeaderFilter не срезал X-Forwarded-For до ClientIpResolver.
 
 # В проде документация выключена целиком (и Security закрывает пути денайлом).
 springdoc:

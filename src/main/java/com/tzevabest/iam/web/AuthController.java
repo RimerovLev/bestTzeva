@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.LoginRequest;
 import com.tzevabest.iam.dto.LogoutRequest;
@@ -31,11 +32,14 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
+    @RateLimit(key = "ip", limit = 5, windowSeconds = 3600)
     public TokenResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest http) {
         return authService.register(request, userAgent(http), ip(http));
     }
 
     @PostMapping("/login")
+    @RateLimit(key = "ip", limit = 10, windowSeconds = 300)
+    @RateLimit(key = "field:login", limit = 5, windowSeconds = 900)
     public TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         return authService.login(request, userAgent(http), ip(http));
     }

@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.ChangePasswordRequest;
 import com.tzevabest.iam.dto.ForgotPasswordRequest;
@@ -25,6 +26,7 @@ public class PasswordController {
     /** Ответ одинаков независимо от существования аккаунта. */
     @PostMapping("/forgot")
     @ResponseStatus(HttpStatus.ACCEPTED)
+    @RateLimit(key = "field:login", limit = 3, windowSeconds = 3600)
     public void forgot(@Valid @RequestBody ForgotPasswordRequest request) {
         passwordService.forgot(request.login());
     }

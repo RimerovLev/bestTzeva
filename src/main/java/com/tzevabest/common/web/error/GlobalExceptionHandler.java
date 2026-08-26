@@ -6,6 +6,7 @@ import jakarta.validation.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -54,6 +55,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException ex, HttpServletRequest req) {
         return build(ex.getStatus(), ex.getCode(), responder.resolve(ex.getCode(), ex.getArgs()), null, req, ex);
+    }
+
+    // ── Превышение частоты (429) — то же тело + заголовок Retry-After ────────────
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex, HttpServletRequest req) {
+        ResponseEntity<ProblemDetail> base = build(ex.getStatus(), ex.getCode(),
+                responder.resolve(ex.getCode(), ex.getArgs()), null, req, ex);
+        return ResponseEntity.status(base.getStatusCode())
+                .headers(base.getHeaders())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(base.getBody());
     }
 
     // ── Валидация тела запроса (@Valid @RequestBody) ────────────────────────────

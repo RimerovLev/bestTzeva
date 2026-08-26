@@ -5,11 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Общая инфраструктура тестового харнеса.
- * <p>
- * Безопасность в интеграционных тестах обеспечивает боевой
- * {@code com.tzevabest.common.web.SecurityConfig} (открывает доки/health, остальное — до
- * появления IAM — permitAll), поэтому отдельная тестовая цепочка больше не нужна.
+ * Общая инфраструктура тестового харнеса. Безопасность обеспечивает боевой SecurityConfig (iam.web).
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestHarnessConfig {

@@ -4,6 +4,7 @@ import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.BusinessException;
 import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
+import com.tzevabest.common.web.error.TooManyRequestsException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.domain.User;
 import com.tzevabest.iam.domain.UserRole;
@@ -41,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
     private final RefreshTokenStore refreshStore;
+    private final AccountLockService accountLock;
 
     @Value("${app.auth.default-locale:he}")
     private String defaultLocale;
@@ -87,10 +89,15 @@ public class AuthService {
             passwordEncoder.matches(request.password(), dummyHash); // одинаковое время
             throw invalidCredentials();
         }
+        if (accountLock.isLocked(user.getId())) {
+            throw new TooManyRequestsException("common.auth.account_locked", accountLock.lockTtlSeconds(user.getId()));
+        }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
                 || user.getStatus() != UserStatus.ACTIVE) {
+            accountLock.recordFailure(user.getId());
             throw invalidCredentials();
         }
+        accountLock.reset(user.getId());
         return issueTokens(user, userAgent, ip);
     }
 

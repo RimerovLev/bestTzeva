@@ -1,5 +1,6 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.VerifyEmailRequest;
 import com.tzevabest.iam.service.EmailVerificationService;
@@ -24,6 +25,7 @@ public class EmailVerificationController {
 
     @PostMapping("/send-verification")
     @ResponseStatus(HttpStatus.ACCEPTED)
+    @RateLimit(key = "user", limit = 3, windowSeconds = 3600)
     public void send(@AuthenticationPrincipal AuthPrincipal principal) {
         emailVerification.sendVerification(principal.userId());
     }
