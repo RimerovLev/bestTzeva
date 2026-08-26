@@ -4,6 +4,7 @@ import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.BusinessException;
 import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
+import com.tzevabest.common.web.error.RefreshInProgressException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.domain.User;
 import com.tzevabest.iam.domain.UserRole;
@@ -25,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -115,27 +117,36 @@ public class AuthService {
 
     public TokenResponse refresh(String refreshToken, String userAgent, String ip) {
         JwtService.RefreshClaims claims = parseRefresh(refreshToken);
-        if (refreshStore.validateAndRotate(claims.userId(), claims.tokenId(), refreshToken)) {
+        long now = System.currentTimeMillis();
+        long remainderMs = claims.expiresAt().toEpochMilli() - now;
+        if (refreshStore.validateAndRotate(claims.userId(), claims.tokenId(), refreshToken, remainderMs)) {
             User user = users.findById(claims.userId())
                     .filter(u -> u.getStatus() == UserStatus.ACTIVE)
                     .orElseThrow(this::refreshInvalid);
             TokenResponse tokens = issueTokens(user, userAgent, ip);
-            // Запоминаем выданную пару под старый tokenId на окно снисхождения (R-06).
+            // Запоминаем выданную пару под старый tokenId на окно снисхождения (R-06, зашифровано R-35).
             refreshStore.rememberRotation(claims.userId(), claims.tokenId(),
-                    tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn());
+                    tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn(), remainderMs);
             return tokens;
         }
-        // Ротация не прошла. Внутри окна снисхождения повтор того же токена — это гонка клиента
-        // (две параллельные вкладки): возвращаем ту же новую пару, не считая кражей (R-06).
-        RefreshTokenStore.Rotation graced = refreshStore.replayRotation(claims.userId(), claims.tokenId());
-        if (graced != null) {
-            return TokenResponse.bearer(graced.accessToken(), graced.refreshToken(), graced.expiresIn());
-        }
-        // За пределами окна: токен корректно подписан и не истёк, но его нет ни в хранилище, ни в
-        // grace — предъявлен уже отработавший refresh. Легитимный клиент старый токен не хранит,
-        // поэтому это признак кражи: гасим все сессии и уведомляем владельца (R-05).
-        handleRefreshReuse(claims.userId());
-        throw refreshInvalid();
+        // Сессии нет в хранилище. ПОЧЕМУ она исчезла — решает retired-маркер (R-34), а не вывод по
+        // умолчанию «раз нет — значит кража».
+        RefreshTokenStore.ReplayResult replay = refreshStore.classifyReplay(claims.userId(), claims.tokenId(), now);
+        return switch (replay.kind()) {
+            // Гонка клиента внутри окна: та же новая пара, обе попытки успешны (R-06).
+            case PAIR -> TokenResponse.bearer(
+                    replay.pair().accessToken(), replay.pair().refreshToken(), replay.pair().expiresIn());
+            // Победившая ротация ещё минтит пару — просим повторить, не считая кражей (R-36).
+            case IN_PROGRESS -> throw new RefreshInProgressException(1);
+            // Повтор ротированного токена за окном снисхождения — признак кражи (R-05).
+            case THEFT -> {
+                handleRefreshReuse(claims.userId());
+                throw refreshInvalid();
+            }
+            // Законное исчезновение (вытеснение по лимиту, logout) или «не знаем» — обычный 401 без
+            // побочных эффектов (R-34).
+            case BENIGN -> throw refreshInvalid();
+        };
     }
 
     /** Выход из одной сессии: отзывается ровно предъявленный refresh-токен. Массовый отзыв — {@link #logoutAll}. */
@@ -150,7 +161,12 @@ public class AuthService {
             // (а не 401) выбран сознательно: logout идемпотентен и не должен служить оракулом
             // принадлежности токена.
             if (claims.userId() == userId) {
-                refreshStore.revoke(userId, claims.tokenId());
+                // retired-маркер logged_out живёт до конца жизни токена: если в этот момент был
+                // в полёте параллельный refresh тем же токеном, он получит обычный 401, а не
+                // массовый отзыв (R-34).
+                Duration retiredTtl = Duration.ofMillis(
+                        Math.max(1, claims.expiresAt().toEpochMilli() - System.currentTimeMillis()));
+                refreshStore.revoke(userId, claims.tokenId(), retiredTtl);
             }
         } catch (JwtException | IllegalArgumentException ignored) {
             // некорректный токен при logout — молча игнорируем (идемпотентно)
@@ -221,7 +237,16 @@ public class AuthService {
         return new BusinessException("common.auth.invalid_credentials", HttpStatus.UNAUTHORIZED);
     }
 
-    /** Реакция на повторное использование refresh: отзыв всех сессий и уведомление владельцу (R-05). */
+    /**
+     * Реакция на повторное использование refresh: отзыв всех сессий и уведомление владельцу (R-05).
+     * <p>
+     * Вызывается ТОЛЬКО когда retired-маркер говорит {@code rotated} и окно снисхождения истекло —
+     * то есть предъявлен именно отработавший (ротированный) токен. Отсутствие маркера и причины
+     * {@code evicted}/{@code logged_out} сюда НЕ ведут: «сессии нет» ещё не значит «кража», а цена
+     * ложного массового разлогина несимметрично высока (пользователь выброшен со всех устройств и
+     * получает письмо о взломе, которого не было). Не возвращать поведение к «нет сессии — значит
+     * кража»: это ровно тот дефект, что чинит R-34.
+     */
     private void handleRefreshReuse(long userId) {
         refreshStore.revokeAllForUser(userId);
         users.findById(userId).ifPresent(user -> {

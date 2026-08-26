@@ -100,7 +100,8 @@ public class JwtService {
         if (!TYPE_REFRESH.equals(claims.get(CLAIM_TYPE, String.class))) {
             throw new JwtException("Not a refresh token");
         }
-        return new RefreshClaims(Long.parseLong(claims.getSubject()), claims.getId());
+        return new RefreshClaims(Long.parseLong(claims.getSubject()), claims.getId(),
+                claims.getExpiration().toInstant());
     }
 
     private Claims parse(String token) {
@@ -118,6 +119,6 @@ public class JwtService {
     public record AccessClaims(long userId, String role, String email, String locale) {
     }
 
-    public record RefreshClaims(long userId, String tokenId) {
+    public record RefreshClaims(long userId, String tokenId, java.time.Instant expiresAt) {
     }
 }

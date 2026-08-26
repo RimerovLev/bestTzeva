@@ -102,13 +102,14 @@ class AuthIntegrationTest extends IntegrationTest {
         assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(field(refreshed, "refresh_token")).isNotEqualTo(oldRefresh);
 
-        // имитируем истечение окна снисхождения (R-06), чтобы проверить именно защиту от reuse
-        var graceKeys = redis.keys("auth:rotated:*");
-        if (graceKeys != null && !graceKeys.isEmpty()) {
-            redis.delete(graceKeys);
+        // убираем retired-маркер (как будто он истёк): без причины повтор трактуется как «не знаем»
+        // — обычный 401 refresh_invalid без побочных эффектов (R-34)
+        var retiredKeys = redis.keys("auth:retired:*");
+        if (retiredKeys != null && !retiredKeys.isEmpty()) {
+            redis.delete(retiredKeys);
         }
 
-        // повторное использование старого refresh вне окна запрещено
+        // повторное использование старого refresh запрещено
         ResponseEntity<String> reused = post("/api/v1/auth/refresh", body("refresh_token", oldRefresh));
         assertThat(reused.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(field(reused, "code")).isEqualTo("common.auth.refresh_invalid");

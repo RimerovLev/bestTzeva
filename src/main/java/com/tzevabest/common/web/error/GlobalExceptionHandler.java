@@ -68,6 +68,17 @@ public class GlobalExceptionHandler {
                 .body(base.getBody());
     }
 
+    // ── Параллельная ротация refresh ещё идёт (409) — тело + Retry-After ─────────
+    @ExceptionHandler(RefreshInProgressException.class)
+    public ResponseEntity<ProblemDetail> handleRefreshInProgress(RefreshInProgressException ex, HttpServletRequest req) {
+        ResponseEntity<ProblemDetail> base = build(ex.getStatus(), ex.getCode(),
+                responder.resolve(ex.getCode(), ex.getArgs()), null, req, ex);
+        return ResponseEntity.status(base.getStatusCode())
+                .headers(base.getHeaders())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(base.getBody());
+    }
+
     // ── Валидация тела запроса (@Valid @RequestBody) ────────────────────────────
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,

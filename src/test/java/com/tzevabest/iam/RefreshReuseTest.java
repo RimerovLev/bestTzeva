@@ -45,10 +45,11 @@ class RefreshReuseTest extends IntegrationTest {
         // штатная ротация первой сессии
         TokenResponse rotated1 = authService.refresh(session1.refreshToken(), "ua", "1.1.1.1");
 
-        // имитируем истечение окна снисхождения (R-06): вне него повтор трактуется как кража
-        var graceKeys = redis.keys("auth:rotated:*");
-        if (graceKeys != null && !graceKeys.isEmpty()) {
-            redis.delete(graceKeys);
+        // состариваем окно снисхождения: маркер остаётся rotated, но graceUntil в прошлом —
+        // повтор ротированного токена вне окна трактуется как кража (R-34/R-05)
+        var retiredKeys = redis.keys("auth:retired:*");
+        if (retiredKeys != null) {
+            retiredKeys.forEach(key -> redis.opsForValue().set(key, "rotated|0|x"));
         }
 
         // повтор уже ротированного токена вне окна — это replay

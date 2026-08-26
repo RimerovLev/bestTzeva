@@ -30,22 +30,22 @@ class RefreshTokenStoreTest extends IntegrationTest {
     void validate_and_rotate_accepts_once_then_rejects_reuse() {
         store.issue(USER, "t1", "raw-token-1", "agent", "1.1.1.1", TTL);
 
-        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1")).isTrue();
+        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1", TTL.toMillis())).isTrue();
         // повторное использование уже отозванного (ротированного) токена
-        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1")).isFalse();
+        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1", TTL.toMillis())).isFalse();
     }
 
     @Test
     void validate_rejects_wrong_token() {
         store.issue(USER, "t1", "raw-token-1", "agent", "1.1.1.1", TTL);
-        assertThat(store.validateAndRotate(USER, "t1", "WRONG")).isFalse();
+        assertThat(store.validateAndRotate(USER, "t1", "WRONG", TTL.toMillis())).isFalse();
     }
 
     @Test
     void revoke_invalidates_token() {
         store.issue(USER, "t1", "raw-token-1", "agent", "1.1.1.1", TTL);
-        store.revoke(USER, "t1");
-        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1")).isFalse();
+        store.revoke(USER, "t1", TTL);
+        assertThat(store.validateAndRotate(USER, "t1", "raw-token-1", TTL.toMillis())).isFalse();
     }
 
     @Test
@@ -92,7 +92,7 @@ class RefreshTokenStoreTest extends IntegrationTest {
 
         assertThat(keys()).hasSize(5);
         // самая старая сессия вытеснена
-        assertThat(store.validateAndRotate(USER, "oldest", "r-old")).isFalse();
+        assertThat(store.validateAndRotate(USER, "oldest", "r-old", TTL.toMillis())).isFalse();
     }
 
     private Set<String> keys() {

@@ -54,15 +54,24 @@ class RefreshGraceTest extends IntegrationTest {
     }
 
     @Test
+    void grace_slot_does_not_store_plaintext_tokens() {
+        TokenResponse session = register();
+        TokenResponse rotated = authService.refresh(session.refreshToken(), "ua", "1.1.1.1");
+
+        String value = redis.keys("auth:retired:*").stream()
+                .findFirst().map(redis.opsForValue()::get).orElseThrow();
+        // пара хранится зашифрованной — ни refresh, ни access не лежат в открытом виде (R-35)
+        assertThat(value).doesNotContain(rotated.refreshToken());
+        assertThat(value).doesNotContain(rotated.accessToken());
+    }
+
+    @Test
     void same_token_after_window_is_rejected() {
         TokenResponse session = register();
         authService.refresh(session.refreshToken(), "ua", "1.1.1.1"); // штатная ротация
 
-        // окно снисхождения истекло
-        List<String> graceKeys = List.copyOf(redis.keys("auth:rotated:*"));
-        if (!graceKeys.isEmpty()) {
-            redis.delete(graceKeys);
-        }
+        // окно снисхождения истекло: маркер остаётся rotated, но graceUntil в прошлом → кража
+        redis.keys("auth:retired:*").forEach(key -> redis.opsForValue().set(key, "rotated|0|x"));
 
         assertThatThrownBy(() -> authService.refresh(session.refreshToken(), "ua", "1.1.1.1"))
                 .isInstanceOf(BusinessException.class);
