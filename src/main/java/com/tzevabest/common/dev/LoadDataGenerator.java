@@ -188,7 +188,7 @@ public class LoadDataGenerator implements ApplicationRunner {
             // ── Заявки на услуги ───────────────────────────────────────────────
             """
             insert into service_requests (request_number, customer_name, customer_phone, property_type,
-                                          status, source, city, area_sqm, created_at)
+                                          status, source, city, area_sqm, consent_given_at, created_at)
             select 'SR-LOAD-' || lpad(g::text, 7, '0'), 'Load Client ' || g, '+97250' || lpad(g::text, 7, '0'),
                    (array['APARTMENT','HOUSE','OFFICE','COMMERCIAL','OTHER'])[1 + (g % 5)],
                    (array['NEW','CONTACTED','MEASUREMENT_SCHEDULED','MEASURED','QUOTED',
@@ -196,6 +196,7 @@ public class LoadDataGenerator implements ApplicationRunner {
                    (array['SITE_FORM','PHONE','WHATSAPP'])[1 + (g % 3)],
                    (array['Tel Aviv','Haifa','Jerusalem','Netanya'])[1 + (g % 4)],
                    (30 + (g % 200))::numeric(8,2),
+                   now() - ((g % 17520) || ' hours')::interval,
                    now() - ((g % 17520) || ' hours')::interval
             from generate_series(1, {REQUESTS}) g
             on conflict (request_number) do nothing

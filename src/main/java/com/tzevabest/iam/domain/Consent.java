@@ -38,6 +38,10 @@ public class Consent {
     @Column(name = "source", length = 64)
     private String source;
 
+    /** Версия редакции текста согласия, на которую согласился пользователь (T-14.2). */
+    @Column(name = "policy_version", length = 32)
+    private String policyVersion;
+
     @Column(name = "ip", length = 45)
     private String ip;
 

@@ -42,6 +42,7 @@ class ServiceRequestPersistenceTest extends IntegrationTest {
             request.setCustomerPhone("+972500000000");
             request.setPropertyType(PropertyType.APARTMENT);
             request.setSource(RequestSource.SITE_FORM);
+            request.setConsentGivenAt(java.time.Instant.now());
             request.setWorkTypes(EnumSet.of(WorkType.WALLS, WorkType.CEILING));
             em.persist(request);
             em.flush();

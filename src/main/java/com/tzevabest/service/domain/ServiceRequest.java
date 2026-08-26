@@ -89,6 +89,6 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "source", nullable = false, length = 16)
     private RequestSource source;
 
-    @Column(name = "consent_given_at")
+    @Column(name = "consent_given_at", nullable = false)
     private Instant consentGivenAt;
 }
