@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -24,19 +25,24 @@ public class ResourceOwnership {
     }
 
     public boolean owns(String resource, long resourceId) {
-        if (isPrivileged()) {
+        Optional<AuthPrincipal> principal = currentUser.optional();
+        if (principal.isEmpty()) {
+            // Аноним: не бросаем исключение из тела SpEL (иначе 500 в обход обычного пути отказа) —
+            // возвращаем false, а согласованный 401 отдаст Security через SecurityProblemSupport.
+            return false;
+        }
+        AuthPrincipal me = principal.get();
+        if (isPrivileged(me.role())) {
             return true;
         }
         OwnershipProvider provider = providers.get(resource);
         if (provider == null) {
             return false;
         }
-        long me = currentUser.id();
-        return provider.ownerId(resourceId).map(owner -> owner == me).orElse(false);
+        return provider.ownerId(resourceId).map(owner -> owner == me.userId()).orElse(false);
     }
 
-    private boolean isPrivileged() {
-        String role = currentUser.role();
+    private static boolean isPrivileged(String role) {
         return "ADMIN".equals(role) || "MANAGER".equals(role);
     }
 }
