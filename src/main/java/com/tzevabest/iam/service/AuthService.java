@@ -119,7 +119,13 @@ public class AuthService {
         }
         try {
             JwtService.RefreshClaims claims = jwt.parseRefresh(refreshToken);
-            refreshStore.revoke(claims.userId(), claims.tokenId());
+            // Отзываем только собственный токен: чужой refresh (claims.userId != userId)
+            // молча игнорируем, иначе A, предъявив токен B, погасил бы сессию B. Тихий no-op
+            // (а не 401) выбран сознательно: logout идемпотентен и не должен служить оракулом
+            // принадлежности токена.
+            if (claims.userId() == userId) {
+                refreshStore.revoke(userId, claims.tokenId());
+            }
         } catch (JwtException | IllegalArgumentException ignored) {
             // некорректный токен при logout — молча игнорируем (идемпотентно)
         }

@@ -124,6 +124,31 @@ class AuthIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void logout_does_not_revoke_another_users_session() throws Exception {
+        // Пользователь A и пользователь B со своими сессиями
+        ResponseEntity<String> regA = register(body("email", "a-" + token() + "@tzevabest.test",
+                "password", "Passw0rd", "first_name", "A", "last_name", "A"));
+        String accessA = field(regA, "access_token");
+
+        ResponseEntity<String> regB = register(body("email", "b-" + token() + "@tzevabest.test",
+                "password", "Passw0rd", "first_name", "B", "last_name", "B"));
+        String refreshB = field(regB, "refresh_token");
+
+        // A аутентифицирован своим access, но кладёт в тело refresh-токен B
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(accessA);
+        ResponseEntity<String> logout = rest.exchange("/api/v1/auth/logout", HttpMethod.POST,
+                new HttpEntity<>(body("refresh_token", refreshB), headers), String.class);
+        assertThat(logout.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        // сессия B не пострадала — B по-прежнему может обновить токен
+        ResponseEntity<String> refreshedB = post("/api/v1/auth/refresh", body("refresh_token", refreshB));
+        assertThat(refreshedB.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(field(refreshedB, "access_token")).isNotBlank();
+    }
+
+    @Test
     void me_requires_authentication() {
         ResponseEntity<String> me = rest.getForEntity("/api/v1/auth/me", String.class);
         assertThat(me.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
