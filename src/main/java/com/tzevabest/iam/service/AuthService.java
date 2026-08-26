@@ -13,6 +13,7 @@ import com.tzevabest.iam.dto.MeResponse;
 import com.tzevabest.iam.dto.RegisterRequest;
 import com.tzevabest.iam.dto.TokenResponse;
 import com.tzevabest.iam.repository.UserRepository;
+import com.tzevabest.notification.service.NotificationSender;
 import io.jsonwebtoken.JwtException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class AuthService {
     private final JwtService jwt;
     private final RefreshTokenStore refreshStore;
     private final AccountLockService accountLock;
+    private final NotificationSender notifications;
 
     @Value("${app.auth.default-locale:he}")
     private String defaultLocale;
@@ -104,6 +106,11 @@ public class AuthService {
     public TokenResponse refresh(String refreshToken, String userAgent, String ip) {
         JwtService.RefreshClaims claims = parseRefresh(refreshToken);
         if (!refreshStore.validateAndRotate(claims.userId(), claims.tokenId(), refreshToken)) {
+            // Токен корректно подписан и не истёк (parseRefresh прошёл выше), но его нет в
+            // хранилище — предъявлен уже ротированный или отозванный refresh. Легитимный клиент
+            // старый токен не хранит, поэтому это признак кражи: гасим все сессии и уведомляем
+            // владельца (R-05).
+            handleRefreshReuse(claims.userId());
             throw refreshInvalid();
         }
         User user = users.findById(claims.userId())
@@ -193,6 +200,20 @@ public class AuthService {
 
     private BusinessException invalidCredentials() {
         return new BusinessException("common.auth.invalid_credentials", HttpStatus.UNAUTHORIZED);
+    }
+
+    /** Реакция на повторное использование refresh: отзыв всех сессий и уведомление владельцу (R-05). */
+    private void handleRefreshReuse(long userId) {
+        refreshStore.revokeAllForUser(userId);
+        users.findById(userId).ifPresent(user -> {
+            String message = "A previously used session token was replayed on your Tzeva Best account. "
+                    + "All sessions were signed out as a precaution.";
+            if (user.getEmail() != null) {
+                notifications.sendEmail(user.getEmail(), "Tzeva Best — session security alert", message);
+            } else if (user.getPhone() != null) {
+                notifications.sendSms(user.getPhone(), message);
+            }
+        });
     }
 
     private BusinessException refreshInvalid() {

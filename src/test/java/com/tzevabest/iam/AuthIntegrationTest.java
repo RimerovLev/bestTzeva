@@ -161,11 +161,13 @@ class AuthIntegrationTest extends IntegrationTest {
         // выходим из первой сессии по её refresh-токену
         assertThat(logout(access1, refresh1).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-        // первая сессия мертва, вторая — жива
-        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh1)).getStatusCode())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        // вторая сессия жива (проверяем ДО того как трогать отозванный токен: предъявление
+        // отозванного refresh по R-05 гасит все сессии как признак кражи)
         assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh2)).getStatusCode())
                 .isEqualTo(HttpStatus.OK);
+        // первая (вышедшая) сессия мертва
+        assertThat(post("/api/v1/auth/refresh", body("refresh_token", refresh1)).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     @Test
