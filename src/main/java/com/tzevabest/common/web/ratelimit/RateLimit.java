@@ -28,4 +28,12 @@ public @interface RateLimit {
     long windowSeconds();
 
     CountOn countOn() default CountOn.ALL;
+
+    /**
+     * Для {@link CountOn#FAILURE}: какие исключения тратят бюджет. По умолчанию — только
+     * {@link com.tzevabest.common.web.error.BusinessException} (клиентские ошибки, напр. неверные
+     * учётные данные). Инфраструктурные сбои (БД/Redis недоступны) бюджет НЕ тратят — иначе
+     * пользователь получил бы 429 после восстановления сервиса, ни разу не ошибившись (R-37).
+     */
+    Class<? extends Throwable>[] failureOn() default {com.tzevabest.common.web.error.BusinessException.class};
 }

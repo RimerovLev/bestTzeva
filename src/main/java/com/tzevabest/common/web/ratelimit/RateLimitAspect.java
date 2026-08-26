@@ -58,22 +58,33 @@ public class RateLimitAspect {
                 throw new TooManyRequestsException("common.rate_limited", result.retryAfterSeconds());
             }
             if (limit.countOn() == CountOn.FAILURE) {
-                failureLimits.add(new FailureLimit(key, window));
+                failureLimits.add(new FailureLimit(key, window, limit.failureOn()));
             }
         }
 
         try {
             return joinPoint.proceed();
         } catch (Throwable failure) {
-            // Неудачный вызов тратит бюджет FAILURE-лимитов (напр. неверный пароль по строке логина).
+            // Бюджет FAILURE-лимита тратит только «учитываемое» исключение (по умолчанию клиентская
+            // BusinessException). Инфраструктурный сбой (БД/Redis) бюджет не трогает (R-37).
             for (FailureLimit failureLimit : failureLimits) {
-                limiter.record(failureLimit.key(), failureLimit.window());
+                if (failureLimit.matches(failure)) {
+                    limiter.record(failureLimit.key(), failureLimit.window());
+                }
             }
             throw failure;
         }
     }
 
-    private record FailureLimit(String key, Duration window) {
+    private record FailureLimit(String key, Duration window, Class<? extends Throwable>[] failureOn) {
+        boolean matches(Throwable failure) {
+            for (Class<? extends Throwable> type : failureOn) {
+                if (type.isInstance(failure)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private String resolveDimension(String key, HttpServletRequest request, Object[] args) {
