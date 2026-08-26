@@ -183,6 +183,20 @@ create index ix_orders_customer_email_lower on orders (lower(customer_email));
 create index ix_orders_customer_name_trgm   on orders using gin (customer_name gin_trgm_ops);
 ```
 
+## Удалён избыточный индекс (V25, R-31)
+
+`ix_products_active_paint_type (is_active, paint_type)` перекрывался частичным
+`ix_products_catalog_list` из V11 и вёл низкоселективным булевым полем. Удалён (V25). План листинга
+каталога переснят на 20k товаров / 50 категорий (`ProductCatalogIndexTest`) — не ухудшился, идёт
+через `ix_products_catalog_list`:
+
+```text
+Limit (actual time=0.013..0.023 rows=20 loops=1)
+  ->  Index Scan using ix_products_catalog_list on products (actual time=0.012..0.021 rows=20 loops=1)
+        Index Cond: ((category_id = 1) AND ((paint_type)::text = 'INTERIOR'::text))
+Execution Time: 0.037 ms
+```
+
 `is_active` вынесен из ключа в частичный предикат (низкоселективен) — индекс меньше, а
 `created_at desc` идёт сразу за equality-колонками.
 
