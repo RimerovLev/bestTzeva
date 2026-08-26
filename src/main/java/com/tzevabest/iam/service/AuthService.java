@@ -16,6 +16,7 @@ import com.tzevabest.iam.repository.UserRepository;
 import com.tzevabest.notification.service.NotificationSender;
 import io.jsonwebtoken.JwtException;
 import org.springframework.context.MessageSource;
+import org.springframework.dao.DataIntegrityViolationException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,7 +82,14 @@ public class AuthService {
         user.setRole(UserRole.CUSTOMER);
         user.setStatus(UserStatus.ACTIVE);
         user.setLocale(resolveLocale(request.locale()));
-        users.save(user);
+        try {
+            // saveAndFlush, чтобы нарушение уникального индекса всплыло здесь: две одновременные
+            // регистрации на один контакт проходят exists-проверку обе, вторая ловится на индексе
+            // и должна вернуть тот же contact_taken, а не общий data.conflict (R-26).
+            users.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("common.auth.contact_taken");
+        }
 
         return issueTokens(user, userAgent, ip);
     }
