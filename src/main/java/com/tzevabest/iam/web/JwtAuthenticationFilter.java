@@ -1,6 +1,8 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.security.AuthDetails;
 import com.tzevabest.common.web.security.AuthPrincipal;
+import com.tzevabest.common.web.ratelimit.ClientIpResolver;
 import com.tzevabest.iam.service.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -12,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER = "Bearer ";
 
     private final JwtService jwt;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -41,7 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         claims.userId(), claims.role(), claims.email(), claims.locale());
                 var authentication = new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // Реальный IP (X-Forwarded-For от доверенных прокси), а не адрес балансировщика.
+                authentication.setDetails(new AuthDetails(clientIpResolver.resolve(request)));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (JwtException | IllegalArgumentException e) {
                 SecurityContextHolder.clearContext();

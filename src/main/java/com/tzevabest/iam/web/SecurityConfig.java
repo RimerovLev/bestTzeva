@@ -1,6 +1,7 @@
 package com.tzevabest.iam.web;
 
 import com.tzevabest.common.web.SecurityProblemSupport;
+import com.tzevabest.common.web.ratelimit.ClientIpResolver;
 import com.tzevabest.iam.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +55,7 @@ public class SecurityConfig {
 
     private final SecurityProblemSupport problemSupport;
     private final JwtService jwtService;
+    private final ClientIpResolver clientIpResolver;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -116,6 +118,7 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint(problemSupport)
                         .accessDeniedHandler(problemSupport))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, clientIpResolver),
+                        UsernamePasswordAuthenticationFilter.class);
     }
 }
