@@ -15,11 +15,18 @@ import java.util.Date;
 import java.util.UUID;
 
 /**
- * Выпуск и разбор JWT. Access — короткоживущий (claims sub=userId, role, email, locale),
- * refresh — с {@code jti} (tokenId) и {@code type=refresh} для ротации в {@link RefreshTokenStore}.
+ * Выпуск и разбор JWT. Access — короткоживущий ({@code type=access}, claims sub=userId, role, email,
+ * locale), refresh — с {@code jti} (tokenId) и {@code type=refresh} для ротации в
+ * {@link RefreshTokenStore}. Оба токена подписаны одним ключом и имеют одного издателя, поэтому claim
+ * {@code type} — единственное, что не даёт предъявить refresh как access (и наоборот): {@code parseAccess}
+ * требует {@code type=access}, {@code parseRefresh} — {@code type=refresh}.
  */
 @Service
 public class JwtService {
+
+    private static final String CLAIM_TYPE = "type";
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
 
     private final SecretKey key;
     private final String issuer;
@@ -46,6 +53,7 @@ public class JwtService {
         return Jwts.builder()
                 .issuer(issuer)
                 .subject(Long.toString(userId))
+                .claim(CLAIM_TYPE, TYPE_ACCESS)
                 .claim("role", role)
                 .claim("email", email)
                 .claim("locale", locale)
@@ -62,7 +70,7 @@ public class JwtService {
                 .issuer(issuer)
                 .subject(Long.toString(userId))
                 .id(tokenId)
-                .claim("type", "refresh")
+                .claim(CLAIM_TYPE, TYPE_REFRESH)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(refreshTtl)))
                 .signWith(key)
@@ -72,16 +80,24 @@ public class JwtService {
 
     public AccessClaims parseAccess(String token) {
         Claims claims = parse(token);
+        if (!TYPE_ACCESS.equals(claims.get(CLAIM_TYPE, String.class))) {
+            throw new JwtException("Not an access token");
+        }
+        String role = claims.get("role", String.class);
+        if (role == null || role.isBlank()) {
+            // без роли authority была бы ROLE_null — не пускаем такой токен вовсе
+            throw new JwtException("Access token has no role");
+        }
         return new AccessClaims(
                 Long.parseLong(claims.getSubject()),
-                claims.get("role", String.class),
+                role,
                 claims.get("email", String.class),
                 claims.get("locale", String.class));
     }
 
     public RefreshClaims parseRefresh(String token) {
         Claims claims = parse(token);
-        if (!"refresh".equals(claims.get("type", String.class))) {
+        if (!TYPE_REFRESH.equals(claims.get(CLAIM_TYPE, String.class))) {
             throw new JwtException("Not a refresh token");
         }
         return new RefreshClaims(Long.parseLong(claims.getSubject()), claims.getId());

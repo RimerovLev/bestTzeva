@@ -2,6 +2,7 @@ package com.tzevabest.iam;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tzevabest.iam.service.JwtService;
 import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,28 @@ class AuthIntegrationTest extends IntegrationTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private JwtService jwt;
+
+    @Test
+    void refresh_token_is_rejected_as_bearer() throws Exception {
+        ResponseEntity<String> reg = register(body("email", "u-" + token() + "@tzevabest.test",
+                "password", "Passw0rd", "first_name", "A", "last_name", "B"));
+        String refresh = field(reg, "refresh_token");
+
+        // refresh-токен в Authorization: Bearer не должен приниматься как access
+        ResponseEntity<String> me = rest.exchange("/api/v1/auth/me", HttpMethod.GET, bearer(refresh), String.class);
+        assertThat(me.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void access_token_without_role_is_rejected() {
+        // токен с правильным type=access, но без claim role — не должен давать ROLE_null
+        String noRole = jwt.generateAccess(1L, null, "x-" + token() + "@tzevabest.test", "he");
+        ResponseEntity<String> me = rest.exchange("/api/v1/auth/me", HttpMethod.GET, bearer(noRole), String.class);
+        assertThat(me.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
 
     @Test
     void register_then_access_me() throws Exception {
