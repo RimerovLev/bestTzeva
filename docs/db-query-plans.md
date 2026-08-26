@@ -29,6 +29,7 @@ PostgreSQL 16, планы через `EXPLAIN (ANALYZE)`.
 | 5 | **Каталог: сортировка/фильтр по цене (min по вариантам)** | **не покрыт индексом на `products` — см. вывод** |
 | 6 | Админ: заказы `status`, sort `created_at desc` | `ix_orders_status_created` |
 | 7 | Админ: заявки `status`, sort `created_at desc` | `ix_service_requests_status_created` |
+| 8 | Админ: поиск заказов по телефону / email / имени (R-20) | `ix_orders_customer_phone`, `ix_orders_customer_email_lower`, `ix_orders_customer_name_trgm` (GIN) |
 
 ## 1. Список каталога, 3 фильтра + пагинация — `paint_type` равенство
 
@@ -132,11 +133,54 @@ GIN-индекс `ix_product_translations_name_trgm` **создан** (пров�
 Seq Scan; на проде (сотни тысяч переводов) планировщик переключится сам. Отдельное внимание —
 на T-4.5.
 
+## 8. Админский поиск заказов по телефону / email / имени (R-20) — `large`
+
+Список заказов в админке (T-7.4) ищет клиента по телефону, email и имени. До V21 под эти поля
+индексов не было — на `large` (100k заказов) любой такой поиск читал таблицу целиком. Замер после
+добавления индексов (100k заказов, `EXPLAIN (ANALYZE, COSTS OFF)`, автоматизирован в
+`OrderSearchIndexTest`):
+
+Телефон (равенство):
+
+```text
+Index Scan using ix_orders_customer_phone on orders (actual time=0.008..0.009 rows=1 loops=1)
+  Index Cond: ((customer_phone)::text = '+972500050000'::text)
+Execution Time: 0.015 ms
+```
+
+Email (регистронезависимо, функциональный индекс по `lower(customer_email)`):
+
+```text
+Index Scan using ix_orders_customer_email_lower on orders (actual time=0.013..0.014 rows=1 loops=1)
+  Index Cond: (lower((customer_email)::text) = 'buyer50000@x.test'::text)
+Execution Time: 0.307 ms
+```
+
+Имя (`ILIKE '%...%'`, триграммный GIN):
+
+```text
+Bitmap Heap Scan on orders (actual time=2.282..2.286 rows=1 loops=1)
+  Recheck Cond: ((customer_name)::text ~~* '%Client 50000%'::text)
+  ->  Bitmap Index Scan on ix_orders_customer_name_trgm (actual time=2.267..2.267 rows=11 loops=1)
+Execution Time: 2.300 ms
+```
+
+Все три — через индекс, Seq Scan по `orders` нет. Тест `OrderSearchIndexTest` фиксирует это как
+регрессию (проверяет отсутствие `Seq Scan on orders` и использование нужного индекса).
+
 ## Добавленные/исправленные индексы (V11)
 
 ```sql
 create index ix_products_catalog_list on products (category_id, paint_type, created_at desc) where is_active;
 create index ix_products_featured     on products (created_at desc) where is_active and is_featured;
+```
+
+## Добавленные индексы под поиск заказов (V21, R-20)
+
+```sql
+create index ix_orders_customer_phone       on orders (customer_phone);
+create index ix_orders_customer_email_lower on orders (lower(customer_email));
+create index ix_orders_customer_name_trgm   on orders using gin (customer_name gin_trgm_ops);
 ```
 
 `is_active` вынесен из ключа в частичный предикат (низкоселективен) — индекс меньше, а
