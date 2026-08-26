@@ -15,6 +15,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -39,18 +41,39 @@ public class RateLimitAspect {
         HttpServletRequest request = currentRequest();
         String prefix = method.getDeclaringClass().getSimpleName() + "." + method.getName();
 
+        // Ключи FAILURE-лимитов, которые прошли проверку: слот по ним занимаем только если вызов бросит.
+        List<FailureLimit> failureLimits = new ArrayList<>();
+
         for (RateLimit limit : limits) {
             String dimension = resolveDimension(limit.key(), request, joinPoint.getArgs());
             if (dimension == null) {
                 continue;
             }
             String key = prefix + ":" + limit.key() + ":" + dimension;
-            RateLimiter.Result result = limiter.tryAcquire(key, limit.limit(), Duration.ofSeconds(limit.windowSeconds()));
+            Duration window = Duration.ofSeconds(limit.windowSeconds());
+            RateLimiter.Result result = (limit.countOn() == CountOn.FAILURE)
+                    ? limiter.check(key, limit.limit(), window)
+                    : limiter.tryAcquire(key, limit.limit(), window);
             if (!result.allowed()) {
                 throw new TooManyRequestsException("common.rate_limited", result.retryAfterSeconds());
             }
+            if (limit.countOn() == CountOn.FAILURE) {
+                failureLimits.add(new FailureLimit(key, window));
+            }
         }
-        return joinPoint.proceed();
+
+        try {
+            return joinPoint.proceed();
+        } catch (Throwable failure) {
+            // Неудачный вызов тратит бюджет FAILURE-лимитов (напр. неверный пароль по строке логина).
+            for (FailureLimit failureLimit : failureLimits) {
+                limiter.record(failureLimit.key(), failureLimit.window());
+            }
+            throw failure;
+        }
+    }
+
+    private record FailureLimit(String key, Duration window) {
     }
 
     private String resolveDimension(String key, HttpServletRequest request, Object[] args) {

@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  *   <li>{@code "field:<name>"} — по значению поля запроса (компонента record-DTO).</li>
  * </ul>
  * Повторяемая: на одном методе допускается несколько лимитов (напр. IP + email).
+ * {@link #countOn()} задаёт, что тратит бюджет: любой вызов ({@link CountOn#ALL}) или только
+ * неудачный ({@link CountOn#FAILURE}).
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -24,4 +26,6 @@ public @interface RateLimit {
     int limit();
 
     long windowSeconds();
+
+    CountOn countOn() default CountOn.ALL;
 }

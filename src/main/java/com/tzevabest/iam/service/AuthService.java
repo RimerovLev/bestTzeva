@@ -4,7 +4,6 @@ import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.BusinessException;
 import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
-import com.tzevabest.common.web.error.TooManyRequestsException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.domain.User;
 import com.tzevabest.iam.domain.UserRole;
@@ -89,11 +88,12 @@ public class AuthService {
             passwordEncoder.matches(request.password(), dummyHash); // одинаковое время
             throw invalidCredentials();
         }
-        if (accountLock.isLocked(user.getId())) {
-            throw new TooManyRequestsException("common.auth.account_locked", accountLock.lockTtlSeconds(user.getId()));
-        }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
                 || user.getStatus() != UserStatus.ACTIVE) {
+            // Считаем неудачу для уведомления владельца о подозрительной активности.
+            // Троттлинг ответа (429) и защита от перебора — на @RateLimit по строке логина и по IP,
+            // а не здесь: проверка по userId сработала бы только для существующих аккаунтов и стала бы
+            // оракулом их существования (см. R-04).
             accountLock.recordFailure(user.getId());
             throw invalidCredentials();
         }

@@ -1,6 +1,5 @@
 package com.tzevabest.iam;
 
-import com.tzevabest.common.web.error.TooManyRequestsException;
 import com.tzevabest.iam.dto.LoginRequest;
 import com.tzevabest.iam.dto.RegisterRequest;
 import com.tzevabest.iam.service.AuthService;
@@ -12,17 +11,18 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * Прогрессивная блокировка (через сервис, минуя HTTP rate limit): 10 неудач → блокировка + уведомление;
- * успешный вход сбрасывает счётчик.
+ * Учёт подозрительной активности (через сервис, минуя HTTP rate limit): серия неудач уведомляет
+ * владельца, но НЕ блокирует вход (после R-04 блокировки по userId нет — она была оракулом
+ * существования аккаунта). Успешный вход сбрасывает счётчик.
  */
 class AuthLockoutTest extends IntegrationTest {
 
@@ -33,18 +33,19 @@ class AuthLockoutTest extends IntegrationTest {
     private NotificationSender notifications;
 
     @Test
-    void locks_account_after_ten_failures_and_notifies() {
+    void notifies_owner_after_repeated_failures_but_does_not_lock() {
         String email = register();
 
         for (int i = 0; i < 10; i++) {
             assertThatThrownBy(() -> authService.login(new LoginRequest(email, "WrongPass9"), "ua", "1.1.1.1"))
                     .isInstanceOf(com.tzevabest.common.web.error.BusinessException.class);
         }
-        // теперь аккаунт заблокирован — даже верный пароль отвергается 429
-        assertThatThrownBy(() -> authService.login(new LoginRequest(email, "Passw0rd"), "ua", "1.1.1.1"))
-                .isInstanceOf(TooManyRequestsException.class);
-
+        // владелец уведомлён о подозрительной активности
         verify(notifications, atLeastOnce()).sendEmail(eq(email), anyString(), anyString());
+
+        // но аккаунт НЕ заблокирован — верный пароль по-прежнему пускает
+        assertThatCode(() -> authService.login(new LoginRequest(email, "Passw0rd"), "ua", "1.1.1.1"))
+                .doesNotThrowAnyException();
     }
 
     @Test
@@ -57,12 +58,11 @@ class AuthLockoutTest extends IntegrationTest {
         // успешный вход сбрасывает счётчик
         authService.login(new LoginRequest(email, "Passw0rd"), "ua", "1.1.1.1");
 
-        // ещё 9 неудач — не должно заблокировать (счётчик был сброшен)
+        // ещё 9 неудач — порог (10) не достигнут, владельца не тревожим повторно
         for (int i = 0; i < 9; i++) {
             assertThatThrownBy(() -> authService.login(new LoginRequest(email, "WrongPass9"), "ua", "1.1.1.1"));
         }
-        assertThatCode(() -> authService.login(new LoginRequest(email, "Passw0rd"), "ua", "1.1.1.1"))
-                .doesNotThrowAnyException();
+        verify(notifications, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
     private String register() {
