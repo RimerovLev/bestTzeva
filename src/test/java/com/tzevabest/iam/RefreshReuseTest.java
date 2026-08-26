@@ -10,6 +10,7 @@ import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.UUID;
 
@@ -28,6 +29,9 @@ class RefreshReuseTest extends IntegrationTest {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private StringRedisTemplate redis;
+
     @MockBean
     private NotificationSender notifications;
 
@@ -41,7 +45,13 @@ class RefreshReuseTest extends IntegrationTest {
         // штатная ротация первой сессии
         TokenResponse rotated1 = authService.refresh(session1.refreshToken(), "ua", "1.1.1.1");
 
-        // повтор уже ротированного токена — это replay
+        // имитируем истечение окна снисхождения (R-06): вне него повтор трактуется как кража
+        var graceKeys = redis.keys("auth:rotated:*");
+        if (graceKeys != null && !graceKeys.isEmpty()) {
+            redis.delete(graceKeys);
+        }
+
+        // повтор уже ротированного токена вне окна — это replay
         assertThatThrownBy(() -> authService.refresh(session1.refreshToken(), "ua", "1.1.1.1"))
                 .isInstanceOf(BusinessException.class);
 

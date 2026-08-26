@@ -105,18 +105,27 @@ public class AuthService {
 
     public TokenResponse refresh(String refreshToken, String userAgent, String ip) {
         JwtService.RefreshClaims claims = parseRefresh(refreshToken);
-        if (!refreshStore.validateAndRotate(claims.userId(), claims.tokenId(), refreshToken)) {
-            // Токен корректно подписан и не истёк (parseRefresh прошёл выше), но его нет в
-            // хранилище — предъявлен уже ротированный или отозванный refresh. Легитимный клиент
-            // старый токен не хранит, поэтому это признак кражи: гасим все сессии и уведомляем
-            // владельца (R-05).
-            handleRefreshReuse(claims.userId());
-            throw refreshInvalid();
+        if (refreshStore.validateAndRotate(claims.userId(), claims.tokenId(), refreshToken)) {
+            User user = users.findById(claims.userId())
+                    .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+                    .orElseThrow(this::refreshInvalid);
+            TokenResponse tokens = issueTokens(user, userAgent, ip);
+            // Запоминаем выданную пару под старый tokenId на окно снисхождения (R-06).
+            refreshStore.rememberRotation(claims.userId(), claims.tokenId(),
+                    tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn());
+            return tokens;
         }
-        User user = users.findById(claims.userId())
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE)
-                .orElseThrow(this::refreshInvalid);
-        return issueTokens(user, userAgent, ip);
+        // Ротация не прошла. Внутри окна снисхождения повтор того же токена — это гонка клиента
+        // (две параллельные вкладки): возвращаем ту же новую пару, не считая кражей (R-06).
+        RefreshTokenStore.Rotation graced = refreshStore.replayRotation(claims.userId(), claims.tokenId());
+        if (graced != null) {
+            return TokenResponse.bearer(graced.accessToken(), graced.refreshToken(), graced.expiresIn());
+        }
+        // За пределами окна: токен корректно подписан и не истёк, но его нет ни в хранилище, ни в
+        // grace — предъявлен уже отработавший refresh. Легитимный клиент старый токен не хранит,
+        // поэтому это признак кражи: гасим все сессии и уведомляем владельца (R-05).
+        handleRefreshReuse(claims.userId());
+        throw refreshInvalid();
     }
 
     /** Выход из одной сессии: отзывается ровно предъявленный refresh-токен. Массовый отзыв — {@link #logoutAll}. */

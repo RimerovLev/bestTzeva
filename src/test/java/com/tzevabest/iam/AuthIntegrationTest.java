@@ -30,6 +30,9 @@ class AuthIntegrationTest extends IntegrationTest {
     @Autowired
     private JwtService jwt;
 
+    @Autowired
+    private org.springframework.data.redis.core.StringRedisTemplate redis;
+
     @Test
     void refresh_token_is_rejected_as_bearer() throws Exception {
         ResponseEntity<String> reg = register(body("email", "u-" + token() + "@tzevabest.test",
@@ -99,7 +102,13 @@ class AuthIntegrationTest extends IntegrationTest {
         assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(field(refreshed, "refresh_token")).isNotEqualTo(oldRefresh);
 
-        // повторное использование старого refresh запрещено
+        // имитируем истечение окна снисхождения (R-06), чтобы проверить именно защиту от reuse
+        var graceKeys = redis.keys("auth:rotated:*");
+        if (graceKeys != null && !graceKeys.isEmpty()) {
+            redis.delete(graceKeys);
+        }
+
+        // повторное использование старого refresh вне окна запрещено
         ResponseEntity<String> reused = post("/api/v1/auth/refresh", body("refresh_token", oldRefresh));
         assertThat(reused.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(field(reused, "code")).isEqualTo("common.auth.refresh_invalid");
