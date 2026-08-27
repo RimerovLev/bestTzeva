@@ -93,6 +93,35 @@ public class InventoryService {
         releaseInternal(requestId, "EXPIRED");
     }
 
+    /**
+     * Списать резервы заявки как продажу (переход в COMPLETED): физический остаток и резерв
+     * уменьшаются на зарезервированное, движение SALE.
+     */
+    @Transactional
+    public void consume(long requestId) {
+        List<long[]> reservations = jdbc.query(
+                "select id, variant_id, warehouse_id, qty from stock_reservations "
+                        + "where request_id = ? and status = 'ACTIVE'",
+                (rs, n) -> new long[]{rs.getLong("id"), rs.getLong("variant_id"),
+                        rs.getLong("warehouse_id"), rs.getLong("qty")}, requestId);
+        for (long[] r : reservations) {
+            long resId = r[0];
+            long variantId = r[1];
+            long warehouseId = r[2];
+            int qty = (int) r[3];
+            jdbc.update("update inventory set qty = qty - ?, reserved_qty = reserved_qty - ?, version = version + 1 "
+                    + "where variant_id = ? and warehouse_id = ?", qty, qty, variantId, warehouseId);
+            jdbc.update("update stock_reservations set status = 'RELEASED', updated_at = now() where id = ?", resId);
+            Integer qtyAfter = jdbc.queryForObject(
+                    "select qty from inventory where variant_id = ? and warehouse_id = ?",
+                    Integer.class, variantId, warehouseId);
+            jdbc.update("""
+                    insert into inventory_movements (variant_id, warehouse_id, type, qty_delta, qty_after, reference_type, reference_id)
+                    values (?, ?, 'SALE', ?, ?, 'REQUEST', ?)""",
+                    variantId, warehouseId, -qty, qtyAfter == null ? 0 : qtyAfter, requestId);
+        }
+    }
+
     private void releaseInternal(long requestId, String finalStatus) {
         List<long[]> reservations = jdbc.query(
                 "select id, variant_id, warehouse_id, qty from stock_reservations "
