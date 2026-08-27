@@ -92,6 +92,8 @@ public class SecurityConfig {
                         .requestMatchers(AUTH_PROTECTED).authenticated()
                         // Публичный каталог категорий — только чтение, без аутентификации.
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        // Публичная витрина товаров — только чтение.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         // Публичный приём заявок на товар (гость).
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
                         // Админ-зона — только служебные роли; тонкие права — @PreAuthorize на сервисах.
@@ -112,6 +114,7 @@ public class SecurityConfig {
                         .requestMatchers(DOC_PATHS).denyAll()
                         .requestMatchers(AUTH_PUBLIC).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Всё остальное закрыто; ролевые правила добавят следующие задачи.
