@@ -20,12 +20,14 @@ import org.springframework.web.client.RestTemplate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * Троттлинг входа по строке логина (R-04): защита от перебора и ответ 429 не зависят от существования
  * аккаунта, поэтому не служат оракулом. Клиент без авто-ретраев — иначе HttpClient5 уснул бы на
  * Retry-After окна в 15 минут.
  */
+@TestPropertySource(properties = "app.auth.public-registration-enabled=true")
 class LoginThrottleTest extends IntegrationTest {
 
     @LocalServerPort

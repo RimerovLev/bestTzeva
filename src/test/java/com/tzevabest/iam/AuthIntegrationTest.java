@@ -17,8 +17,10 @@ import org.springframework.http.ResponseEntity;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.test.context.TestPropertySource;
 
 /** Интеграционные тесты аутентификации: register, login (успех/провал), refresh, logout, /me. */
+@TestPropertySource(properties = "app.auth.public-registration-enabled=true")
 class AuthIntegrationTest extends IntegrationTest {
 
     @Autowired

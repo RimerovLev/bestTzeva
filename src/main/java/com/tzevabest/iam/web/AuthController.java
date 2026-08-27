@@ -1,7 +1,9 @@
 package com.tzevabest.iam.web;
 
+import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.ratelimit.CountOn;
 import com.tzevabest.common.web.ratelimit.RateLimit;
+import org.springframework.beans.factory.annotation.Value;
 import com.tzevabest.common.web.security.AuthPrincipal;
 import com.tzevabest.iam.dto.LoginRequest;
 import com.tzevabest.iam.dto.LogoutRequest;
@@ -31,10 +33,17 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Value("${app.auth.public-registration-enabled:false}")
+    private boolean publicRegistrationEnabled;
+
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     @RateLimit(key = "ip", limit = 5, windowSeconds = 3600)
     public TokenResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest http) {
+        if (!publicRegistrationEnabled) {
+            // Регистрация закрыта: отвечаем 404, не подтверждая существование закрытого эндпоинта.
+            throw new NotFoundException("common.resource.not_found");
+        }
         return authService.register(request, userAgent(http), ip(http));
     }
 

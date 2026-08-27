@@ -92,6 +92,12 @@ app:
   auth:
     max-sessions: ${AUTH_MAX_SESSIONS:5}
     default-locale: he
+    # Публичная регистрация закрыта: аккаунты заводит администратор. Обратимо флагом.
+    public-registration-enabled: ${AUTH_PUBLIC_REGISTRATION:false}
+  bootstrap:
+    # Первый администратор создаётся один раз на пустой таблице users, если заданы обе переменные.
+    admin-email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
   privacy:
     # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
     policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}

@@ -92,6 +92,19 @@ class RoleMatrixTest extends IntegrationTest {
     }
 
     @Test
+    void public_registration_is_closed_by_default() {
+        // Флаг app.auth.public-registration-enabled по умолчанию false → 404 (не 403: не подтверждаем
+        // существование закрытого эндпоинта). Включённый путь покрыт AuthIntegrationTest (флаг on).
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"email\":\"nobody-" + System.nanoTime() + "@x.test\",\"password\":\"Passw0rd\","
+                + "\"first_name\":\"A\",\"last_name\":\"B\"}";
+        var resp = rest.exchange("/api/v1/auth/register", HttpMethod.POST,
+                new HttpEntity<>(body, headers), String.class);
+        assertThat(resp.getStatusCode().value()).isEqualTo(404);
+    }
+
+    @Test
     void address_ownership_owner_other_and_privileged() {
         TestDataFactory.TestUser owner = factory.createUser();
         TestDataFactory.TestUser other = factory.createUser();

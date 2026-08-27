@@ -23,8 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
+import org.springframework.test.context.TestPropertySource;
 
 /** Подтверждение email, OTP телефона и восстановление/смена пароля (HTTP-флоу). */
+@TestPropertySource(properties = "app.auth.public-registration-enabled=true")
 class AuthRecoveryIntegrationTest extends IntegrationTest {
 
     private static final Pattern TOKEN = Pattern.compile("token=([A-Za-z0-9_\\-]+)");
