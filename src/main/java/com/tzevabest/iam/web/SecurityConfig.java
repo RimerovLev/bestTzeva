@@ -3,6 +3,7 @@ package com.tzevabest.iam.web;
 import com.tzevabest.common.web.SecurityProblemSupport;
 import com.tzevabest.common.web.ratelimit.ClientIpResolver;
 import com.tzevabest.iam.service.JwtService;
+import org.springframework.http.HttpMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -89,6 +90,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(AUTH_PUBLIC).permitAll()
                         .requestMatchers(AUTH_PROTECTED).authenticated()
+                        // Публичный каталог категорий — только чтение, без аутентификации.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                         // Админ-зона — только служебные роли; тонкие права — @PreAuthorize на сервисах.
                         .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Клиентские ресурсы — только аутентифицированным (владение проверяет @ownership).
@@ -106,6 +109,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers(DOC_PATHS).denyAll()
                         .requestMatchers(AUTH_PUBLIC).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Всё остальное закрыто; ролевые правила добавят следующие задачи.
                         .anyRequest().authenticated());
