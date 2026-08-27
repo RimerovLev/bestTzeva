@@ -101,6 +101,11 @@ app:
   privacy:
     # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
     policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}
+  inventory:
+    # Срок резерва остатка под заявку; по истечении заявка уходит в LOST.
+    reservation-ttl: ${INVENTORY_RESERVATION_TTL:PT72H}
+    # Период фоновой уборки просроченных резервов.
+    reservation-sweep: ${INVENTORY_RESERVATION_SWEEP:PT5M}
   web:
     # Базовый URL для ссылок в письмах (подтверждение email, сброс пароля).
     base-url: ${APP_BASE_URL:http://localhost:8080}
