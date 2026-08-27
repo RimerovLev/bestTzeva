@@ -5,7 +5,13 @@ import com.tzevabest.catalog.domain.Finish;
 import com.tzevabest.catalog.domain.PaintType;
 import com.tzevabest.catalog.domain.UsageArea;
 import com.tzevabest.catalog.dto.ProductCard;
+import com.tzevabest.catalog.dto.ProductFacets;
+import com.tzevabest.catalog.dto.ProductSearchResult;
+import com.tzevabest.catalog.dto.ProductSummary;
 import com.tzevabest.catalog.dto.VariantCard;
+import com.tzevabest.common.dto.PageResponse;
+import com.tzevabest.common.dto.SortRequest;
+import com.tzevabest.common.web.PageQuery;
 import com.tzevabest.common.web.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -13,10 +19,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Публичное чтение каталога товаров (витрина): карточка товара с локализацией, денормализованными
@@ -29,7 +39,101 @@ public class ProductCatalogService {
     private static final String DEFAULT_LOCALE = "he";
     private static final List<String> LOCALES = List.of("he", "ru", "en");
 
+    private static final Set<String> SORTABLE = Set.of("created_at", "min_price", "max_price", "sku");
+
     private final JdbcTemplate jdbc;
+
+    /**
+     * Публичный листинг каталога: фильтры (категория, бренд, тип/область/финиш/база, цена, наличие),
+     * поиск по имени (unaccent — нечувствительно к никуд) и SKU, пагинация/сортировка, плюс фасеты по
+     * всей выборке. Показываются только активные товары.
+     */
+    public ProductSearchResult search(Long categoryId, Long brandId, String paintType, String usageArea,
+                                      String finish, String baseType, BigDecimal priceMin, BigDecimal priceMax,
+                                      Boolean inStock, String q, String localeParam, PageQuery page) {
+        String locale = resolveLocale(localeParam);
+        StringBuilder where = new StringBuilder(" where p.is_active");
+        List<Object> args = new ArrayList<>();
+        addEq(where, args, "p.category_id", categoryId);
+        addEq(where, args, "p.brand_id", brandId);
+        addEq(where, args, "p.paint_type", paintType);
+        addEq(where, args, "p.usage_area", usageArea);
+        addEq(where, args, "p.finish", finish);
+        addEq(where, args, "p.base_type", baseType);
+        if (priceMin != null) {
+            where.append(" and p.max_price >= ?");
+            args.add(priceMin);
+        }
+        if (priceMax != null) {
+            where.append(" and p.min_price <= ?");
+            args.add(priceMax);
+        }
+        if (Boolean.TRUE.equals(inStock)) {
+            where.append(" and p.has_stock");
+        }
+        if (q != null && !q.isBlank()) {
+            // Никуд (огласовки, U+0591..U+05C7) снимаются chr()-диапазоном; unaccent — латинская
+            // диакритика. Так поиск нечувствителен и к огласовкам, и к диакритике.
+            String stripNiqqud = "regexp_replace(t.name, '[' || chr(1425) || '-' || chr(1479) || ']', '', 'g')";
+            where.append(" and (p.sku ilike ? or exists (select 1 from product_translations t "
+                    + "where t.product_id = p.id and unaccent(" + stripNiqqud + ") ilike unaccent(?)))");
+            String like = "%" + q.trim() + "%";
+            args.add(like);
+            args.add(like);
+        }
+        String whereSql = where.toString();
+        Object[] a = args.toArray();
+
+        Long total = jdbc.queryForObject("select count(*) from products p" + whereSql, Long.class, a);
+
+        String nameExpr = "(select name from product_translations t where t.product_id = p.id "
+                + "order by case t.locale when '" + locale + "' then 0 when 'he' then 1 else 2 end limit 1)";
+        String sql = "select p.id, p.sku, p.category_id, p.brand_id, p.paint_type, p.min_price, p.max_price, "
+                + "p.has_stock, " + nameExpr + " as name from products p" + whereSql
+                + orderBy(page.sort()) + " limit ? offset ?";
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(page.size());
+        pageArgs.add((long) page.page() * page.size());
+        List<ProductSummary> items = jdbc.query(sql, (rs, n) -> new ProductSummary(
+                rs.getLong("id"), rs.getString("sku"), rs.getLong("category_id"), rs.getLong("brand_id"),
+                PaintType.valueOf(rs.getString("paint_type")), rs.getString("name"),
+                rs.getBigDecimal("min_price"), rs.getBigDecimal("max_price"), rs.getBoolean("has_stock")),
+                pageArgs.toArray());
+
+        ProductFacets facets = facets(whereSql, a);
+        PageResponse<ProductSummary> productsPage = PageResponse.of(items, page.page(), page.size(),
+                total == null ? 0 : total);
+        return new ProductSearchResult(productsPage, facets);
+    }
+
+    private ProductFacets facets(String whereSql, Object[] args) {
+        Map<String, Long> byPaintType = new LinkedHashMap<>();
+        jdbc.query("select paint_type, count(*) as c from products p" + whereSql + " group by paint_type",
+                (RowCallbackHandler) rs -> byPaintType.put(rs.getString("paint_type"), rs.getLong("c")), args);
+        Map<Long, Long> byBrand = new LinkedHashMap<>();
+        jdbc.query("select brand_id, count(*) as c from products p" + whereSql + " group by brand_id",
+                (RowCallbackHandler) rs -> byBrand.put(rs.getLong("brand_id"), rs.getLong("c")), args);
+        BigDecimal priceMin = jdbc.queryForObject("select min(min_price) from products p" + whereSql, BigDecimal.class, args);
+        BigDecimal priceMax = jdbc.queryForObject("select max(max_price) from products p" + whereSql, BigDecimal.class, args);
+        return new ProductFacets(byPaintType, byBrand, priceMin, priceMax);
+    }
+
+    private static void addEq(StringBuilder where, List<Object> args, String column, Object value) {
+        if (value != null) {
+            where.append(" and ").append(column).append(" = ?");
+            args.add(value);
+        }
+    }
+
+    private String orderBy(SortRequest sort) {
+        List<String> parts = new ArrayList<>();
+        for (SortRequest.Order o : sort.orders()) {
+            if (SORTABLE.contains(o.property())) {
+                parts.add("p." + o.property() + (o.direction() == SortRequest.Direction.DESC ? " desc" : " asc"));
+            }
+        }
+        return parts.isEmpty() ? " order by p.created_at desc" : " order by " + String.join(", ", parts);
+    }
 
     /** Карточка активного товара. 404, если товар не найден или неактивен. */
     public ProductCard card(long id, String localeParam) {
