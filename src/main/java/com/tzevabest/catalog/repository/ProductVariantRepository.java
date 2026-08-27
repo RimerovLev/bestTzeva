@@ -2,8 +2,6 @@ package com.tzevabest.catalog.repository;
 
 import com.tzevabest.catalog.domain.ProductVariant;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +13,4 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     Optional<ProductVariant> findBySku(String sku);
 
     long countByProduct_IdAndActiveTrue(Long productId);
-
-    @Query(value = "select exists(select 1 from order_items where variant_id = :variantId)", nativeQuery = true)
-    boolean hasOrderHistory(@Param("variantId") long variantId);
 }

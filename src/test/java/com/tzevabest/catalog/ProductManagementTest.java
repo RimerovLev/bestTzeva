@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tzevabest.iam.service.JwtService;
 import com.tzevabest.support.IntegrationTest;
-import com.tzevabest.support.TestDataFactory.TestOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -80,38 +79,28 @@ class ProductManagementTest extends IntegrationTest {
         assertThat(code(resp)).isEqualTo("catalog.sku.duplicate");
     }
 
-    // ── Деактивация варианта с историей заказов ──────────────────────────────────
+    // ── Обновление: неупомянутый вариант удаляется (истории обращений пока нет) ───
 
     @Test
-    void variant_with_order_history_is_deactivated_not_deleted_on_update() throws Exception {
+    void variant_absent_from_update_without_history_is_removed_and_denorm_recomputed() throws Exception {
         seedRefs();
         JsonNode created = json.readTree(admin(HttpMethod.POST, "/api/v1/admin/products",
-                productBody("P-ORD", List.of(variant("V-KEEP", "RAL1", "100.00"), variant("V-HIST", "RAL2", "200.00")))).getBody());
+                productBody("P-UPD", List.of(variant("V-KEEP", "RAL1", "100.00"), variant("V-DROP", "RAL2", "200.00")))).getBody());
         long id = created.get("id").asLong();
         long keepId = created.get("variants").get(0).get("id").asLong();
-        long histId = created.get("variants").get(1).get("id").asLong();
-
-        // по варианту V-HIST есть позиция заказа
-        TestOrder order = factory.createOrder();
-        jdbcTemplate.update("""
-                        insert into order_items (order_id, variant_id, product_name_snapshot, sku_snapshot, unit_price, qty, line_total)
-                        values (?, ?, 'Paint', 'V-HIST', 200.00, 1, 200.00)""",
-                order.id(), histId);
+        long dropId = created.get("variants").get(1).get("id").asLong();
 
         // обновляем агрегат, оставляя только V-KEEP
         ResponseEntity<String> resp = admin(HttpMethod.PUT, "/api/v1/admin/products/" + id,
-                updateBody("P-ORD", List.of(variantWithId(keepId, "V-KEEP", "RAL1", "100.00"))));
+                updateBody("P-UPD", List.of(variantWithId(keepId, "V-KEEP", "RAL1", "100.00"))));
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-        // V-HIST не удалён, а деактивирован
-        Boolean histActive = jdbcTemplate.queryForObject(
-                "select is_active from product_variants where id = ?", Boolean.class, histId);
-        assertThat(histActive).isFalse();
-        Integer histRows = jdbcTemplate.queryForObject(
-                "select count(*) from product_variants where id = ?", Integer.class, histId);
-        assertThat(histRows).isEqualTo(1);
+        // V-DROP удалён (истории обращений нет — защищать нечего; T-15.1 добавит деактивацию по заявкам)
+        Integer dropRows = jdbcTemplate.queryForObject(
+                "select count(*) from product_variants where id = ?", Integer.class, dropId);
+        assertThat(dropRows).isZero();
 
-        // денорм — только по активным вариантам (остался V-KEEP = 100)
+        // денорм пересчитан по оставшемуся V-KEEP = 100
         assertDenorm(id, "100.00", "100.00", false);
     }
 

@@ -57,12 +57,6 @@ public class Product extends BaseEntity {
     @Column(name = "is_featured", nullable = false)
     private boolean featured = false;
 
-    @Column(name = "rating_avg", nullable = false)
-    private BigDecimal ratingAvg = new BigDecimal("0.0");
-
-    @Column(name = "rating_count", nullable = false)
-    private int ratingCount = 0;
-
     @OneToMany(mappedBy = "product")
     private List<ProductVariant> variants = new ArrayList<>();
 

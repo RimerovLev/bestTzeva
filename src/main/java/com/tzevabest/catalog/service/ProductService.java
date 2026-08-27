@@ -150,10 +150,10 @@ public class ProductService {
                 variants.save(v);
             }
         }
-        // Варианты, отсутствующие в запросе: с историей заказов — деактивируются, иначе удаляются.
+        // Варианты, отсутствующие в запросе: с историей обращений — деактивируются, иначе удаляются.
         for (ProductVariant v : existing) {
             if (!referenced.contains(v.getId())) {
-                if (variants.hasOrderHistory(v.getId())) {
+                if (hasPurchaseHistory(v.getId())) {
                     v.setActive(false);
                     variants.save(v);
                 } else {
@@ -233,7 +233,7 @@ public class ProductService {
         Product product = products.findById(id)
                 .orElseThrow(() -> new NotFoundException("catalog.product.not_found"));
         if (hard) {
-            if (products.hasOrderHistory(id)) {
+            if (hasPurchaseHistory(product)) {
                 throw new ConflictException("catalog.product.in_orders");
             }
             products.delete(product); // варианты/переводы/атрибуты — каскадом FK
@@ -496,6 +496,19 @@ public class ProductService {
             }
         }
         return changes;
+    }
+
+    /**
+     * Участвовал ли вариант/товар в обращениях клиентов. После сноса e-commerce (T-16.1) источника
+     * истории нет; T-15.1 перенацелит на product_request_items (on delete restrict). Пока — false:
+     * защищать нечего.
+     */
+    private boolean hasPurchaseHistory(long variantId) {
+        return false;
+    }
+
+    private boolean hasPurchaseHistory(Product product) {
+        return false;
     }
 
     private VariantResponse toVariantResponse(ProductVariant v) {

@@ -1,8 +1,8 @@
 package com.tzevabest.common.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tzevabest.catalog.domain.Finish;
 import com.tzevabest.common.dto.PageResponse;
-import com.tzevabest.order.domain.OrderStatus;
 import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +22,8 @@ class JacksonWiringTest extends IntegrationTest {
 
     @Test
     void app_object_mapper_serializes_enum_lowercase() throws Exception {
-        assertThat(objectMapper.writeValueAsString(OrderStatus.AWAITING_PAYMENT))
-                .isEqualTo("\"awaiting_payment\"");
+        assertThat(objectMapper.writeValueAsString(Finish.SEMI_GLOSS))
+                .isEqualTo("\"semi_gloss\"");
     }
 
     @Test

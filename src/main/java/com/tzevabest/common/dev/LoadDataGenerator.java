@@ -39,9 +39,9 @@ public class LoadDataGenerator implements ApplicationRunner {
     private final PlatformTransactionManager txManager;
     private final Environment environment;
 
-    private record Scale(String name, int products, int variantsPer, int orders, int itemsPer, int requests) {
-        static final Scale SMALL = new Scale("small", 500, 5, 1000, 2, 300);
-        static final Scale LARGE = new Scale("large", 5000, 6, 100_000, 3, 20_000);
+    private record Scale(String name, int products, int variantsPer, int requests) {
+        static final Scale SMALL = new Scale("small", 500, 5, 300);
+        static final Scale LARGE = new Scale("large", 5000, 6, 20_000);
     }
 
     @Override
@@ -56,8 +56,8 @@ public class LoadDataGenerator implements ApplicationRunner {
         Scale scale = "large".equalsIgnoreCase(environment.getProperty("app.dev.load-data-scale", "small"))
                 ? Scale.LARGE : Scale.SMALL;
 
-        log.info("Generating '{}' load dev dataset ({} products / {} variants / {} orders / {} requests)...",
-                scale.name(), scale.products(), scale.products() * scale.variantsPer(), scale.orders(), scale.requests());
+        log.info("Generating '{}' load dev dataset ({} products / {} variants / {} requests)...",
+                scale.name(), scale.products(), scale.products() * scale.variantsPer(), scale.requests());
         long started = System.currentTimeMillis();
 
         new TransactionTemplate(txManager)
@@ -73,8 +73,6 @@ public class LoadDataGenerator implements ApplicationRunner {
         return TEMPLATES.stream().map(t -> t
                 .replace("{PRODUCTS}", Integer.toString(s.products()))
                 .replace("{VARIANTS_PER}", Integer.toString(s.variantsPer()))
-                .replace("{ORDERS}", Integer.toString(s.orders()))
-                .replace("{ITEMS_PER}", Integer.toString(s.itemsPer()))
                 .replace("{REQUESTS}", Integer.toString(s.requests()))
         ).toList();
     }
@@ -103,8 +101,7 @@ public class LoadDataGenerator implements ApplicationRunner {
             with cats as (select array_agg(id) ids from categories where slug like 'load-cat-%-c%'),
                  brs  as (select array_agg(id) ids from brands where slug like 'load-brand-%')
             insert into products (category_id, brand_id, sku, paint_type, usage_area, finish, base_type,
-                                  coverage_sqm_per_liter, drying_time_hours, is_active, is_featured,
-                                  rating_avg, rating_count, created_at)
+                                  coverage_sqm_per_liter, drying_time_hours, is_active, is_featured, created_at)
             select cats.ids[1 + (g % array_length(cats.ids, 1))],
                    brs.ids[1 + (g % array_length(brs.ids, 1))],
                    'LOAD-' || g,
@@ -114,7 +111,6 @@ public class LoadDataGenerator implements ApplicationRunner {
                    (array['WATER','SOLVENT','EPOXY'])[1 + (g % 3)],
                    10 + (g % 5), 2 + (g % 4),
                    (g % 10 <> 0), (g % 7 = 0),
-                   (3.0 + (g % 20) / 10.0)::numeric(2,1), (g % 50),
                    now() - ((g % 17520) || ' hours')::interval
             from generate_series(1, {PRODUCTS}) g, cats, brs
             """,
@@ -154,36 +150,6 @@ public class LoadDataGenerator implements ApplicationRunner {
             select v.id, w.id, ((v.id * 31 + w.id * 7) % 200), 0
             from product_variants v, warehouses w
             where v.sku like 'LOAD-%' and w.code like 'LOAD-WH-%'
-            """,
-            // ── Заказы ─────────────────────────────────────────────────────────
-            """
-            insert into orders (order_number, customer_email, customer_name, status, payment_status, delivery_method,
-                                subtotal, discount_total, shipping_total, vat_amount, grand_total, created_at, placed_at)
-            select 'TB-LOAD-' || lpad(g::text, 7, '0'),
-                   'load' || g || '@tzevabest.test', 'Load Buyer ' || g,
-                   (array['NEW','AWAITING_PAYMENT','PAID','PROCESSING','READY_FOR_PICKUP',
-                          'SHIPPED','COMPLETED','CANCELLED','REFUNDED'])[1 + (g % 9)],
-                   (array['PENDING','AUTHORIZED','PAID','FAILED','REFUNDED','PARTIALLY_REFUNDED'])[1 + (g % 6)],
-                   (array['PICKUP','COURIER'])[1 + (g % 2)],
-                   (50 + (g % 500)), 0, (g % 3) * 15,
-                   ((50 + (g % 500)) * 0.18)::numeric(12,2),
-                   (50 + (g % 500)) + (g % 3) * 15,
-                   now() - ((g % 17520) || ' hours')::interval,
-                   now() - ((g % 17520) || ' hours')::interval
-            from generate_series(1, {ORDERS}) g
-            on conflict (order_number) do nothing
-            """,
-            // ── Позиции заказов (itemsPer на заказ) ────────────────────────────
-            """
-            with vs as (select array_agg(id) ids from product_variants where sku like 'LOAD-%')
-            insert into order_items (order_id, variant_id, product_name_snapshot, sku_snapshot,
-                                     unit_price, qty, line_total)
-            select o.id, vs.ids[1 + ((o.id * i + i) % array_length(vs.ids, 1))],
-                   'Load Product', 'LOAD-SKU-' || o.id || '-' || i,
-                   (25 + (o.id % 100))::numeric(12,2), (1 + (i % 3)),
-                   ((25 + (o.id % 100)) * (1 + (i % 3)))::numeric(12,2)
-            from orders o, generate_series(1, {ITEMS_PER}) i, vs
-            where o.order_number like 'TB-LOAD-%'
             """,
             // ── Заявки на услуги ───────────────────────────────────────────────
             """

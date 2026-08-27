@@ -82,28 +82,6 @@ public class TestDataFactory {
         return new TestProduct(productId, spec.sku, spec.price);
     }
 
-    // ── Order ───────────────────────────────────────────────────────────────────
-
-    public TestOrder createOrder() {
-        return createOrder(spec -> { });
-    }
-
-    public TestOrder createOrder(Consumer<OrderSpec> customizer) {
-        OrderSpec spec = new OrderSpec();
-        customizer.accept(spec);
-        long userId = (spec.userId != null) ? spec.userId : createUser().id();
-        Long id = jdbc.queryForObject("""
-                        INSERT INTO orders
-                            (order_number, user_id, customer_email, customer_name, status,
-                             payment_status, delivery_method, grand_total, currency)
-                        VALUES (?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)
-                        RETURNING id""",
-                Long.class,
-                spec.orderNumber, userId, spec.customerEmail, spec.customerName, spec.status,
-                spec.deliveryMethod, spec.total, spec.currency);
-        return new TestOrder(id, spec.orderNumber, userId, spec.total);
-    }
-
     // ── Specs (мутабельные, с дефолтами) ────────────────────────────────────────
 
     public static final class UserSpec {
@@ -130,23 +108,9 @@ public class TestDataFactory {
         public BigDecimal price = new BigDecimal("99.90");
     }
 
-    public static final class OrderSpec {
-        /** Если {@code null} — заказ создаётся для нового пользователя. */
-        public Long userId = null;
-        public String orderNumber = "TB-" + token();
-        public String customerEmail = "buyer-" + token() + "@tzevabest.test";
-        public String customerName = "Test Buyer";
-        public String status = "NEW";
-        public String deliveryMethod = "PICKUP";
-        public BigDecimal total = new BigDecimal("99.90");
-        public String currency = "ILS";
-    }
-
     // ── Возвращаемые представления созданных сущностей ──────────────────────────
 
     public record TestUser(long id, String email, String role, String rawPassword) { }
 
     public record TestProduct(long id, String sku, BigDecimal price) { }
-
-    public record TestOrder(long id, String orderNumber, long userId, BigDecimal total) { }
 }

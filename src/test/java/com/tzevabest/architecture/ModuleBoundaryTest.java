@@ -19,8 +19,8 @@ class ModuleBoundaryTest {
     private static final String BASE = "com.tzevabest";
 
     private static final String[] MODULES = {
-            "common", "iam", "catalog", "inventory", "cart",
-            "order", "payment", "shipping", "service", "notification", "admin"
+            "common", "iam", "catalog", "inventory",
+            "service", "notification", "admin"
     };
 
     /** Непубличные подпакеты модуля — доступны только внутри своего модуля. */
