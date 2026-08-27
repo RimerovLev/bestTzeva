@@ -23,6 +23,15 @@ public class ConsentService {
     @Value("${app.privacy.policy-version}")
     private String policyVersion;
 
+    /**
+     * Записать согласие на обработку данных (DATA_PROCESSING). Удобная обёртка для других модулей —
+     * чтобы не тянуть iam-enum {@link ConsentType} через границу модуля.
+     */
+    @Transactional
+    public void recordDataProcessing(Long userId, String contact, String ip, String source) {
+        record(userId, contact, ConsentType.DATA_PROCESSING, true, ip, source);
+    }
+
     @Transactional
     public void record(Long userId, String contact, ConsentType type, boolean granted, String ip, String source) {
         Consent consent = new Consent();
