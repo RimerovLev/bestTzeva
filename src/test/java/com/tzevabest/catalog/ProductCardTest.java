@@ -43,10 +43,13 @@ class ProductCardTest extends IntegrationTest {
         assertThat(card.get("variants")).hasSize(2);             // только A и B
         JsonNode va = variant(card, a);
         JsonNode vb = variant(card, b);
-        assertThat(va.get("available_qty").asInt()).isEqualTo(5);
+        // градация вместо точного числа (R-47): 5 из 10-порога → few, 0 → out_of_stock
+        assertThat(va.get("availability").asText()).isEqualTo("few");
         assertThat(va.get("can_add_to_request").asBoolean()).isTrue();
-        assertThat(vb.get("available_qty").asInt()).isZero();
+        assertThat(vb.get("availability").asText()).isEqualTo("out_of_stock");
         assertThat(vb.get("can_add_to_request").asBoolean()).isFalse();
+        // точного числа остатка наружу нет
+        assertThat(va.has("available_qty")).isFalse();
 
         assertThat(card.get("min_price").asDouble()).isEqualTo(100.0);
         assertThat(card.get("max_price").asDouble()).isEqualTo(150.0);

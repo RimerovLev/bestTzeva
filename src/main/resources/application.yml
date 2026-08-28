@@ -101,6 +101,9 @@ app:
   privacy:
     # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
     policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}
+  catalog:
+    # Порог градации наличия в публичной карточке: > порога — many, 1..порог — few, 0 — out_of_stock.
+    stock-few-threshold: ${CATALOG_STOCK_FEW_THRESHOLD:10}
   inventory:
     # Срок резерва остатка под заявку; по истечении заявка уходит в LOST.
     reservation-ttl: ${INVENTORY_RESERVATION_TTL:PT72H}

@@ -43,6 +43,9 @@ public class ProductCatalogService {
 
     private final JdbcTemplate jdbc;
 
+    @org.springframework.beans.factory.annotation.Value("${app.catalog.stock-few-threshold:10}")
+    private int stockFewThreshold;
+
     /**
      * Публичный листинг каталога: фильтры (категория, бренд, тип/область/финиш/база, цена, наличие),
      * поиск по имени (unaccent — нечувствительно к никуд) и SKU, пагинация/сортировка, плюс фасеты по
@@ -179,7 +182,7 @@ public class ProductCatalogService {
                     int available = rs.getInt("available");
                     return new VariantCard(rs.getLong("id"), rs.getString("sku"), rs.getString("color_code"),
                             rs.getString("color_hex"), rs.getBigDecimal("volume_liters"), rs.getBigDecimal("price"),
-                            rs.getBigDecimal("old_price"), available, available > 0);
+                            rs.getBigDecimal("old_price"), availability(available), available > 0);
                 }, id);
 
         try {
@@ -201,6 +204,14 @@ public class ProductCatalogService {
         } catch (EmptyResultDataAccessException e) {
             throw new NotFoundException("catalog.product.not_found");
         }
+    }
+
+    /** Градация наличия для витрины (точное число наружу не отдаём, R-47). */
+    private String availability(int available) {
+        if (available <= 0) {
+            return "out_of_stock";
+        }
+        return available > stockFewThreshold ? "many" : "few";
     }
 
     private String resolveLocale(String localeParam) {

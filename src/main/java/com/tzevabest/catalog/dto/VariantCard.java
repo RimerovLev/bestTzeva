@@ -2,7 +2,10 @@ package com.tzevabest.catalog.dto;
 
 import java.math.BigDecimal;
 
-/** Вариант в публичной карточке: цена, доступный остаток и признак «можно добавить в заявку». */
+/**
+ * Вариант в публичной карточке. Точный остаток наружу не раскрывается (коммерческая информация,
+ * R-47) — только текстовая градация availability: {@code many} / {@code few} / {@code out_of_stock}.
+ */
 public record VariantCard(
         long id,
         String sku,
@@ -11,6 +14,6 @@ public record VariantCard(
         BigDecimal volumeLiters,
         BigDecimal price,
         BigDecimal oldPrice,
-        int availableQty,
+        String availability,
         boolean canAddToRequest) {
 }
