@@ -27,6 +27,7 @@ val mapstructVersion: String by project
 val springdocVersion: String by project
 val archunitVersion: String by project
 val jjwtVersion: String by project
+val awsSdkVersion: String by project
 
 dependencies {
     // --- Spring Boot starters ---
@@ -46,6 +47,10 @@ dependencies {
 
     // --- OpenAPI ---
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocVersion")
+
+    // --- Хранилище медиа (S3 / MinIO) ---
+    implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
+    implementation("software.amazon.awssdk:s3")
 
     // --- JWT (jjwt) ---
     implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")
@@ -71,6 +76,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
+    testImplementation("org.testcontainers:minio")
     testImplementation("com.tngtech.archunit:archunit-junit5:$archunitVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

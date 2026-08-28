@@ -20,7 +20,7 @@ class ModuleBoundaryTest {
 
     private static final String[] MODULES = {
             "common", "iam", "catalog", "inventory",
-            "request", "service", "notification", "admin"
+            "request", "service", "notification", "admin", "media"
     };
 
     /** Непубличные подпакеты модуля — доступны только внутри своего модуля. */

@@ -11,7 +11,10 @@ import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -40,12 +43,25 @@ public abstract class IntegrationTest {
     // (останавливает Ryuk). Одни и те же инстансы наследуются всеми подклассами.
     protected static final PostgreSQLContainer<?> POSTGRES;
     protected static final GenericContainer<?> REDIS;
+    protected static final MinIOContainer MINIO;
 
     static {
         POSTGRES = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16"));
         REDIS = new GenericContainer<>(DockerImageName.parse("redis:7")).withExposedPorts(6379);
+        MINIO = new MinIOContainer(DockerImageName.parse("minio/minio:latest"));
         POSTGRES.start();
         REDIS.start();
+        MINIO.start();
+    }
+
+    /** Направляет S3-хранилище медиа (T-4.7) на MinIO-контейнер. */
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        registry.add("app.storage.s3.endpoint", MINIO::getS3URL);
+        registry.add("app.storage.s3.access-key", MINIO::getUserName);
+        registry.add("app.storage.s3.secret-key", MINIO::getPassword);
+        registry.add("app.storage.s3.bucket", () -> "test-media");
+        registry.add("app.storage.s3.path-style-access", () -> true);
     }
 
     @Autowired

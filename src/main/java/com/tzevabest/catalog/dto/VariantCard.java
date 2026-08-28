@@ -1,6 +1,7 @@
 package com.tzevabest.catalog.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Вариант в публичной карточке. Точный остаток наружу не раскрывается (коммерческая информация,
@@ -15,5 +16,6 @@ public record VariantCard(
         BigDecimal price,
         BigDecimal oldPrice,
         String availability,
-        boolean canAddToRequest) {
+        boolean canAddToRequest,
+        List<ProductMediaView> media) {
 }

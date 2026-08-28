@@ -8,7 +8,11 @@ import com.tzevabest.catalog.dto.ProductCard;
 import com.tzevabest.catalog.dto.ProductFacets;
 import com.tzevabest.catalog.dto.ProductSearchResult;
 import com.tzevabest.catalog.dto.ProductSummary;
+import com.tzevabest.catalog.dto.ProductMediaView;
 import com.tzevabest.catalog.dto.VariantCard;
+import com.tzevabest.catalog.domain.MediaType;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tzevabest.common.dto.PageResponse;
 import com.tzevabest.common.dto.SortRequest;
 import com.tzevabest.common.web.PageQuery;
@@ -42,6 +46,7 @@ public class ProductCatalogService {
     private static final Set<String> SORTABLE = Set.of("created_at", "min_price", "max_price", "sku");
 
     private final JdbcTemplate jdbc;
+    private final ObjectMapper jsonMapper;
 
     @org.springframework.beans.factory.annotation.Value("${app.catalog.stock-few-threshold:10}")
     private int stockFewThreshold;
@@ -181,19 +186,31 @@ public class ProductCatalogService {
                         rs.getString("description"), rs.getString("usage_instructions")}), id);
         String[] chosen = tr.getOrDefault(locale, tr.get(DEFAULT_LOCALE));
 
-        List<VariantCard> variants = jdbc.query("""
+        record VariantRow(long id, String sku, String colorCode, String colorHex, BigDecimal volume,
+                          BigDecimal price, BigDecimal oldPrice, int available) {
+        }
+        List<VariantRow> variantRows = jdbc.query("""
                 select v.id, v.sku, v.color_code, v.color_hex, v.volume_liters, v.price, v.old_price,
                        coalesce(a.available_qty, 0) as available
                 from product_variants v
                 left join v_variant_available a on a.variant_id = v.id
                 where v.product_id = ? and v.is_active
                 order by v.id
-                """, (rs, n) -> {
-                    int available = rs.getInt("available");
-                    return new VariantCard(rs.getLong("id"), rs.getString("sku"), rs.getString("color_code"),
-                            rs.getString("color_hex"), rs.getBigDecimal("volume_liters"), rs.getBigDecimal("price"),
-                            rs.getBigDecimal("old_price"), availability(available), available > 0);
-                }, id);
+                """, (rs, n) -> new VariantRow(rs.getLong("id"), rs.getString("sku"), rs.getString("color_code"),
+                        rs.getString("color_hex"), rs.getBigDecimal("volume_liters"), rs.getBigDecimal("price"),
+                        rs.getBigDecimal("old_price"), rs.getInt("available")), id);
+
+        Map<Long, List<ProductMediaView>> mediaByVariant = variantMedia(
+                variantRows.stream().map(VariantRow::id).toList());
+        List<VariantCard> variants = variantRows.stream()
+                .map(v -> new VariantCard(v.id(), v.sku(), v.colorCode(), v.colorHex(), v.volume(), v.price(),
+                        v.oldPrice(), availability(v.available()), v.available() > 0,
+                        mediaByVariant.getOrDefault(v.id(), List.of())))
+                .toList();
+
+        List<ProductMediaView> productMedia = jdbc.query(
+                MEDIA_SELECT + " where product_id = ? order by is_primary desc, sort_order, id",
+                this::mapMedia, id);
 
         try {
             return jdbc.queryForObject("""
@@ -210,9 +227,47 @@ public class ProductCatalogService {
                             chosen != null ? chosen[2] : null,
                             chosen != null ? chosen[3] : null,
                             rs.getBigDecimal("min_price"), rs.getBigDecimal("max_price"), rs.getBoolean("has_stock"),
-                            variants), id);
+                            productMedia, variants), id);
         } catch (EmptyResultDataAccessException e) {
             throw new NotFoundException("catalog.product.not_found");
+        }
+    }
+
+    private static final String MEDIA_SELECT =
+            "select id, url, type, sort_order, is_primary, alt_translations from product_media";
+
+    /** Медиа вариантов, сгруппированные по variant_id (главное первым, затем по sort_order). */
+    private Map<Long, List<ProductMediaView>> variantMedia(List<Long> variantIds) {
+        if (variantIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(variantIds.size(), "?"));
+        Map<Long, List<ProductMediaView>> byVariant = new HashMap<>();
+        jdbc.query("select id, url, type, sort_order, is_primary, alt_translations, variant_id "
+                        + "from product_media where variant_id in (" + placeholders
+                        + ") order by is_primary desc, sort_order, id",
+                (RowCallbackHandler) rs -> byVariant
+                        .computeIfAbsent(rs.getLong("variant_id"), k -> new ArrayList<>())
+                        .add(mapMedia(rs, 0)),
+                variantIds.toArray());
+        return byVariant;
+    }
+
+    private ProductMediaView mapMedia(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new ProductMediaView(rs.getLong("id"), rs.getString("url"),
+                MediaType.valueOf(rs.getString("type")), rs.getInt("sort_order"),
+                rs.getBoolean("is_primary"), parseAlt(rs.getString("alt_translations")));
+    }
+
+    private Map<String, String> parseAlt(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return jsonMapper.readValue(json, new TypeReference<Map<String, String>>() {
+            });
+        } catch (Exception e) {
+            return null;
         }
     }
 

@@ -30,5 +30,6 @@ public record ProductCard(
         BigDecimal minPrice,
         BigDecimal maxPrice,
         boolean hasStock,
+        List<ProductMediaView> media,
         List<VariantCard> variants) {
 }

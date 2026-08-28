@@ -125,3 +125,5 @@ app:
       region: ${S3_REGION:us-east-1}
       # MinIO and other S3-compatible stores require path-style URLs.
       path-style-access: ${S3_PATH_STYLE:true}
+      # База для публичных ссылок на медиа; пусто → берётся endpoint (dev/MinIO). В проде — CDN/домен.
+      public-base-url: ${S3_PUBLIC_BASE_URL:}
