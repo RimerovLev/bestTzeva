@@ -17,7 +17,6 @@ import com.tzevabest.request.repository.ProductRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +27,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -74,24 +75,39 @@ public class ProductRequestService {
         request.setPolicyVersion(policyVersion);
         requests.save(request);
 
-        List<ProductRequestItemView> views = new ArrayList<>();
-        BigDecimal total = BigDecimal.ZERO;
+        // Дедуп позиций, суммируя qty (иначе резерв по такой заявке встанет дважды).
+        Map<Long, Integer> byVariant = new LinkedHashMap<>();
         for (ProductRequestItemInput input : req.items()) {
-            VariantSnapshot snap = lookupActiveVariant(input.variantId());
+            byVariant.merge(input.variantId(), input.qty(), Integer::sum);
+        }
+        // Один запрос вместо N: только активные варианты активных товаров.
+        Map<Long, VariantSnapshot> snapshots = lookupActiveVariants(byVariant.keySet());
+        if (!snapshots.keySet().containsAll(byVariant.keySet())) {
+            throw new ValidationException("request.variant_unavailable");
+        }
+
+        List<ProductRequestItemView> views = new ArrayList<>();
+        List<ProductRequestItem> toSave = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (Map.Entry<Long, Integer> e : byVariant.entrySet()) {
+            long variantId = e.getKey();
+            int qty = e.getValue();
+            VariantSnapshot snap = snapshots.get(variantId);
             ProductRequestItem item = new ProductRequestItem();
             item.setRequest(request);
-            item.setVariantId(input.variantId());
-            item.setQty(input.qty());
+            item.setVariantId(variantId);
+            item.setQty(qty);
             item.setProductNameSnapshot(snap.name());
             item.setSkuSnapshot(snap.sku());
             item.setColorSnapshot(snap.color());
             item.setVolumeLitersSnapshot(snap.volume());
             item.setPriceSnapshot(snap.price()); // цена с сервера, не из запроса
-            items.save(item);
-            total = total.add(snap.price().multiply(BigDecimal.valueOf(input.qty())));
-            views.add(new ProductRequestItemView(input.variantId(), input.qty(),
+            toSave.add(item);
+            total = total.add(snap.price().multiply(BigDecimal.valueOf(qty)));
+            views.add(new ProductRequestItemView(variantId, qty,
                     snap.name(), snap.sku(), snap.color(), snap.volume(), snap.price()));
         }
+        items.saveAll(toSave); // пакетная вставка
 
         consents.recordDataProcessing(null, phone, ip, "product_request");
         jdbc.update("insert into product_request_history (request_id, from_status, to_status) values (?, null, 'NEW')",
@@ -104,24 +120,24 @@ public class ProductRequestService {
                 request.getStatus(), total, views);
     }
 
-    private VariantSnapshot lookupActiveVariant(long variantId) {
-        try {
-            return jdbc.queryForObject("""
-                    select v.price, v.color_code, v.volume_liters, v.sku, v.is_active as v_active,
-                           p.is_active as p_active,
-                           coalesce(he.name, en.name, v.sku) as name
-                    from product_variants v
-                    join products p on p.id = v.product_id
-                    left join product_translations he on he.product_id = p.id and he.locale = 'he'
-                    left join product_translations en on en.product_id = p.id and en.locale = 'en'
-                    where v.id = ?
-                    """, (rs, i) -> new VariantSnapshot(
-                            rs.getBigDecimal("price"), rs.getString("color_code"), rs.getBigDecimal("volume_liters"),
-                            rs.getString("sku"), rs.getBoolean("v_active"), rs.getBoolean("p_active"),
-                            rs.getString("name")), variantId);
-        } catch (EmptyResultDataAccessException e) {
-            throw new ValidationException("request.variant_unavailable");
+    /** Снимки только активных вариантов активных товаров, одним запросом. Отсутствие id = недоступен. */
+    private Map<Long, VariantSnapshot> lookupActiveVariants(java.util.Set<Long> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
         }
+        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+        Map<Long, VariantSnapshot> result = new java.util.HashMap<>();
+        jdbc.query("select v.id, v.price, v.color_code, v.volume_liters, v.sku, "
+                + "coalesce(he.name, en.name, v.sku) as name "
+                + "from product_variants v join products p on p.id = v.product_id "
+                + "left join product_translations he on he.product_id = p.id and he.locale = 'he' "
+                + "left join product_translations en on en.product_id = p.id and en.locale = 'en' "
+                + "where v.is_active and p.is_active and v.id in (" + placeholders + ")",
+                (org.springframework.jdbc.core.RowCallbackHandler) rs -> result.put(rs.getLong("id"),
+                        new VariantSnapshot(rs.getBigDecimal("price"), rs.getString("color_code"),
+                                rs.getBigDecimal("volume_liters"), rs.getString("sku"), rs.getString("name"))),
+                ids.toArray());
+        return result;
     }
 
     private String nextNumber() {
@@ -137,12 +153,6 @@ public class ProductRequestService {
         return (value == null || value.isBlank()) ? null : value;
     }
 
-    private record VariantSnapshot(BigDecimal price, String color, BigDecimal volume, String sku,
-                                   boolean variantActive, boolean productActive, String name) {
-        VariantSnapshot {
-            if (!variantActive || !productActive) {
-                throw new ValidationException("request.variant_unavailable");
-            }
-        }
+    private record VariantSnapshot(BigDecimal price, String color, BigDecimal volume, String sku, String name) {
     }
 }

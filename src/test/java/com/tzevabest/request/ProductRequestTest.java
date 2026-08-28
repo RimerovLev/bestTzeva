@@ -101,6 +101,41 @@ class ProductRequestTest extends IntegrationTest {
         assertThat(count).isZero();
     }
 
+    @Test
+    void request_with_too_many_items_is_rejected() {
+        long variantId = seedVariant("V-MANY", "50.00", true);
+        StringBuilder items = new StringBuilder();
+        for (int i = 0; i < 51; i++) {
+            if (i > 0) {
+                items.append(",");
+            }
+            items.append("{\"variant_id\":").append(variantId).append(",\"qty\":1}");
+        }
+        String body = "{\"customer_name\":\"P\",\"customer_phone\":\"0509990001\",\"consent\":true,"
+                + "\"items\":[" + items + "]}";
+        assertThat(post(body).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST); // @Size(max=50)
+    }
+
+    @Test
+    void duplicate_items_are_collapsed_summing_qty() throws Exception {
+        long variantId = seedVariant("V-DUP", "50.00", true);
+        String body = "{\"customer_name\":\"P\",\"customer_phone\":\"0509990002\",\"consent\":true,"
+                + "\"items\":[{\"variant_id\":" + variantId + ",\"qty\":2},"
+                + "{\"variant_id\":" + variantId + ",\"qty\":3}]}";
+        ResponseEntity<String> resp = post(body);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // одна строка позиции с суммарным qty=5
+        Integer rows = jdbcTemplate.queryForObject(
+                "select count(*) from product_request_items where variant_id = ?", Integer.class, variantId);
+        assertThat(rows).isEqualTo(1);
+        Integer qty = jdbcTemplate.queryForObject(
+                "select qty from product_request_items where variant_id = ?", Integer.class, variantId);
+        assertThat(qty).isEqualTo(5);
+        assertThat(json.readTree(resp.getBody()).get("items")).hasSize(1);
+        assertThat(json.readTree(resp.getBody()).get("indicative_total").asDouble()).isEqualTo(250.0);
+    }
+
     private ResponseEntity<String> post(String body) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

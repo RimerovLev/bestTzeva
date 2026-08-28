@@ -3,6 +3,7 @@ package com.tzevabest.request.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -18,5 +19,5 @@ public record ProductRequestCreate(
         String preferredContactTime,
         boolean consent,
         String website,
-        @NotEmpty @Valid List<ProductRequestItemInput> items) {
+        @NotEmpty @Size(max = 50) @Valid List<ProductRequestItemInput> items) {
 }
