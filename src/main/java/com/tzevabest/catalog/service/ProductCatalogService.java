@@ -52,46 +52,40 @@ public class ProductCatalogService {
                                       String finish, String baseType, BigDecimal priceMin, BigDecimal priceMax,
                                       Boolean inStock, String q, String localeParam, PageQuery page) {
         String locale = resolveLocale(localeParam);
-        StringBuilder where = new StringBuilder(" where p.is_active");
-        List<Object> args = new ArrayList<>();
-        addEq(where, args, "p.category_id", categoryId);
-        addEq(where, args, "p.brand_id", brandId);
-        addEq(where, args, "p.paint_type", paintType);
-        addEq(where, args, "p.usage_area", usageArea);
-        addEq(where, args, "p.finish", finish);
-        addEq(where, args, "p.base_type", baseType);
+        List<Cond> conds = new ArrayList<>();
+        eq(conds, "category", "p.category_id", categoryId);
+        eq(conds, "brand", "p.brand_id", brandId);
+        eq(conds, "paint_type", "p.paint_type", paintType);
+        eq(conds, "usage_area", "p.usage_area", usageArea);
+        eq(conds, "finish", "p.finish", finish);
+        eq(conds, "base_type", "p.base_type", baseType);
         if (priceMin != null) {
-            where.append(" and p.max_price >= ?");
-            args.add(priceMin);
+            conds.add(new Cond("price", "p.max_price >= ?", List.of(priceMin)));
         }
         if (priceMax != null) {
-            where.append(" and p.min_price <= ?");
-            args.add(priceMax);
+            conds.add(new Cond("price", "p.min_price <= ?", List.of(priceMax)));
         }
         if (Boolean.TRUE.equals(inStock)) {
-            where.append(" and p.has_stock");
+            conds.add(new Cond("in_stock", "p.has_stock", List.of()));
         }
         if (q != null && !q.isBlank()) {
-            // Никуд (огласовки, U+0591..U+05C7) снимаются chr()-диапазоном; unaccent — латинская
-            // диакритика. Так поиск нечувствителен и к огласовкам, и к диакритике.
+            // Никуд (огласовки, U+0591..U+05C7) снимаются chr()-диапазоном; unaccent — латинская диакритика.
             String stripNiqqud = "regexp_replace(t.name, '[' || chr(1425) || '-' || chr(1479) || ']', '', 'g')";
-            where.append(" and (p.sku ilike ? or exists (select 1 from product_translations t "
-                    + "where t.product_id = p.id and unaccent(" + stripNiqqud + ") ilike unaccent(?)))");
             String like = "%" + q.trim() + "%";
-            args.add(like);
-            args.add(like);
+            conds.add(new Cond("q", "(p.sku ilike ? or exists (select 1 from product_translations t "
+                    + "where t.product_id = p.id and unaccent(" + stripNiqqud + ") ilike unaccent(?)))",
+                    List.of(like, like)));
         }
-        String whereSql = where.toString();
-        Object[] a = args.toArray();
 
-        Long total = jdbc.queryForObject("select count(*) from products p" + whereSql, Long.class, a);
+        Where all = buildWhere(conds, null);
+        Long total = jdbc.queryForObject("select count(*) from products p" + all.sql(), Long.class, all.args().toArray());
 
         String nameExpr = "(select name from product_translations t where t.product_id = p.id "
                 + "order by case t.locale when '" + locale + "' then 0 when 'he' then 1 else 2 end limit 1)";
         String sql = "select p.id, p.sku, p.category_id, p.brand_id, p.paint_type, p.min_price, p.max_price, "
-                + "p.has_stock, " + nameExpr + " as name from products p" + whereSql
+                + "p.has_stock, " + nameExpr + " as name from products p" + all.sql()
                 + orderBy(page.sort()) + " limit ? offset ?";
-        List<Object> pageArgs = new ArrayList<>(args);
+        List<Object> pageArgs = new ArrayList<>(all.args());
         pageArgs.add(page.size());
         pageArgs.add((long) page.page() * page.size());
         List<ProductSummary> items = jdbc.query(sql, (rs, n) -> new ProductSummary(
@@ -100,29 +94,55 @@ public class ProductCatalogService {
                 rs.getBigDecimal("min_price"), rs.getBigDecimal("max_price"), rs.getBoolean("has_stock")),
                 pageArgs.toArray());
 
-        ProductFacets facets = facets(whereSql, a);
-        PageResponse<ProductSummary> productsPage = PageResponse.of(items, page.page(), page.size(),
-                total == null ? 0 : total);
-        return new ProductSearchResult(productsPage, facets);
+        return new ProductSearchResult(
+                PageResponse.of(items, page.page(), page.size(), total == null ? 0 : total),
+                facets(conds));
     }
 
-    private ProductFacets facets(String whereSql, Object[] args) {
+    /** Каждый фасет считается со всеми фильтрами, КРОМЕ своего собственного (R-43). */
+    private ProductFacets facets(List<Cond> conds) {
         Map<String, Long> byPaintType = new LinkedHashMap<>();
-        jdbc.query("select paint_type, count(*) as c from products p" + whereSql + " group by paint_type",
-                (RowCallbackHandler) rs -> byPaintType.put(rs.getString("paint_type"), rs.getLong("c")), args);
+        Where wPaint = buildWhere(conds, "paint_type");
+        jdbc.query("select paint_type, count(*) as c from products p" + wPaint.sql() + " group by paint_type",
+                (RowCallbackHandler) rs -> byPaintType.put(rs.getString("paint_type"), rs.getLong("c")),
+                wPaint.args().toArray());
+
         Map<Long, Long> byBrand = new LinkedHashMap<>();
-        jdbc.query("select brand_id, count(*) as c from products p" + whereSql + " group by brand_id",
-                (RowCallbackHandler) rs -> byBrand.put(rs.getLong("brand_id"), rs.getLong("c")), args);
-        BigDecimal priceMin = jdbc.queryForObject("select min(min_price) from products p" + whereSql, BigDecimal.class, args);
-        BigDecimal priceMax = jdbc.queryForObject("select max(max_price) from products p" + whereSql, BigDecimal.class, args);
+        Where wBrand = buildWhere(conds, "brand");
+        jdbc.query("select brand_id, count(*) as c from products p" + wBrand.sql() + " group by brand_id",
+                (RowCallbackHandler) rs -> byBrand.put(rs.getLong("brand_id"), rs.getLong("c")),
+                wBrand.args().toArray());
+
+        Where wPrice = buildWhere(conds, "price");
+        BigDecimal priceMin = jdbc.queryForObject("select min(min_price) from products p" + wPrice.sql(),
+                BigDecimal.class, wPrice.args().toArray());
+        BigDecimal priceMax = jdbc.queryForObject("select max(max_price) from products p" + wPrice.sql(),
+                BigDecimal.class, wPrice.args().toArray());
         return new ProductFacets(byPaintType, byBrand, priceMin, priceMax);
     }
 
-    private static void addEq(StringBuilder where, List<Object> args, String column, Object value) {
+    private static void eq(List<Cond> conds, String key, String column, Object value) {
         if (value != null) {
-            where.append(" and ").append(column).append(" = ?");
-            args.add(value);
+            conds.add(new Cond(key, column + " = ?", List.of(value)));
         }
+    }
+
+    private static Where buildWhere(List<Cond> conds, String excludeKey) {
+        StringBuilder sql = new StringBuilder(" where p.is_active");
+        List<Object> args = new ArrayList<>();
+        for (Cond c : conds) {
+            if (!c.key().equals(excludeKey)) {
+                sql.append(" and ").append(c.sql());
+                args.addAll(c.args());
+            }
+        }
+        return new Where(sql.toString(), args);
+    }
+
+    private record Cond(String key, String sql, List<Object> args) {
+    }
+
+    private record Where(String sql, List<Object> args) {
     }
 
     private String orderBy(SortRequest sort) {

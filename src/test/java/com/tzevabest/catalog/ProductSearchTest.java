@@ -59,6 +59,27 @@ class ProductSearchTest extends IntegrationTest {
     }
 
     @Test
+    void facets_exclude_their_own_filter() throws Exception {
+        seedCatalog();
+        JsonNode res = get("/api/v1/products?paint_type=INTERIOR");
+        // выборка сужена типом
+        assertThat(res.get("products").get("total_elements").asInt()).isEqualTo(2);
+        JsonNode facets = res.get("facets");
+        // фасет paint_type игнорирует свой фильтр → показывает все типы (чтобы можно было переключиться)
+        assertThat(facets.get("paint_type").get("INTERIOR").asInt()).isEqualTo(2);
+        assertThat(facets.get("paint_type").get("EXTERIOR").asInt()).isEqualTo(1);
+        // фасет бренда сужен фильтром по типу: у каждого бренда по одному INTERIOR
+        assertThat(facets.get("brand").get(String.valueOf(brand1)).asInt()).isEqualTo(1);
+        assertThat(facets.get("brand").get(String.valueOf(brand2)).asInt()).isEqualTo(1);
+
+        // ползунок цены не схлопывается своим же фильтром
+        JsonNode byPrice = get("/api/v1/products?price_min=250");
+        assertThat(byPrice.get("products").get("total_elements").asInt()).isEqualTo(1);
+        assertThat(byPrice.get("facets").get("price_min").asDouble()).isEqualTo(100.0);
+        assertThat(byPrice.get("facets").get("price_max").asDouble()).isEqualTo(300.0);
+    }
+
+    @Test
     void hebrew_search_matches_by_name() throws Exception {
         seedCatalog();
         JsonNode res = get("/api/v1/products?q=כחול");
