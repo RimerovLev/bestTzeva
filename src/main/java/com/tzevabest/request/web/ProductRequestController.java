@@ -31,9 +31,11 @@ public class ProductRequestController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @RateLimit(key = "ip", limit = 10, windowSeconds = 3600)
-    @RateLimit(key = "field:customerPhone", limit = 3, windowSeconds = 3600)
+    @RateLimit(key = "phone:customerPhone", limit = 3, windowSeconds = 3600)
     public ProductRequestResponse create(@Valid @RequestBody ProductRequestCreate request,
                                          HttpServletRequest http) {
-        return service.create(request, clientIpResolver.resolve(http));
+        // Язык витрины из Accept-Language (AcceptHeaderLocaleResolver) — на нём уйдёт подтверждение (R-53).
+        String locale = http.getLocale() == null ? null : http.getLocale().getLanguage();
+        return service.create(request, clientIpResolver.resolve(http), locale);
     }
 }

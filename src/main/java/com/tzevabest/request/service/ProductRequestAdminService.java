@@ -113,7 +113,8 @@ public class ProductRequestAdminService {
     }
 
     private void notifyCustomer(ProductRequest request, ProductRequestStatus to) {
-        Locale locale = Locale.forLanguageTag("he");
+        // Язык клиента из заявки, а не захардкоженный he (R-53).
+        Locale locale = Locale.forLanguageTag(request.getLocale() == null ? "he" : request.getLocale());
         String key = "notification.product_request." + to.name().toLowerCase(Locale.ROOT);
         String subject = messages.getMessage(key + ".subject", null, locale);
         String body = messages.getMessage(key + ".body", null, locale);

@@ -48,4 +48,8 @@ public class ProductRequest extends BaseEntity {
 
     @Column(name = "policy_version", nullable = false, length = 32)
     private String policyVersion;
+
+    /** Язык витрины на момент заявки (he/ru/en) — на нём уходит подтверждение клиенту. */
+    @Column(name = "locale", nullable = false, length = 2)
+    private String locale = "he";
 }

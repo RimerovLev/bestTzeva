@@ -88,17 +88,22 @@ class ProductRequestTest extends IntegrationTest {
     }
 
     @Test
-    void honeypot_rejects_bot_submission() throws Exception {
+    void honeypot_is_dropped_silently_with_201() throws Exception {
         long variantId = seedVariant("V-HP", "50.00", true);
         String body = "{\"customer_name\":\"Bot\",\"customer_phone\":\"0504445566\",\"consent\":true,"
                 + "\"website\":\"http://spam.example\","
                 + "\"items\":[{\"variant_id\":" + variantId + ",\"qty\":1}]}";
         ResponseEntity<String> resp = post(body);
-        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(code(resp)).isEqualTo("request.spam");
-        // заявка не создана
+        // R-51: бот получает правдоподобный 201, неотличимый от успеха
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(json.readTree(resp.getBody()).get("request_number").asText()).startsWith("PR-");
+        // но заявка не создана
         Integer count = jdbcTemplate.queryForObject("select count(*) from product_requests", Integer.class);
         assertThat(count).isZero();
+        // факт отсечения зафиксирован
+        Integer drops = jdbcTemplate.queryForObject(
+                "select count(*) from request_spam_drops where reason = 'honeypot'", Integer.class);
+        assertThat(drops).isEqualTo(1);
     }
 
     @Test

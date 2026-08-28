@@ -15,6 +15,7 @@ import com.tzevabest.request.event.ProductRequestCreatedEvent;
 import com.tzevabest.request.repository.ProductRequestItemRepository;
 import com.tzevabest.request.repository.ProductRequestRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,7 +30,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Приём заявки на товар от гостя. Согласие обязательно; цены и снимки берутся из каталога на сервере,
@@ -37,10 +41,13 @@ import java.util.Map;
  * контроллере. После создания публикуется событие (подтверждение клиенту, уведомление менеджерам).
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ProductRequestService {
 
     private static final DateTimeFormatter YYMMDD = DateTimeFormatter.ofPattern("yyMMdd");
+    private static final Set<String> LOCALES = Set.of("he", "ru", "en");
+    private static final String DEFAULT_LOCALE = "he";
 
     private final ProductRequestRepository requests;
     private final ProductRequestItemRepository items;
@@ -52,13 +59,20 @@ public class ProductRequestService {
     private String policyVersion;
 
     @Transactional
-    public ProductRequestResponse create(ProductRequestCreate req, String ip) {
+    public ProductRequestResponse create(ProductRequestCreate req, String ip, String localeParam) {
         if (req.website() != null && !req.website().isBlank()) {
-            throw new ValidationException("request.spam"); // honeypot заполнен — бот
+            // Honeypot заполнен — бот. Молча отбрасываем: 201 с правдоподобным телом, ничего не
+            // сохраняем в product_requests, факт отсечения пишем отдельно (R-51). Ответ неотличим
+            // от успешного, поэтому бот не поймёт, что поле его выдало.
+            jdbc.update("insert into request_spam_drops (ip, reason) values (?, 'honeypot')", ip);
+            log.info("Honeypot triggered — request dropped silently (ip={})", ip);
+            return new ProductRequestResponse(0, fakeNumber(), ProductRequestStatus.NEW,
+                    BigDecimal.ZERO, List.of());
         }
         if (!req.consent()) {
             throw new ValidationException("request.consent_required");
         }
+        String locale = normalizeLocale(localeParam);
         String phone = PhoneNormalizer.normalize(req.customerPhone());
 
         ProductRequest request = new ProductRequest();
@@ -72,6 +86,7 @@ public class ProductRequestService {
         request.setSource(ProductRequestSource.SITE_FORM);
         request.setConsentGivenAt(Instant.now());
         request.setPolicyVersion(policyVersion);
+        request.setLocale(locale);
         requests.save(request);
 
         // Дедуп позиций, суммируя qty (иначе резерв по такой заявке встанет дважды).
@@ -113,7 +128,7 @@ public class ProductRequestService {
                 request.getId());
 
         events.publishEvent(new ProductRequestCreatedEvent(request.getId(), request.getRequestNumber(),
-                phone, request.getCustomerEmail(), "he"));
+                phone, request.getCustomerEmail(), locale));
 
         return new ProductRequestResponse(request.getId(), request.getRequestNumber(),
                 request.getStatus(), total, views);
@@ -146,6 +161,23 @@ public class ProductRequestService {
     String nextNumber() {
         Long seq = jdbc.queryForObject("select nextval('product_request_number_seq')", Long.class);
         return "PR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-" + String.format("%04d", seq);
+    }
+
+    /** Правдоподобный номер для ответа на honeypot — из последовательности не берём (заявки нет). */
+    private static String fakeNumber() {
+        return "PR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-"
+                + String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
+    }
+
+    /** Язык витрины к he/ru/en (из Accept-Language); неизвестный/пустой → дефолт he (R-53). */
+    private static String normalizeLocale(String localeParam) {
+        if (localeParam != null) {
+            String lower = localeParam.toLowerCase(Locale.ROOT);
+            if (LOCALES.contains(lower)) {
+                return lower;
+            }
+        }
+        return DEFAULT_LOCALE;
     }
 
     private static String blankToNull(String value) {

@@ -3,11 +3,13 @@ package com.tzevabest.request.event;
 import com.tzevabest.notification.service.NotificationSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Уведомления по созданной заявке: подтверждение клиенту (email/SMS) и оповещение менеджеров.
@@ -19,13 +21,17 @@ import java.util.List;
 public class ProductRequestNotifier {
 
     private final NotificationSender notifications;
+    private final MessageSource messages;
     private final JdbcTemplate jdbc;
 
     @TransactionalEventListener
     public void onCreated(ProductRequestCreatedEvent event) {
         try {
-            String subject = "Tzeva Best — заявка " + event.requestNumber() + " принята";
-            String body = "Ваша заявка " + event.requestNumber() + " принята, менеджер свяжется с вами.";
+            // Клиентское подтверждение на языке заявки (R-53), а не всегда на иврите/русском.
+            Locale locale = Locale.forLanguageTag(event.locale() == null ? "he" : event.locale());
+            Object[] args = {event.requestNumber()};
+            String subject = messages.getMessage("notification.product_request.created.subject", args, locale);
+            String body = messages.getMessage("notification.product_request.created.body", args, locale);
             if (event.customerEmail() != null && !event.customerEmail().isBlank()) {
                 notifications.sendEmail(event.customerEmail(), subject, body);
             } else {

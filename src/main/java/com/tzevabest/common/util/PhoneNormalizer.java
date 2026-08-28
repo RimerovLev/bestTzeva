@@ -25,6 +25,15 @@ public final class PhoneNormalizer {
                 .orElseThrow(() -> new ValidationException("common.phone.invalid", input));
     }
 
+    /**
+     * Нормализация для ключа лимита частоты (R-52): валидный номер → E.164, чтобы 050-1234567 и
+     * +972501234567 делили один бюджет. Нераспознанный формат возвращается как есть (на нём всё равно
+     * упадёт валидация в сервисе) — здесь не бросаем, чтобы не подменять 429 на 400.
+     */
+    public static String normalizeForRateKey(String input) {
+        return nsn(input).map(n -> COUNTRY + n).orElse(input == null ? "" : input.trim());
+    }
+
     /** Валиден ли как мобильный (05X). */
     public static boolean isMobile(String input) {
         return nsn(input).filter(PhoneNormalizer::isMobileNsn).isPresent();

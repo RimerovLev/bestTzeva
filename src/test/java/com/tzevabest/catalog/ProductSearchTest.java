@@ -115,6 +115,24 @@ class ProductSearchTest extends IntegrationTest {
         assertThat(res.products().items().get(0).name()).isEqualTo("50% matt");
     }
 
+    @Test
+    void locale_bound_param_selects_translation() throws Exception {
+        // R-54: локаль идёт связанным параметром; выбор перевода по ней обязан работать
+        brand1 = jdbcTemplate.queryForObject("insert into brands (slug, name) values ('brl-" + uid() + "','B') returning id", Long.class);
+        long categoryId = jdbcTemplate.queryForObject("insert into categories (slug) values ('cl-" + uid() + "') returning id", Long.class);
+        long productId = jdbcTemplate.queryForObject("""
+                insert into products (category_id, brand_id, sku, paint_type, usage_area, finish, base_type, is_active)
+                values (?, ?, 'P-LOC', 'INTERIOR','INDOOR','MATTE','WATER', true) returning id""",
+                Long.class, categoryId, brand1);
+        jdbcTemplate.update("insert into product_translations (product_id, locale, name) values (?, 'he', 'צבע'), (?, 'ru', 'Краска')", productId, productId);
+        jdbcTemplate.update("insert into product_variants (product_id, sku, color_code, volume_liters, price, is_active) values (?, 'V-LOC','RAL1',1.0,10.00,true)", productId);
+
+        assertThat(get("/api/v1/products?locale=ru").get("products").get("items").get(0).get("name").asText())
+                .isEqualTo("Краска");
+        assertThat(get("/api/v1/products?locale=he").get("products").get("items").get(0).get("name").asText())
+                .isEqualTo("צבע");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private void seedProduct(long brandId, String paintType, String price, boolean active, String heName) {

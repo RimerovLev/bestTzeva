@@ -84,12 +84,16 @@ public class ProductCatalogService {
         Where all = buildWhere(conds, null);
         Long total = jdbc.queryForObject("select count(*) from products p" + all.sql(), Long.class, all.args().toArray());
 
+        // Локаль — связанным параметром, не конкатенацией (R-54): резолвер сегодня безопасен, но
+        // инъекция не должна зависеть от удалённой проверки. Параметр в SELECT идёт до WHERE-аргументов.
         String nameExpr = "(select name from product_translations t where t.product_id = p.id "
-                + "order by case t.locale when '" + locale + "' then 0 when 'he' then 1 else 2 end limit 1)";
+                + "order by case t.locale when ? then 0 when 'he' then 1 else 2 end limit 1)";
         String sql = "select p.id, p.sku, p.category_id, p.brand_id, p.paint_type, p.min_price, p.max_price, "
                 + "p.has_stock, " + nameExpr + " as name from products p" + all.sql()
                 + orderBy(page.sort()) + " limit ? offset ?";
-        List<Object> pageArgs = new ArrayList<>(all.args());
+        List<Object> pageArgs = new ArrayList<>();
+        pageArgs.add(locale);
+        pageArgs.addAll(all.args());
         pageArgs.add(page.size());
         pageArgs.add((long) page.page() * page.size());
         List<ProductSummary> items = jdbc.query(sql, (rs, n) -> new ProductSummary(

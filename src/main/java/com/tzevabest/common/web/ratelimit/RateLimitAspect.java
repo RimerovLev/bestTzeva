@@ -1,5 +1,6 @@
 package com.tzevabest.common.web.ratelimit;
 
+import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.TooManyRequestsException;
 import com.tzevabest.common.web.security.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -96,6 +97,11 @@ public class RateLimitAspect {
         }
         if (key.startsWith("field:")) {
             return fieldValue(key.substring("field:".length()), args);
+        }
+        if (key.startsWith("phone:")) {
+            // Номер нормализуем к E.164 до построения ключа, иначе смена формата обходит лимит (R-52).
+            String raw = fieldValue(key.substring("phone:".length()), args);
+            return raw == null ? null : PhoneNormalizer.normalizeForRateKey(raw);
         }
         return null;
     }
