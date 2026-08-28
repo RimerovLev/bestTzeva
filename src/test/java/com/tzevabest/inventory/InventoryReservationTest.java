@@ -180,6 +180,39 @@ class InventoryReservationTest extends IntegrationTest {
         assertThat(lost).isEqualTo(250);
     }
 
+    @Test
+    void crossing_reservations_do_not_deadlock() throws Exception {
+        long x = seedVariant();
+        long y = seedVariant();
+        long warehouse = seedWarehouse(true);
+        seedInventory(x, warehouse, 100);
+        seedInventory(y, warehouse, 100);
+        long reqA = seedRequest();
+        long reqB = seedRequest();
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        // A резервирует X,Y ; B — Y,X. reserve() сортирует по variant_id → одинаковый порядок блокировок.
+        Callable<Void> a = () -> {
+            for (int i = 0; i < 20; i++) {
+                inventory.reserve(reqA, List.of(new ReserveItem(x, 1), new ReserveItem(y, 1)));
+            }
+            return null;
+        };
+        Callable<Void> b = () -> {
+            for (int i = 0; i < 20; i++) {
+                inventory.reserve(reqB, List.of(new ReserveItem(y, 1), new ReserveItem(x, 1)));
+            }
+            return null;
+        };
+        for (Future<Void> f : pool.invokeAll(List.of(a, b))) {
+            f.get(); // бросит, если словили дедлок — не должно
+        }
+        pool.shutdown();
+
+        assertThat(reservedQty(x, warehouse)).isEqualTo(40);
+        assertThat(reservedQty(y, warehouse)).isEqualTo(40);
+    }
+
     private String reservationStatus(long request) {
         return jdbcTemplate.queryForObject(
                 "select status from stock_reservations where request_id = ? order by id limit 1", String.class, request);

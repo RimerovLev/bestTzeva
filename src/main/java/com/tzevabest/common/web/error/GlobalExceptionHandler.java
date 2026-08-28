@@ -144,6 +144,14 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, CODE_CONFLICT, responder.resolve(CODE_CONFLICT, null), null, req, ex);
     }
 
+    // ── Конкурентный сбой (дедлок/оптимистичная блокировка) — 409, можно повторить ─
+    @ExceptionHandler(org.springframework.dao.ConcurrencyFailureException.class)
+    public ResponseEntity<ProblemDetail> handleConcurrency(org.springframework.dao.ConcurrencyFailureException ex,
+                                                           HttpServletRequest req) {
+        String code = "common.concurrent_update";
+        return build(HttpStatus.CONFLICT, code, responder.resolve(code, null), null, req, ex);
+    }
+
     // ── Отказ в доступе / ошибка аутентификации, выброшенные внутри DispatcherServlet ──
     // (напр. method-security @PreAuthorize). Фильтровый путь 401/403 обслуживает SecurityProblemSupport.
     @ExceptionHandler(AccessDeniedException.class)

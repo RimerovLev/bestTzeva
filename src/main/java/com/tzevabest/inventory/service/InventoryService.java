@@ -59,17 +59,21 @@ public class InventoryService {
     @Transactional
     public void reserve(long requestId, List<ReserveItem> items) {
         Instant expiresAt = Instant.now().plus(reservationTtl);
-        for (ReserveItem item : items) {
-            reserveVariant(requestId, item.variantId(), item.qty(), expiresAt);
-        }
+        // Детерминированный порядок захвата строк (R-45): по variant_id, иначе две заявки с
+        // пересекающимися наборами могут взять блокировки в противоположном порядке и словить дедлок.
+        items.stream()
+                .sorted(java.util.Comparator.comparingLong(ReserveItem::variantId))
+                .forEach(item -> reserveVariant(requestId, item.variantId(), item.qty(), expiresAt));
     }
 
     private void reserveVariant(long requestId, long variantId, int qty, Instant expiresAt) {
         int remaining = qty;
+        // Порядок захвата строк — по inventory.id (стабилен), а не по доступному остатку (меняется):
+        // иначе порядок блокировок недетерминирован и возможен дедлок (R-45).
         List<long[]> rows = jdbc.query(
                 "select i.id, i.warehouse_id from inventory i join warehouses w on w.id = i.warehouse_id "
                         + "where i.variant_id = ? and w.is_active and (i.qty - i.reserved_qty) > 0 "
-                        + "order by (i.qty - i.reserved_qty) desc",
+                        + "order by i.id",
                 (rs, n) -> new long[]{rs.getLong("id"), rs.getLong("warehouse_id")}, variantId);
 
         for (long[] row : rows) {
