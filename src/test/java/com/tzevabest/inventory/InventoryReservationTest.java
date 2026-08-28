@@ -109,6 +109,82 @@ class InventoryReservationTest extends IntegrationTest {
         assertThat(expiredRows).isEqualTo(1);
     }
 
+    @Test
+    void movements_journal_sums_to_qty_and_statuses_distinguish_outcome() {
+        long variant = seedVariant();
+        long warehouse = seedWarehouse(true);
+        long reqA = seedRequest();
+        long reqB = seedRequest();
+
+        // приход → резерв → продажа → приход → резерв → снятие
+        inventory.receive(variant, warehouse, 10);
+        inventory.reserve(reqA, List.of(new ReserveItem(variant, 3)));
+        inventory.consume(reqA);
+        inventory.receive(variant, warehouse, 5);
+        inventory.reserve(reqB, List.of(new ReserveItem(variant, 4)));
+        inventory.release(reqB);
+
+        // журнал сходится: sum(qty_delta) == inventory.qty (10 - 3 + 5 = 12)
+        Integer sumDelta = jdbcTemplate.queryForObject(
+                "select coalesce(sum(qty_delta),0) from inventory_movements where variant_id = ? and warehouse_id = ?",
+                Integer.class, variant, warehouse);
+        assertThat(sumDelta).isEqualTo(qty(variant, warehouse)).isEqualTo(12);
+
+        // проданный резерв отличим от отменённого (R-50)
+        assertThat(reservationStatus(reqA)).isEqualTo("CONSUMED");
+        assertThat(reservationStatus(reqB)).isEqualTo("RELEASED");
+    }
+
+    @Test
+    void parallel_release_is_idempotent() throws Exception {
+        long variant = seedVariant();
+        long warehouse = seedWarehouse(true);
+        seedInventory(variant, warehouse, 5);
+        long request = seedRequest();
+        inventory.reserve(request, List.of(new ReserveItem(variant, 5)));
+        assertThat(reservedQty(variant, warehouse)).isEqualTo(5);
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Callable<Void>> tasks = List.of(
+                () -> { inventory.releaseExpired(request); return null; },
+                () -> { inventory.releaseExpired(request); return null; });
+        for (Future<Void> f : pool.invokeAll(tasks)) {
+            f.get();
+        }
+        pool.shutdown();
+
+        // снято ровно один раз — reserved_qty не ушёл в минус и не вычтен дважды
+        assertThat(reservedQty(variant, warehouse)).isZero();
+    }
+
+    @Test
+    void sweep_processes_all_expired_in_batches() {
+        long variant = seedVariant();
+        long warehouse = seedWarehouse(true);
+        jdbcTemplate.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, 250, 250)",
+                variant, warehouse);
+        jdbcTemplate.update("""
+                insert into product_requests (request_number, customer_name, customer_phone, source, consent_given_at, policy_version, status)
+                select 'PR-B-' || g, 'C', '+972500000000', 'SITE_FORM', now(), '2026-08-01', 'RESERVED'
+                from generate_series(1, 250) g""");
+        jdbcTemplate.update("""
+                insert into stock_reservations (variant_id, warehouse_id, request_id, qty, status, expires_at)
+                select ?, ?, r.id, 1, 'ACTIVE', now() - interval '1 hour'
+                from product_requests r where r.request_number like 'PR-B-%'""", variant, warehouse);
+
+        int swept = expiry.sweep();
+        assertThat(swept).isEqualTo(250); // 250 > batch(100) → обработано пачками, все сняты
+        assertThat(reservedQty(variant, warehouse)).isZero();
+        Integer lost = jdbcTemplate.queryForObject(
+                "select count(*) from product_requests where request_number like 'PR-B-%' and status = 'LOST'", Integer.class);
+        assertThat(lost).isEqualTo(250);
+    }
+
+    private String reservationStatus(long request) {
+        return jdbcTemplate.queryForObject(
+                "select status from stock_reservations where request_id = ? order by id limit 1", String.class, request);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private boolean catchReserve(long request, long variant, int qty) {
@@ -159,6 +235,12 @@ class InventoryReservationTest extends IntegrationTest {
     private int reservedQty(long variant, long warehouse) {
         return jdbcTemplate.queryForObject(
                 "select reserved_qty from inventory where variant_id = ? and warehouse_id = ?",
+                Integer.class, variant, warehouse);
+    }
+
+    private int qty(long variant, long warehouse) {
+        return jdbcTemplate.queryForObject(
+                "select qty from inventory where variant_id = ? and warehouse_id = ?",
                 Integer.class, variant, warehouse);
     }
 
