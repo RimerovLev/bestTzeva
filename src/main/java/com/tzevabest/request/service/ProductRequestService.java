@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Приём заявки на товар от гостя. Согласие обязательно; цены и снимки берутся из каталога на сервере,
@@ -140,13 +139,13 @@ public class ProductRequestService {
         return result;
     }
 
-    private String nextNumber() {
-        String number;
-        do {
-            number = "PR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-"
-                    + String.format("%04d", ThreadLocalRandom.current().nextInt(10_000));
-        } while (requests.existsByRequestNumber(number));
-        return number;
+    /**
+     * Номер заявки из последовательности (R-46): атомарно и без коллизий, в отличие от случайного
+     * числа с проверкой. Дата — информационная; уникальность даёт nextval. Package-private для теста.
+     */
+    String nextNumber() {
+        Long seq = jdbc.queryForObject("select nextval('product_request_number_seq')", Long.class);
+        return "PR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-" + String.format("%04d", seq);
     }
 
     private static String blankToNull(String value) {
