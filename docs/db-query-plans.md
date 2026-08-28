@@ -82,13 +82,31 @@ order by p.created_at desc limit 20;
 поэтому фильтр/сортировка по цене и наличию идут по `products` без join к вариантам. Без корзины
 (витрина — основной способ навигации) это стало главным путём фильтрации.
 
-## 6. Поиск по имени (pg_trgm ILIKE) — LARGE (~10 000 переводов)
+## 6. Поиск по имени (pg_trgm ILIKE) — LARGE (R-48, V36)
 
-GIN-индекс `ix_product_translations_name_trgm` **создан** (проверено). На текущем объёме
-планировщик выбирает Seq Scan (~3 мс). Принудительно (`enable_seqscan=off`) индекс берётся и
-даёт **Bitmap Index Scan за 0.35 мс** — то есть индекс рабочий, просто на этом объёме дешевле
-Seq Scan; на проде (сотни тысяч переводов) планировщик переключится сам. Отдельное внимание —
-на T-4.5.
+Раньше индекс `ix_product_translations_name_trgm` стоял на **сырой** колонке `name`, а условие
+искало по `unaccent(regexp_replace(name, <никуд>))` — под выражение индекс по колонке не
+подходил, поэтому шёл **гарантированный Seq Scan** на любом объёме.
+
+V36 выносит нормализацию (снятие никуд + `immutable_unaccent`) в хранимую generated-колонку
+`name_normalized` и строит по ней `ix_product_translations_name_norm_trgm` (`gin_trgm_ops`).
+Поиск теперь `name_normalized ilike immutable_unaccent(<норм. запрос>)` — под колонку с
+индексом. На 20 000 переводов с селективным токеном план:
+
+```
+Bitmap Heap Scan on product_translations
+  Recheck Cond: (name_normalized ~~* '%zqxwvu%'::text)
+  ->  Bitmap Index Scan on ix_product_translations_name_norm_trgm
+        Index Cond: (name_normalized ~~* '%zqxwvu%'::text)
+```
+
+Проверяется тестом `ProductSearchIndexTest` (план обязан содержать индекс и не содержать
+`Seq Scan on product_translations`). Старый индекс по `name` удалён в V36.
+
+> **Фасеты (R-43 против R-48).** Каждый фасет считается со всеми фильтрами КРОМЕ своего —
+> это 3 отдельных агрегата (тип/бренд/цена). Свести их в один `grouping sets`-запрос (идея
+> R-48) без потери «исключи свой фильтр» нельзя: у фасетов разные наборы WHERE. Оставлено
+> тремя запросами; выигрыш R-48 — на индексе поиска, не на числе агрегатов.
 
 ## Добавленные/исправленные индексы (V11)
 

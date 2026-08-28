@@ -72,11 +72,12 @@ public class ProductCatalogService {
             conds.add(new Cond("in_stock", "p.has_stock", List.of()));
         }
         if (q != null && !q.isBlank()) {
-            // Никуд (огласовки, U+0591..U+05C7) снимаются chr()-диапазоном; unaccent — латинская диакритика.
-            String stripNiqqud = "regexp_replace(t.name, '[' || chr(1425) || '-' || chr(1479) || ']', '', 'g')";
-            String like = "%" + q.trim() + "%";
-            conds.add(new Cond("q", "(p.sku ilike ? or exists (select 1 from product_translations t "
-                    + "where t.product_id = p.id and unaccent(" + stripNiqqud + ") ilike unaccent(?)))",
+            // Ищем по нормализованной колонке name_normalized (никуд снят + unaccent), под которой есть
+            // триграммный GIN-индекс (R-48). Запрос нормализуем тем же способом. Шаблон экранирован (R-55).
+            String like = "%" + escapeLike(q.trim()) + "%";
+            conds.add(new Cond("q", "(p.sku ilike ? escape '\\' or exists (select 1 from product_translations t "
+                    + "where t.product_id = p.id and t.name_normalized ilike immutable_unaccent("
+                    + "regexp_replace(?, '[' || chr(1425) || '-' || chr(1479) || ']', '', 'g')) escape '\\'))",
                     List.of(like, like)));
         }
 
@@ -122,6 +123,11 @@ public class ProductCatalogService {
         BigDecimal priceMax = jdbc.queryForObject("select max(max_price) from products p" + wPrice.sql(),
                 BigDecimal.class, wPrice.args().toArray());
         return new ProductFacets(byPaintType, byBrand, priceMin, priceMax);
+    }
+
+    /** Экранирование служебных символов LIKE (R-55): иначе '50%' вернул бы весь каталог. */
+    private static String escapeLike(String s) {
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private static void eq(List<Cond> conds, String key, String column, Object value) {

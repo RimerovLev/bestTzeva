@@ -2,6 +2,9 @@ package com.tzevabest.catalog;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tzevabest.catalog.service.ProductCatalogService;
+import com.tzevabest.common.dto.SortRequest;
+import com.tzevabest.common.web.PageQuery;
 import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,8 @@ class ProductSearchTest extends IntegrationTest {
     private TestRestTemplate rest;
     @Autowired
     private ObjectMapper json;
+    @Autowired
+    private ProductCatalogService catalog;
 
     private long brand1;
     private long brand2;
@@ -95,6 +100,19 @@ class ProductSearchTest extends IntegrationTest {
         // запрос без огласовок должен найти
         JsonNode res = get("/api/v1/products?q=צבע");
         assertThat(res.get("products").get("total_elements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void like_wildcards_in_query_are_escaped() {
+        // '50%' в имени не должен превращаться в шаблон «пятьдесят и что угодно» (R-55)
+        brand1 = jdbcTemplate.queryForObject("insert into brands (slug, name) values ('brw-" + uid() + "','B') returning id", Long.class);
+        seedProduct(brand1, "INTERIOR", "100.00", true, "50% matt");
+        seedProduct(brand1, "INTERIOR", "100.00", true, "50 shades");
+        // поиск '50%' находит только буквальный «50%», а не «50 shades»
+        var res = catalog.search(null, null, null, null, null, null, null, null, null,
+                "50%", "he", new PageQuery(0, 20, SortRequest.empty()));
+        assertThat(res.products().totalElements()).isEqualTo(1);
+        assertThat(res.products().items().get(0).name()).isEqualTo("50% matt");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────────
