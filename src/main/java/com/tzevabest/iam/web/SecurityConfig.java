@@ -97,9 +97,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         // Публичный приём заявок на товар (гость).
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
-                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото.
+                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото + расчёт.
                         .requestMatchers(HttpMethod.POST, "/api/v1/service-requests",
-                                "/api/v1/service-requests/photos/presign").permitAll()
+                                "/api/v1/service-requests/photos/presign",
+                                "/api/v1/service-requests/calculate").permitAll()
                         // Токены форм (антиспам, T-11.1.1) — публичны.
                         .requestMatchers(HttpMethod.GET, "/api/v1/service-requests/form-token",
                                 "/api/v1/product-requests/form-token").permitAll()
@@ -127,9 +128,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
-                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото.
+                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото + расчёт.
                         .requestMatchers(HttpMethod.POST, "/api/v1/service-requests",
-                                "/api/v1/service-requests/photos/presign").permitAll()
+                                "/api/v1/service-requests/photos/presign",
+                                "/api/v1/service-requests/calculate").permitAll()
                         // Токены форм (антиспам, T-11.1.1) — публичны.
                         .requestMatchers(HttpMethod.GET, "/api/v1/service-requests/form-token",
                                 "/api/v1/product-requests/form-token").permitAll()

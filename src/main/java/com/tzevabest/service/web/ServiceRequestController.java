@@ -4,10 +4,13 @@ import com.tzevabest.common.spam.FormTokenService;
 import com.tzevabest.common.web.ratelimit.ClientIpResolver;
 import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.CurrentUser;
+import com.tzevabest.service.dto.CalculateRequest;
+import com.tzevabest.service.dto.CalculateResponse;
 import com.tzevabest.service.dto.PresignRequest;
 import com.tzevabest.service.dto.PresignResponse;
 import com.tzevabest.service.dto.ServiceRequestCreate;
 import com.tzevabest.service.dto.ServiceRequestResponse;
+import com.tzevabest.service.service.PricingService;
 import com.tzevabest.service.service.ServiceRequestService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -30,9 +33,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class ServiceRequestController {
 
     private final ServiceRequestService service;
+    private final PricingService pricing;
     private final ClientIpResolver clientIpResolver;
     private final CurrentUser currentUser;
     private final FormTokenService formTokens;
+
+    /** Предварительный расчёт стоимости (T-11.2). Всегда оценка, не окончательная цена. */
+    @PostMapping("/calculate")
+    @RateLimit(key = "ip", limit = 60, windowSeconds = 3600)
+    public CalculateResponse calculate(@Valid @RequestBody CalculateRequest request, HttpServletRequest http) {
+        String locale = http.getLocale() == null ? null : http.getLocale().getLanguage();
+        return pricing.calculate(request, locale);
+    }
 
     /** Токен формы для проверки минимального времени заполнения (T-11.1.1). */
     @GetMapping("/form-token")

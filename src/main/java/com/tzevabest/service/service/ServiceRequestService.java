@@ -57,6 +57,7 @@ public class ServiceRequestService {
     private final ConsentService consents;
     private final MediaPresigner presigner;
     private final SpamGuard spamGuard;
+    private final PricingService pricing;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
 
@@ -113,6 +114,13 @@ public class ServiceRequestService {
         request.setSource(RequestSource.SITE_FORM);
         request.setConsentGivenAt(Instant.now());
         request.setLocale(locale);
+        // Снимок предварительной оценки на момент создания (T-11.2): изменение тарифа позже её не меняет.
+        var estimate = pricing.estimateAtIntake(req.propertyType(), req.areaSqm(), req.ceilingHeightM(),
+                request.getWorkTypes());
+        if (estimate != null) {
+            request.setEstimatedPriceMin(estimate.priceMin());
+            request.setEstimatedPriceMax(estimate.priceMax());
+        }
         requests.save(request);
 
         int photoCount = attachPhotos(request, req.photoKeys());
