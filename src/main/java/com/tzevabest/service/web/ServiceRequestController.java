@@ -1,5 +1,6 @@
 package com.tzevabest.service.web;
 
+import com.tzevabest.common.spam.FormTokenService;
 import com.tzevabest.common.web.ratelimit.ClientIpResolver;
 import com.tzevabest.common.web.ratelimit.RateLimit;
 import com.tzevabest.common.web.security.CurrentUser;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +32,13 @@ public class ServiceRequestController {
     private final ServiceRequestService service;
     private final ClientIpResolver clientIpResolver;
     private final CurrentUser currentUser;
+    private final FormTokenService formTokens;
+
+    /** Токен формы для проверки минимального времени заполнения (T-11.1.1). */
+    @GetMapping("/form-token")
+    public java.util.Map<String, String> formToken() {
+        return java.util.Map.of("form_token", formTokens.issue());
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

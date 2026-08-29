@@ -100,9 +100,10 @@ class ProductRequestTest extends IntegrationTest {
         // но заявка не создана
         Integer count = jdbcTemplate.queryForObject("select count(*) from product_requests", Integer.class);
         assertThat(count).isZero();
-        // факт отсечения зафиксирован
+        // факт отсечения зафиксирован в общем журнале (T-11.1.1)
         Integer drops = jdbcTemplate.queryForObject(
-                "select count(*) from request_spam_drops where reason = 'honeypot'", Integer.class);
+                "select count(*) from spam_drops where form = 'product_request' and reason = 'honeypot'",
+                Integer.class);
         assertThat(drops).isEqualTo(1);
     }
 

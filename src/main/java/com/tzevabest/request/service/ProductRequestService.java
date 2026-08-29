@@ -1,5 +1,6 @@
 package com.tzevabest.request.service;
 
+import com.tzevabest.common.spam.SpamGuard;
 import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.service.ConsentService;
@@ -53,6 +54,7 @@ public class ProductRequestService {
     private final ProductRequestItemRepository items;
     private final ConsentService consents;
     private final ApplicationEventPublisher events;
+    private final SpamGuard spamGuard;
     private final JdbcTemplate jdbc;
 
     @Value("${app.privacy.policy-version}")
@@ -60,20 +62,21 @@ public class ProductRequestService {
 
     @Transactional
     public ProductRequestResponse create(ProductRequestCreate req, String ip, String localeParam) {
-        if (req.website() != null && !req.website().isBlank()) {
-            // Honeypot заполнен — бот. Молча отбрасываем: 201 с правдоподобным телом, ничего не
-            // сохраняем в product_requests, факт отсечения пишем отдельно (R-51). Ответ неотличим
-            // от успешного, поэтому бот не поймёт, что поле его выдало.
-            jdbc.update("insert into request_spam_drops (ip, reason) values (?, 'honeypot')", ip);
-            log.info("Honeypot triggered — request dropped silently (ip={})", ip);
-            return new ProductRequestResponse(0, fakeNumber(), ProductRequestStatus.NEW,
-                    BigDecimal.ZERO, List.of());
+        // Honeypot: заполненное скрытое поле — бот. Молча отбрасываем 201 с правдоподобным телом
+        // (R-51), общий механизм на обе формы (T-11.1.1). Ответ неотличим от успешного.
+        if (spamGuard.isHoneypot(req.website())) {
+            spamGuard.recordDrop("product_request", ip, null, SpamGuard.HONEYPOT);
+            return droppedResponse();
         }
         if (!req.consent()) {
             throw new ValidationException("request.consent_required");
         }
         String locale = normalizeLocale(localeParam);
         String phone = PhoneNormalizer.normalize(req.customerPhone());
+        if (spamGuard.isBlocked(ip, phone)) {
+            spamGuard.recordDrop("product_request", ip, phone, SpamGuard.BLOCKED);
+            return droppedResponse();
+        }
 
         ProductRequest request = new ProductRequest();
         request.setRequestNumber(nextNumber());
@@ -161,6 +164,11 @@ public class ProductRequestService {
     String nextNumber() {
         Long seq = jdbc.queryForObject("select nextval('product_request_number_seq')", Long.class);
         return "PR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-" + String.format("%04d", seq);
+    }
+
+    /** Правдоподобный ответ на отсечённую (спам) заявку — неотличим от успешной, но ничего не сохранено. */
+    private static ProductRequestResponse droppedResponse() {
+        return new ProductRequestResponse(0, fakeNumber(), ProductRequestStatus.NEW, BigDecimal.ZERO, List.of());
     }
 
     /** Правдоподобный номер для ответа на honeypot — из последовательности не берём (заявки нет). */

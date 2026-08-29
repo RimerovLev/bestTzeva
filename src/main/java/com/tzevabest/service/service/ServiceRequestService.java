@@ -1,5 +1,6 @@
 package com.tzevabest.service.service;
 
+import com.tzevabest.common.spam.SpamGuard;
 import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.service.ConsentService;
@@ -55,6 +56,7 @@ public class ServiceRequestService {
     private final ServiceRequestMediaRepository media;
     private final ConsentService consents;
     private final MediaPresigner presigner;
+    private final SpamGuard spamGuard;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
 
@@ -73,11 +75,22 @@ public class ServiceRequestService {
 
     @Transactional
     public ServiceRequestResponse create(ServiceRequestCreate req, Long userId, String ip, String localeParam) {
+        // Honeypot / слишком быстрое заполнение по токену формы — тихо отбрасываем 201 (R-51),
+        // общий механизм SpamGuard на обе формы (T-11.1.1). Блок-лист — после нормализации телефона.
+        String honeypotReason = spamGuard.dropReason(req.website(), req.formToken(), ip, null);
+        if (honeypotReason != null) {
+            spamGuard.recordDrop("service_request", ip, null, honeypotReason);
+            return droppedResponse();
+        }
         if (!req.consent()) {
             throw new ValidationException("service_request.consent_required");
         }
         String locale = normalizeLocale(localeParam);
         String phone = PhoneNormalizer.normalize(req.customerPhone());
+        if (spamGuard.isBlocked(ip, phone)) {
+            spamGuard.recordDrop("service_request", ip, phone, SpamGuard.BLOCKED);
+            return droppedResponse();
+        }
 
         ServiceRequest request = new ServiceRequest();
         request.setRequestNumber(nextNumber());
@@ -136,6 +149,14 @@ public class ServiceRequestService {
         }
         media.saveAll(rows);
         return rows.size();
+    }
+
+    /** Правдоподобный ответ на отсечённую (спам) заявку — неотличим от успешной, ничего не сохранено. */
+    private static ServiceRequestResponse droppedResponse() {
+        String fake = "SR-" + LocalDate.now(ZoneOffset.UTC).format(YYMMDD) + "-"
+                + String.format("%04d", java.util.concurrent.ThreadLocalRandom.current().nextInt(10000));
+        return new ServiceRequestResponse(0, fake, ServiceRequestStatus.NEW, null, null,
+                EnumSet.noneOf(WorkType.class), 0);
     }
 
     /** Номер заявки из последовательности (как R-46). */

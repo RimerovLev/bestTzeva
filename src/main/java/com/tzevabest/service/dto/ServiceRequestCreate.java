@@ -37,5 +37,6 @@ public record ServiceRequestCreate(
         @Size(max = 2000) String comment,
         boolean consent,
         String website,
+        String formToken,
         @Size(max = 10) List<String> photoKeys) {
 }
