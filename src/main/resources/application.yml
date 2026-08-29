@@ -112,6 +112,10 @@ app:
   web:
     # Базовый URL для ссылок в письмах (подтверждение email, сброс пароля).
     base-url: ${APP_BASE_URL:http://localhost:8080}
+  notification:
+    # Период разбора очереди уведомлений (transactional outbox, T-12.2).
+    dispatch-interval: ${NOTIFICATION_DISPATCH_INTERVAL:PT30S}
+
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   storage:

@@ -2,6 +2,7 @@ package com.tzevabest.notification.service;
 
 import com.tzevabest.notification.domain.NotificationChannel;
 import com.tzevabest.notification.domain.NotificationLog;
+import com.tzevabest.notification.domain.NotificationPriority;
 import com.tzevabest.notification.domain.NotificationStatus;
 import com.tzevabest.notification.domain.NotificationTemplate;
 import com.tzevabest.notification.dto.NotificationModel;
@@ -10,6 +11,7 @@ import com.tzevabest.notification.repository.NotificationLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.TemplateEngine;
@@ -40,6 +42,7 @@ public class NotificationService {
     private final TemplateEngine templateEngine;
     private final MessageSource messages;
     private final NotificationLogRepository logs;
+    private final JdbcTemplate jdbc;
     private final EmailSender emailSender;
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
@@ -92,6 +95,39 @@ public class NotificationService {
             log.warn("Notification {} to {} failed", template.code(), recipient, e);
         }
         logs.save(entry);
+    }
+
+    /**
+     * Маршрутизация по приоритету (T-12.2): IMMEDIATE (OTP, сброс пароля) уходит немедленно, остальное
+     * ставится в очередь (transactional outbox) — отправит фоновый обработчик после коммита.
+     */
+    public void notify(NotificationTemplate template, String recipient, String localeParam,
+                       NotificationModel model, String referenceId) {
+        if (template.priority() == NotificationPriority.IMMEDIATE) {
+            send(template, recipient, localeParam, model);
+        } else {
+            enqueue(template, recipient, localeParam, model, referenceId);
+        }
+    }
+
+    /**
+     * Ставит уведомление в очередь в ТЕКУЩЕЙ транзакции (outbox): запись коммитится вместе с
+     * бизнес-операцией, поэтому переживёт рестарт между коммитом и отправкой. Дубли по одному событию
+     * отсекаются уникальным ключом идемпотентности через {@code on conflict do nothing} — без аборта
+     * бизнес-транзакции.
+     */
+    public void enqueue(NotificationTemplate template, String recipient, String localeParam,
+                        NotificationModel model, String referenceId) {
+        RenderedMessage rendered = render(template, localeParam, model);
+        String idempotencyKey = referenceId == null ? null
+                : template.code() + ":" + recipient + ":" + referenceId;
+        jdbc.update("""
+                insert into notifications_log (channel, template_code, recipient, locale, subject,
+                        body_snapshot, status, priority, attempt_count, next_attempt_at, idempotency_key)
+                values (?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, now(), ?)
+                on conflict (idempotency_key) do nothing""",
+                template.channel().name(), template.code(), recipient, resolveLocale(localeParam),
+                rendered.subject(), rendered.body(), template.priority().name(), idempotencyKey);
     }
 
     private void dispatch(NotificationChannel channel, String recipient, RenderedMessage rendered) {

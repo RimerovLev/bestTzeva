@@ -48,4 +48,15 @@ public class NotificationLog extends BaseEntity {
 
     @Column(name = "sent_at")
     private Instant sentAt;
+
+    /** Когда попытка отправки готова к исполнению (для очереди и ретраев). */
+    @Column(name = "next_attempt_at")
+    private Instant nextAttemptAt;
+
+    /** Ключ идемпотентности: templateCode:recipient:referenceId. Уникален, защищает от дублей. */
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
+    @Column(name = "priority", nullable = false, length = 16)
+    private String priority = "NORMAL";
 }
