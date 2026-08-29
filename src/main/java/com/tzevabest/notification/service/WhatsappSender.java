@@ -1,6 +1,6 @@
 package com.tzevabest.notification.service;
 
-/** Канал WhatsApp. Реальную реализацию добавит T-12.3. */
+/** Канал WhatsApp. Возвращает id сообщения у провайдера, может быть null. */
 public interface WhatsappSender {
-    void send(String to, String message);
+    String send(String to, String message);
 }

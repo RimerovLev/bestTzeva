@@ -174,7 +174,7 @@ class NotificationOutboxTest extends IntegrationTest {
             return perRecipient.values().stream().mapToInt(AtomicInteger::get).max().orElse(0);
         }
 
-        private void handle(String to) {
+        private String handle(String to) {
             switch (mode) {
                 case RETRYABLE -> throw new RuntimeException("temporary channel error");
                 case NON_RETRYABLE -> throw new NonRetryableNotificationException("invalid recipient");
@@ -183,16 +183,17 @@ class NotificationOutboxTest extends IntegrationTest {
                     perRecipient.computeIfAbsent(to, k -> new AtomicInteger()).incrementAndGet();
                 }
             }
+            return "test-" + to;
         }
 
         @Override
-        public void send(String to, String subject, String htmlBody) {
-            handle(to);
+        public String send(String to, String subject, String htmlBody) {
+            return handle(to);
         }
 
         @Override
-        public void send(String to, String message) {
-            handle(to);
+        public String send(String to, String message) {
+            return handle(to);
         }
     }
 

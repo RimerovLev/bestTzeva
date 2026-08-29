@@ -1,6 +1,7 @@
 package com.tzevabest.notification.service;
 
 import com.tzevabest.notification.domain.NotificationChannel;
+import com.tzevabest.notification.domain.NotificationPriority;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -42,6 +43,7 @@ public class NotificationDispatcher {
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
     private final NotificationMetrics metrics;
+    private final QuietHoursPolicy quietHours;
 
     /** Один проход обработки под распределённой блокировкой. Возвращает число обработанных строк. */
     public int dispatchDue() {
@@ -72,7 +74,7 @@ public class NotificationDispatcher {
 
     private int processBatchInternal() {
         List<Row> rows = jdbc.query("""
-                select id, channel, recipient, subject, body_snapshot, attempt_count, created_at
+                select id, channel, recipient, subject, body_snapshot, attempt_count, created_at, priority
                 from notifications_log
                 where status = 'QUEUED' and next_attempt_at <= now()
                 order by next_attempt_at, id
@@ -86,13 +88,22 @@ public class NotificationDispatcher {
     }
 
     private void deliver(Row row) {
+        NotificationChannel channel = NotificationChannel.valueOf(row.channel);
+        NotificationPriority priority = NotificationPriority.valueOf(row.priority);
+        // Тихие часы (T-12.3): информационные SMS ночью откладываются до утра, попытка не тратится.
+        var defer = quietHours.deferUntil(channel, priority, Instant.now());
+        if (defer.isPresent()) {
+            jdbc.update("update notifications_log set next_attempt_at = ?, updated_at = now() where id = ?",
+                    java.sql.Timestamp.from(defer.get()), row.id);
+            return;
+        }
         int attempt = row.attemptCount + 1;
         try {
-            long start = System.currentTimeMillis();
-            send(row);
+            String providerId = send(row);
             long latency = Math.max(0, System.currentTimeMillis() - row.createdAt.toEpochMilli());
             jdbc.update("update notifications_log set status = 'SENT', sent_at = now(), attempt_count = ?, "
-                    + "error_message = null, updated_at = now() where id = ?", attempt, row.id);
+                    + "provider_message_id = ?, error_message = null, updated_at = now() where id = ?",
+                    attempt, providerId, row.id);
             metrics.recordSent(row.channel, latency);
         } catch (NonRetryableNotificationException e) {
             markFailed(row, attempt, e.getMessage());
@@ -117,14 +128,14 @@ public class NotificationDispatcher {
         metrics.recordFailed(row.channel);
     }
 
-    private void send(Row row) {
+    private String send(Row row) {
         NotificationChannel channel = NotificationChannel.valueOf(row.channel);
-        switch (channel) {
+        return switch (channel) {
             case EMAIL -> emailSender.send(row.recipient, row.subject, row.body);
             case SMS -> smsSender.send(row.recipient, row.body);
             case WHATSAPP -> whatsappSender.send(row.recipient, row.body);
             case PUSH -> throw new NonRetryableNotificationException("PUSH channel is not implemented");
-        }
+        };
     }
 
     private static Row mapRow(ResultSet rs) throws java.sql.SQLException {
@@ -136,6 +147,7 @@ public class NotificationDispatcher {
         r.body = rs.getString("body_snapshot");
         r.attemptCount = rs.getInt("attempt_count");
         r.createdAt = rs.getTimestamp("created_at").toInstant();
+        r.priority = rs.getString("priority");
         return r;
     }
 
@@ -147,5 +159,6 @@ public class NotificationDispatcher {
         String body;
         int attemptCount;
         Instant createdAt;
+        String priority;
     }
 }

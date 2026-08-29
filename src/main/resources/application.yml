@@ -115,6 +115,11 @@ app:
   notification:
     # Период разбора очереди уведомлений (transactional outbox, T-12.2).
     dispatch-interval: ${NOTIFICATION_DISPATCH_INTERVAL:PT30S}
+    # Секрет для подписи вебхуков доставки и токенов отписки (T-12.3). В prod — из окружения.
+    signing-secret: ${NOTIFICATION_SIGNING_SECRET:dev-only-notification-signing-secret-change-me}
+    whatsapp:
+      # WhatsApp Business API за флагом (T-12.3): по умолчанию выключен.
+      enabled: ${NOTIFICATION_WHATSAPP_ENABLED:false}
 
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}

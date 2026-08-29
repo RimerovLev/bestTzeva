@@ -46,6 +46,7 @@ public class NotificationService {
     private final EmailSender emailSender;
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
+    private final UnsubscribeService unsubscribe;
 
     /** Рендерит сообщение без отправки — точка для тестов и предпросмотра. */
     public RenderedMessage render(NotificationTemplate template, String localeParam, NotificationModel model) {
@@ -75,6 +76,9 @@ public class NotificationService {
      */
     @Transactional
     public void send(NotificationTemplate template, String recipient, String localeParam, NotificationModel model) {
+        if (unsubscribe.suppresses(template.transactional(), recipient)) {
+            return; // получатель отписался от нетранзакционных рассылок
+        }
         RenderedMessage rendered = render(template, localeParam, model);
 
         NotificationLog entry = new NotificationLog();
@@ -86,7 +90,7 @@ public class NotificationService {
         entry.setBodySnapshot(rendered.body());
         entry.setAttemptCount(1);
         try {
-            dispatch(template.channel(), recipient, rendered);
+            entry.setProviderMessageId(dispatch(template.channel(), recipient, rendered));
             entry.setStatus(NotificationStatus.SENT);
             entry.setSentAt(Instant.now());
         } catch (RuntimeException e) {
@@ -118,6 +122,9 @@ public class NotificationService {
      */
     public void enqueue(NotificationTemplate template, String recipient, String localeParam,
                         NotificationModel model, String referenceId) {
+        if (unsubscribe.suppresses(template.transactional(), recipient)) {
+            return; // получатель отписался от нетранзакционных рассылок
+        }
         RenderedMessage rendered = render(template, localeParam, model);
         String idempotencyKey = referenceId == null ? null
                 : template.code() + ":" + recipient + ":" + referenceId;
@@ -130,13 +137,13 @@ public class NotificationService {
                 rendered.subject(), rendered.body(), template.priority().name(), idempotencyKey);
     }
 
-    private void dispatch(NotificationChannel channel, String recipient, RenderedMessage rendered) {
-        switch (channel) {
+    private String dispatch(NotificationChannel channel, String recipient, RenderedMessage rendered) {
+        return switch (channel) {
             case EMAIL -> emailSender.send(recipient, rendered.subject(), rendered.body());
             case SMS -> smsSender.send(recipient, rendered.body());
             case WHATSAPP -> whatsappSender.send(recipient, rendered.body());
             case PUSH -> throw new UnsupportedOperationException("PUSH channel is not implemented");
-        }
+        };
     }
 
     private static boolean isRtl(Locale locale) {

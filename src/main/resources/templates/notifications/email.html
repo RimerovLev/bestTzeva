@@ -35,6 +35,9 @@
                     <td th:attr="align=${align}"
                         th:style="'background-color:#f9fafb; padding:16px 28px; color:#6b7280; font-size:12px; text-align:' + ${align} + ';'">
                         <span th:text="${company}">Tzeva Best</span> &copy; <span th:text="${year}">2026</span>
+                        <span th:if="${unsubscribeUrl}">
+                            &middot; <a th:href="${unsubscribeUrl}" style="color:#6b7280;">unsubscribe</a>
+                        </span>
                     </td>
                 </tr>
             </table>

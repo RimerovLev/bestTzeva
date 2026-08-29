@@ -97,6 +97,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         // Публичный приём заявок на товар (гость).
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
+                        // Вебхуки доставки (аутентификация по подписи) и отписка по токену — публичны.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notifications/unsubscribe").permitAll()
                         // Админ-зона — только служебные роли; тонкие права — @PreAuthorize на сервисах.
                         .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Клиентские ресурсы — только аутентифицированным (владение проверяет @ownership).
@@ -118,6 +121,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
+                        // Вебхуки доставки (аутентификация по подписи) и отписка по токену — публичны.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/notifications/unsubscribe").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAnyRole(STAFF_ROLES)
                         // Всё остальное закрыто; ролевые правила добавят следующие задачи.
                         .anyRequest().authenticated());

@@ -1,6 +1,6 @@
 package com.tzevabest.notification.service;
 
-/** Канал SMS. Реальную реализацию добавит T-12.3. */
+/** Канал SMS. Возвращает id сообщения у провайдера, может быть null. */
 public interface SmsSender {
-    void send(String to, String message);
+    String send(String to, String message);
 }

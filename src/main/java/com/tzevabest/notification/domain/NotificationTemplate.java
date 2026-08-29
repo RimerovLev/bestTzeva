@@ -41,6 +41,15 @@ public enum NotificationTemplate {
         return priority;
     }
 
+    /**
+     * Транзакционные уведомления (статус заявки, безопасность, OTP, сброс пароля) не отписываются —
+     * они не рекламные. Маркетинговые/информационные рассылки вернут {@code false} и будут подавлены
+     * для отписавшихся. В текущем наборе все шаблоны транзакционные.
+     */
+    public boolean transactional() {
+        return true;
+    }
+
     public String code() {
         return code;
     }

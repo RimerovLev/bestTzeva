@@ -32,6 +32,15 @@ public class ConsentService {
         record(userId, contact, ConsentType.DATA_PROCESSING, true, ip, source);
     }
 
+    /**
+     * Записать согласие/отзыв MARKETING (рассылки). Обёртка для других модулей — отписка от
+     * уведомлений (T-12.3) пишет отзыв, не тягая iam-enum {@link ConsentType} через границу модуля.
+     */
+    @Transactional
+    public void recordMarketing(Long userId, String contact, boolean granted, String ip, String source) {
+        record(userId, contact, ConsentType.MARKETING, granted, ip, source);
+    }
+
     @Transactional
     public void record(Long userId, String contact, ConsentType type, boolean granted, String ip, String source) {
         Consent consent = new Consent();
