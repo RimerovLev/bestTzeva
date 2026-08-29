@@ -28,6 +28,7 @@ val springdocVersion: String by project
 val archunitVersion: String by project
 val jjwtVersion: String by project
 val awsSdkVersion: String by project
+val poiVersion: String by project
 
 dependencies {
     // --- Spring Boot starters ---
@@ -51,6 +52,9 @@ dependencies {
     // --- Хранилище медиа (S3 / MinIO) ---
     implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
     implementation("software.amazon.awssdk:s3")
+
+    // --- Экспорт XLSX (складские остатки) ---
+    implementation("org.apache.poi:poi-ooxml:$poiVersion")
 
     // --- JWT (jjwt) ---
     implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")

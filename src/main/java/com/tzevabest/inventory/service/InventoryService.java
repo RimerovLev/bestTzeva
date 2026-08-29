@@ -57,18 +57,22 @@ public class InventoryService {
     /** Приход товара: увеличивает остаток и пишет движение RECEIPT. Создаёт строку inventory при нужде. */
     @Transactional
     public void receive(long variantId, long warehouseId, int qty) {
+        receive(variantId, warehouseId, qty, MovementContext.manual(null), null);
+    }
+
+    /** Приход с контекстом (кто/по какому поводу) и комментарием — для админского массового прихода. */
+    @Transactional
+    public void receive(long variantId, long warehouseId, int qty, MovementContext ctx, String comment) {
+        requirePositive(qty);
         int updated = jdbc.update("update inventory set qty = qty + ?, version = version + 1 "
                 + "where variant_id = ? and warehouse_id = ?", qty, variantId, warehouseId);
         if (updated == 0) {
             jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
                     variantId, warehouseId, qty);
         }
-        int[] st = state(variantId, warehouseId);
-        jdbc.update("""
-                insert into inventory_movements (variant_id, warehouse_id, type, qty_delta, qty_after,
-                                                 reserved_delta, reserved_after, reference_type)
-                values (?, ?, 'RECEIPT', ?, ?, 0, ?, 'MANUAL')""",
-                variantId, warehouseId, qty, st[0], st[1]);
+        InvRow after = requireRow(variantId, warehouseId);
+        recordMovement(variantId, warehouseId, MovementType.RECEIPT, qty, after.qty(), 0, after.reserved(),
+                ctx, comment);
     }
 
     // ── Резервирование ───────────────────────────────────────────────────────────
