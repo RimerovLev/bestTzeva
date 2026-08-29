@@ -1,4 +1,7 @@
-package com.tzevabest.notification.domain;
+package com.tzevabest.notification.dto;
+
+import com.tzevabest.notification.domain.NotificationChannel;
+import com.tzevabest.notification.domain.NotificationPriority;
 
 /**
  * Каталог шаблонов уведомлений (T-12.1). Каждый шаблон знает свой канал по умолчанию и базовый ключ

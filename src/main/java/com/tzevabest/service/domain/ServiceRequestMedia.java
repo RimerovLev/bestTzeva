@@ -25,8 +25,13 @@ public class ServiceRequestMedia {
             foreignKey = @ForeignKey(name = "fk_service_request_media_request_id"))
     private ServiceRequest request;
 
-    @Column(name = "url", nullable = false)
+    /** Публичной ссылки у приватного фото нет; выдача через presigned GET. */
+    @Column(name = "url")
     private String url;
+
+    /** Ключ объекта в приватном бакете. */
+    @Column(name = "object_key", length = 512)
+    private String objectKey;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 16)

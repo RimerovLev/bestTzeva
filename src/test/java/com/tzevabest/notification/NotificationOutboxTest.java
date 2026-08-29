@@ -1,6 +1,6 @@
 package com.tzevabest.notification;
 
-import com.tzevabest.notification.domain.NotificationTemplate;
+import com.tzevabest.notification.dto.NotificationTemplate;
 import com.tzevabest.notification.dto.OtpModel;
 import com.tzevabest.notification.dto.ProductRequestModel;
 import com.tzevabest.notification.service.EmailSender;

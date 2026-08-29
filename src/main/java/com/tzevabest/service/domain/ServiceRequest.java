@@ -91,4 +91,8 @@ public class ServiceRequest extends BaseEntity {
 
     @Column(name = "consent_given_at", nullable = false)
     private Instant consentGivenAt;
+
+    /** Язык клиента (he/ru/en) — на нём уходят уведомления (как R-53 для заявок на товар). */
+    @Column(name = "locale", nullable = false, length = 2)
+    private String locale = "he";
 }

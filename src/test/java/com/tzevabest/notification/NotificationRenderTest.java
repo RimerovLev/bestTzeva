@@ -1,7 +1,7 @@
 package com.tzevabest.notification;
 
 import com.tzevabest.notification.domain.NotificationChannel;
-import com.tzevabest.notification.domain.NotificationTemplate;
+import com.tzevabest.notification.dto.NotificationTemplate;
 import com.tzevabest.notification.dto.AccountAlertModel;
 import com.tzevabest.notification.dto.LinkModel;
 import com.tzevabest.notification.dto.LowStockAlertModel;

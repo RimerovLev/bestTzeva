@@ -97,6 +97,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         // Публичный приём заявок на товар (гость).
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
+                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/service-requests",
+                                "/api/v1/service-requests/photos/presign").permitAll()
                         // Вебхуки доставки (аутентификация по подписи) и отписка по токену — публичны.
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/notifications/unsubscribe").permitAll()
@@ -121,6 +124,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
+                        // Публичный приём заявок на покраску (гость) + presigned-загрузка фото.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/service-requests",
+                                "/api/v1/service-requests/photos/presign").permitAll()
                         // Вебхуки доставки (аутентификация по подписи) и отписка по токену — публичны.
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/notifications/unsubscribe").permitAll()

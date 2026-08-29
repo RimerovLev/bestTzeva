@@ -4,7 +4,7 @@ import com.tzevabest.notification.domain.NotificationChannel;
 import com.tzevabest.notification.domain.NotificationLog;
 import com.tzevabest.notification.domain.NotificationPriority;
 import com.tzevabest.notification.domain.NotificationStatus;
-import com.tzevabest.notification.domain.NotificationTemplate;
+import com.tzevabest.notification.dto.NotificationTemplate;
 import com.tzevabest.notification.dto.NotificationModel;
 import com.tzevabest.notification.dto.RenderedMessage;
 import com.tzevabest.notification.repository.NotificationLogRepository;
