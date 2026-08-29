@@ -1,20 +1,36 @@
 package com.tzevabest.inventory.service;
 
 import com.tzevabest.common.web.error.ConflictException;
+import com.tzevabest.common.web.error.ValidationException;
+import com.tzevabest.inventory.domain.MovementType;
+import com.tzevabest.inventory.domain.ReferenceType;
+import com.tzevabest.inventory.dto.MovementContext;
 import com.tzevabest.inventory.dto.ReserveItem;
+import com.tzevabest.inventory.event.LowStockEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Резервирование остатков под заявку на товар. Резерв — явная запись {@code stock_reservations} с TTL,
- * плюс увеличение {@code inventory.reserved_qty}. Считается только по активным складам.
+ * Складской учёт: единственная точка изменения таблицы {@code inventory} (прямые UPDATE из других
+ * модулей запрещены, см. ArchUnit-правило). Приход, резервирование под заявку, а также движения
+ * остатка — списание, инвентаризация, перемещение между складами — плюс публичное чтение доступного
+ * количества для каталога.
+ * <p>
+ * Резерв — явная запись {@code stock_reservations} с TTL, плюс увеличение
+ * {@code inventory.reserved_qty}. Считается только по активным складам.
  * <p>
  * Журнал {@code inventory_movements} сходится (R-41): резерв/снятие физический остаток не двигают
  * ({@code qty_delta = 0}), их дельта пишется в {@code reserved_delta}/{@code reserved_after}; продажа
@@ -31,6 +47,7 @@ import java.util.List;
 public class InventoryService {
 
     private final JdbcTemplate jdbc;
+    private final ApplicationEventPublisher events;
 
     @Value("${app.inventory.reservation-ttl:PT72H}")
     private Duration reservationTtl;
@@ -163,7 +180,197 @@ public class InventoryService {
                         + "limit ?", Long.class, limit);
     }
 
+    // ── Публичное чтение доступного (для каталога и других модулей) ───────────────
+
+    /** Доступно к продаже по варианту суммарно по всем складам ({@code sum(qty - reserved_qty)}). */
+    public int getAvailable(long variantId) {
+        Integer available = jdbc.queryForObject(
+                "select coalesce(sum(qty - reserved_qty), 0)::int from inventory where variant_id = ?",
+                Integer.class, variantId);
+        return available == null ? 0 : available;
+    }
+
+    /** Доступно по варианту в разрезе складов: {@code warehouse_id -> available}. */
+    public Map<Long, Integer> getAvailableByWarehouse(long variantId) {
+        Map<Long, Integer> byWarehouse = new LinkedHashMap<>();
+        jdbc.query("select warehouse_id, (qty - reserved_qty) as available from inventory "
+                        + "where variant_id = ? order by warehouse_id",
+                (RowCallbackHandler) rs -> byWarehouse.put(rs.getLong("warehouse_id"), rs.getInt("available")),
+                variantId);
+        return byWarehouse;
+    }
+
+    /**
+     * Доступно по списку вариантов ОДНИМ запросом (вызывается из листинга каталога, где вариантов
+     * сотни). Варианты без строк inventory возвращаются с 0.
+     */
+    public Map<Long, Integer> getAvailableBatch(List<Long> variantIds) {
+        if (variantIds.isEmpty()) {
+            return Map.of();
+        }
+        String placeholders = String.join(",", Collections.nCopies(variantIds.size(), "?"));
+        Map<Long, Integer> byVariant = new HashMap<>();
+        jdbc.query("select variant_id, coalesce(sum(qty - reserved_qty), 0)::int as available from inventory "
+                        + "where variant_id in (" + placeholders + ") group by variant_id",
+                (RowCallbackHandler) rs -> byVariant.put(rs.getLong("variant_id"), rs.getInt("available")),
+                variantIds.toArray());
+        for (Long id : variantIds) {
+            byVariant.putIfAbsent(id, 0);
+        }
+        return byVariant;
+    }
+
+    /** Хватает ли доступного остатка по варианту (суммарно по складам) на {@code qty} единиц. */
+    public boolean isAvailable(long variantId, int qty) {
+        return getAvailable(variantId) >= qty;
+    }
+
+    // ── Движения физического остатка (списание / инвентаризация / перемещение) ────
+
+    /**
+     * Списание с обязательной причиной. Списывается только доступное (резерв под заявки не трогается):
+     * условный UPDATE {@code where (qty - reserved_qty) >= ?}. Пишет движение WRITE_OFF (qty_delta < 0).
+     */
+    @Transactional
+    public void writeOff(long variantId, long warehouseId, int qty, String reason, MovementContext ctx) {
+        requirePositive(qty);
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("inventory.writeoff_reason_required");
+        }
+        int updated = jdbc.update("update inventory set qty = qty - ?, version = version + 1 "
+                        + "where variant_id = ? and warehouse_id = ? and (qty - reserved_qty) >= ?",
+                qty, variantId, warehouseId, qty);
+        if (updated == 0) {
+            throw new ConflictException("inventory.insufficient_stock");
+        }
+        InvRow after = requireRow(variantId, warehouseId);
+        recordMovement(variantId, warehouseId, MovementType.WRITE_OFF, -qty, after.qty(), 0, after.reserved(),
+                ctx, reason);
+        publishLowStockIfNeeded(variantId, warehouseId, after);
+    }
+
+    /**
+     * Инвентаризация: выставляет АБСОЛЮТНОЕ значение qty, в журнал пишется дельта как разница с
+     * прежним qty. Нельзя опустить qty ниже reserved_qty (нарушило бы check и оставило резерв без
+     * покрытия) — иначе отказ с указанием количества в резерве.
+     */
+    @Transactional
+    public void stocktake(long variantId, long warehouseId, int countedQty, MovementContext ctx) {
+        if (countedQty < 0) {
+            throw new ValidationException("inventory.qty_negative");
+        }
+        InvRow before = findRow(variantId, warehouseId);
+        int oldQty = before == null ? 0 : before.qty();
+        int reserved = before == null ? 0 : before.reserved();
+        if (countedQty < reserved) {
+            throw new ConflictException("inventory.stocktake_below_reserved", reserved);
+        }
+        if (before == null) {
+            jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
+                    variantId, warehouseId, countedQty);
+        } else {
+            jdbc.update("update inventory set qty = ?, version = version + 1 "
+                    + "where variant_id = ? and warehouse_id = ?", countedQty, variantId, warehouseId);
+        }
+        InvRow after = requireRow(variantId, warehouseId);
+        recordMovement(variantId, warehouseId, MovementType.STOCKTAKE, countedQty - oldQty, after.qty(), 0,
+                after.reserved(), ctx, null);
+        publishLowStockIfNeeded(variantId, warehouseId, after);
+    }
+
+    /**
+     * Перемещение между складами: два движения (TRANSFER_OUT со склада-источника, TRANSFER_IN на
+     * склад-получатель) в одной транзакции. Со склада-источника уходит только доступное (резерв
+     * остаётся на нём). Строки блокируются в порядке warehouse_id (R-45), чтобы встречные переносы
+     * не поймали дедлок.
+     */
+    @Transactional
+    public void transfer(long variantId, long fromWarehouseId, long toWarehouseId, int qty, MovementContext ctx) {
+        requirePositive(qty);
+        if (fromWarehouseId == toWarehouseId) {
+            throw new ValidationException("inventory.transfer_same_warehouse");
+        }
+        // Детерминированный порядок блокировок: существующие строки обоих складов — по возрастанию id.
+        jdbc.queryForList("select id from inventory where variant_id = ? and warehouse_id in (?, ?) "
+                        + "order by warehouse_id for update",
+                Long.class, variantId, fromWarehouseId, toWarehouseId);
+
+        int out = jdbc.update("update inventory set qty = qty - ?, version = version + 1 "
+                        + "where variant_id = ? and warehouse_id = ? and (qty - reserved_qty) >= ?",
+                qty, variantId, fromWarehouseId, qty);
+        if (out == 0) {
+            throw new ConflictException("inventory.insufficient_stock");
+        }
+        InvRow fromRow = requireRow(variantId, fromWarehouseId);
+        recordMovement(variantId, fromWarehouseId, MovementType.TRANSFER_OUT, -qty, fromRow.qty(), 0,
+                fromRow.reserved(), ctx, null);
+
+        int in = jdbc.update("update inventory set qty = qty + ?, version = version + 1 "
+                + "where variant_id = ? and warehouse_id = ?", qty, variantId, toWarehouseId);
+        if (in == 0) {
+            jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
+                    variantId, toWarehouseId, qty);
+        }
+        InvRow toRow = requireRow(variantId, toWarehouseId);
+        recordMovement(variantId, toWarehouseId, MovementType.TRANSFER_IN, qty, toRow.qty(), 0,
+                toRow.reserved(), ctx, null);
+
+        publishLowStockIfNeeded(variantId, fromWarehouseId, fromRow); // упасть ниже порога мог только склад-источник
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
+
+    private static void requirePositive(int qty) {
+        if (qty <= 0) {
+            throw new ValidationException("inventory.qty_positive");
+        }
+    }
+
+    /** Строка остатка (после операции) для журнала и сигнала о низком остатке. */
+    private record InvRow(long id, int qty, int reserved, Integer lowThreshold) {
+    }
+
+    private InvRow findRow(long variantId, long warehouseId) {
+        List<InvRow> rows = jdbc.query(
+                "select id, qty, reserved_qty, low_stock_threshold from inventory "
+                        + "where variant_id = ? and warehouse_id = ?",
+                (rs, n) -> new InvRow(rs.getLong("id"), rs.getInt("qty"), rs.getInt("reserved_qty"),
+                        (Integer) rs.getObject("low_stock_threshold")),
+                variantId, warehouseId);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private InvRow requireRow(long variantId, long warehouseId) {
+        InvRow row = findRow(variantId, warehouseId);
+        if (row == null) {
+            throw new ConflictException("inventory.insufficient_stock");
+        }
+        return row;
+    }
+
+    /** Движение с явными reference/actor (кто и по какому поводу) — для операций остатка. */
+    private void recordMovement(long variantId, long warehouseId, MovementType type, int qtyDelta, int qtyAfter,
+                                int reservedDelta, int reservedAfter, MovementContext ctx, String comment) {
+        MovementContext c = ctx == null ? MovementContext.manual(null) : ctx;
+        jdbc.update("""
+                insert into inventory_movements (variant_id, warehouse_id, type, qty_delta, qty_after,
+                                                 reserved_delta, reserved_after, reference_type, reference_id,
+                                                 comment, created_by)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                variantId, warehouseId, type.name(), qtyDelta, qtyAfter, reservedDelta, reservedAfter,
+                c.typeOrManual().name(), c.referenceId(), comment, c.actorId());
+    }
+
+    private void publishLowStockIfNeeded(long variantId, long warehouseId, InvRow after) {
+        if (after == null || after.lowThreshold() == null) {
+            return;
+        }
+        int available = after.qty() - after.reserved();
+        if (available < after.lowThreshold()) {
+            // AFTER_COMMIT-слушатель отреагирует только если транзакция закоммитится.
+            events.publishEvent(new LowStockEvent(variantId, warehouseId, available, after.lowThreshold()));
+        }
+    }
 
     private List<long[]> activeReservations(long requestId) {
         return jdbc.query("select id, variant_id, warehouse_id, qty from stock_reservations "
