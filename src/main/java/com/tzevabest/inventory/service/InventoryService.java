@@ -186,6 +186,14 @@ public class InventoryService {
 
     // ── Публичное чтение доступного (для каталога и других модулей) ───────────────
 
+    /** Число позиций ниже порога остатка — для дашборда (прямой SQL к inventory только здесь). */
+    public long countLowStock() {
+        Long count = jdbc.queryForObject(
+                "select count(*) from inventory where low_stock_threshold is not null "
+                        + "and (qty - reserved_qty) <= low_stock_threshold", Long.class);
+        return count == null ? 0 : count;
+    }
+
     /** Доступно к продаже по варианту суммарно по всем складам ({@code sum(qty - reserved_qty)}). */
     public int getAvailable(long variantId) {
         Integer available = jdbc.queryForObject(
