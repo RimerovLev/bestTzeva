@@ -95,6 +95,8 @@ public class SecurityConfig {
                         // Публичная витрина товаров — только чтение.
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
+                        // Публичное портфолио — только чтение.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/**").permitAll()
                         // Публичный приём заявок на товар (гость).
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
                         // Публичный приём заявок на покраску (гость) + presigned-загрузка фото + расчёт.
@@ -127,6 +129,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
+                        // Публичное портфолио — только чтение.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/product-requests").permitAll()
                         // Публичный приём заявок на покраску (гость) + presigned-загрузка фото + расчёт.
                         .requestMatchers(HttpMethod.POST, "/api/v1/service-requests",
