@@ -73,6 +73,9 @@ public abstract class IntegrationTest {
     @Autowired
     protected TestDataFactory factory;
 
+    @Autowired(required = false)
+    private org.springframework.cache.CacheManager cacheManager;
+
     /**
      * Полный откат состояния после каждого теста, чтобы тесты не видели данные друг друга.
      * TRUNCATE ... RESTART IDENTITY CASCADE сбрасывает и содержимое, и счётчики
@@ -94,6 +97,16 @@ public abstract class IntegrationTest {
 
         try (RedisConnection connection = redisConnectionFactory.getConnection()) {
             connection.serverCommands().flushDb();
+        }
+
+        // Приложенческие кэши (напр. дашборд) не связаны с БД — чистим, чтобы тесты не видели данные друг друга.
+        if (cacheManager != null) {
+            cacheManager.getCacheNames().forEach(name -> {
+                var cache = cacheManager.getCache(name);
+                if (cache != null) {
+                    cache.clear();
+                }
+            });
         }
     }
 
