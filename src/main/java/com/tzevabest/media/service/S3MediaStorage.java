@@ -34,6 +34,18 @@ public class S3MediaStorage implements MediaStorage {
     }
 
     @Override
+    public String putPrivate(String keyPrefix, String filename, String contentType, byte[] data) {
+        String key = normalizePrefix(keyPrefix) + UUID.randomUUID() + extension(filename);
+        s3.putObject(PutObjectRequest.builder()
+                        .bucket(props.privateBucket())
+                        .key(key)
+                        .contentType(contentType)
+                        .build(),
+                RequestBody.fromBytes(data));
+        return key;
+    }
+
+    @Override
     public void delete(String objectKey) {
         s3.deleteObject(DeleteObjectRequest.builder()
                 .bucket(props.bucket())

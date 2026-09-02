@@ -122,19 +122,29 @@ public class NotificationService {
      */
     public void enqueue(NotificationTemplate template, String recipient, String localeParam,
                         NotificationModel model, String referenceId) {
+        enqueueAt(template, recipient, localeParam, model, referenceId, null);
+    }
+
+    /**
+     * Отложенная постановка в очередь: обработчик отправит не раньше {@code sendAt} (для напоминаний —
+     * T-11.3). {@code sendAt == null} — отправлять сразу (now).
+     */
+    public void enqueueAt(NotificationTemplate template, String recipient, String localeParam,
+                          NotificationModel model, String referenceId, java.time.Instant sendAt) {
         if (unsubscribe.suppresses(template.transactional(), recipient)) {
             return; // получатель отписался от нетранзакционных рассылок
         }
         RenderedMessage rendered = render(template, localeParam, model);
         String idempotencyKey = referenceId == null ? null
                 : template.code() + ":" + recipient + ":" + referenceId;
+        java.sql.Timestamp nextAttempt = sendAt == null ? null : java.sql.Timestamp.from(sendAt);
         jdbc.update("""
                 insert into notifications_log (channel, template_code, recipient, locale, subject,
                         body_snapshot, status, priority, attempt_count, next_attempt_at, idempotency_key)
-                values (?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, now(), ?)
+                values (?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, coalesce(?, now()), ?)
                 on conflict (idempotency_key) do nothing""",
                 template.channel().name(), template.code(), recipient, resolveLocale(localeParam),
-                rendered.subject(), rendered.body(), template.priority().name(), idempotencyKey);
+                rendered.subject(), rendered.body(), template.priority().name(), nextAttempt, idempotencyKey);
     }
 
     private String dispatch(NotificationChannel channel, String recipient, RenderedMessage rendered) {

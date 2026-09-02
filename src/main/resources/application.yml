@@ -101,6 +101,9 @@ app:
   privacy:
     # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
     policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}
+  service:
+    # Автораспределение заявок на покраску по кругу (T-11.3) — за флагом, по умолчанию выключено.
+    auto-assign-enabled: ${SERVICE_AUTO_ASSIGN:false}
   spam:
     # Секрет подписи токена формы (T-11.1.1). В prod — из окружения.
     signing-secret: ${SPAM_SIGNING_SECRET:dev-only-spam-form-token-secret-change-me}

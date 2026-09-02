@@ -29,6 +29,7 @@ val archunitVersion: String by project
 val jjwtVersion: String by project
 val awsSdkVersion: String by project
 val poiVersion: String by project
+val pdfboxVersion: String by project
 
 dependencies {
     // --- Spring Boot starters ---
@@ -56,6 +57,9 @@ dependencies {
 
     // --- Экспорт XLSX (складские остатки) ---
     implementation("org.apache.poi:poi-ooxml:$poiVersion")
+
+    // --- PDF коммерческих предложений (иврит, встроенный шрифт) ---
+    implementation("org.apache.pdfbox:pdfbox:$pdfboxVersion")
 
     // --- JWT (jjwt) ---
     implementation("io.jsonwebtoken:jjwt-api:$jjwtVersion")

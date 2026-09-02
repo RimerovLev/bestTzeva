@@ -21,4 +21,10 @@ public interface MediaStorage {
 
     /** Публичная ссылка на объект по ключу. */
     String publicUrl(String objectKey);
+
+    /**
+     * Кладёт серверный объект (напр. сгенерированный PDF) в ПРИВАТНЫЙ бакет и возвращает ключ.
+     * Публичной ссылки нет — выдача через presigned GET.
+     */
+    String putPrivate(String keyPrefix, String filename, String contentType, byte[] data);
 }
