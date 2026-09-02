@@ -27,4 +27,7 @@ public interface MediaStorage {
      * Публичной ссылки нет — выдача через presigned GET.
      */
     String putPrivate(String keyPrefix, String filename, String contentType, byte[] data);
+
+    /** Удаляет объект из приватного бакета (ретеншен ПДн, T-14.2). Идемпотентно. */
+    void deletePrivate(String objectKey);
 }

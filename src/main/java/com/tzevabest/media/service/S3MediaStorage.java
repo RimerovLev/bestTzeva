@@ -54,6 +54,14 @@ public class S3MediaStorage implements MediaStorage {
     }
 
     @Override
+    public void deletePrivate(String objectKey) {
+        s3.deleteObject(DeleteObjectRequest.builder()
+                .bucket(props.privateBucket())
+                .key(objectKey)
+                .build());
+    }
+
+    @Override
     public String publicUrl(String objectKey) {
         // path-style: <base>/<bucket>/<key>
         return props.resolvedPublicBase() + "/" + props.bucket() + "/" + objectKey;

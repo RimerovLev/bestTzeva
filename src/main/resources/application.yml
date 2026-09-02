@@ -109,6 +109,9 @@ app:
   privacy:
     # Версия редакции текста согласия; пишется в consents.policy_version (T-14.2).
     policy-version: ${PRIVACY_POLICY_VERSION:2026-08-01}
+    # Срок хранения фото помещений из заявок после завершения/отказа (T-14.2).
+    photo-retention: ${PRIVACY_PHOTO_RETENTION:P365D}
+    photo-purge-sweep: ${PRIVACY_PHOTO_PURGE_SWEEP:PT24H}
   service:
     # Автораспределение заявок на покраску по кругу (T-11.3) — за флагом, по умолчанию выключено.
     auto-assign-enabled: ${SERVICE_AUTO_ASSIGN:false}
