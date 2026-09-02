@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     id("org.springframework.boot") version "3.3.6"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -103,7 +104,59 @@ springBoot {
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.addAll(listOf(
+        "-parameters", // имена параметров для аудит-аспекта (T-13.3)
         "-Amapstruct.defaultComponentModel=spring",
         "-Amapstruct.unmappedTargetPolicy=ERROR"
     ))
 }
+
+// ── JaCoCo: покрытие (T-14.3) ─────────────────────────────────────────────────
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+// Классы, исключаемые из покрытия: DTO, мапперы, конфигурации, доменные сущности, dev-сидер.
+val coverageExclusions = listOf(
+    "**/dto/**", "**/mapper/**", "**/config/**", "**/domain/**",
+    "**/common/dev/**", "**/TzevaBestApplication*",
+    "**/*Scheduler*" // тонкие @Scheduled-обёртки (@Profile !test, в тестах не исполняются)
+)
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    classDirectories.setFrom(files(classDirectories.files.map {
+        fileTree(it) { exclude(coverageExclusions) }
+    }))
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(files(classDirectories.files.map {
+        fileTree(it) { exclude(coverageExclusions) }
+    }))
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                minimum = "0.70".toBigDecimal() // общий порог
+            }
+        }
+        rule {
+            element = "PACKAGE"
+            includes = listOf("com.tzevabest.inventory.*", "com.tzevabest.request.*")
+            limit {
+                counter = "LINE"
+                minimum = "0.85".toBigDecimal() // критичные модули
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
+}
+

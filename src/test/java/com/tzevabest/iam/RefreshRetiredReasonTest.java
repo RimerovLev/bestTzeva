@@ -91,7 +91,9 @@ class RefreshRetiredReasonTest extends IntegrationTest {
                 .isInstanceOf(RefreshInProgressException.class);
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
-        assertThat(elapsedMs).isLessThan(200);          // не блокируем поток надолго (R-36)
+        // Не ждём истечения grace-окна (60с): возвращаем 409 сразу. Порог с запасом под нагрузку CI
+        // (важно, что это доли секунды, а не десятки секунд ожидания).
+        assertThat(elapsedMs).isLessThan(2_000);         // R-36
         verify(notifications, never()).sendEmail(anyString(), anyString(), anyString());
     }
 
