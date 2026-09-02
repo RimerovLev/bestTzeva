@@ -1,0 +1,10 @@
+.git
+.gradle
+build
+**/build
+*.md
+docs
+.github
+.idea
+*.iml
+/tmp

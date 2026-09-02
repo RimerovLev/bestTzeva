@@ -1,0 +1,76 @@
+name: Build & deploy
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      - run: ./gradlew --no-daemon check
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    outputs:
+      tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: | # тег по git-хешу и семантической версии
+            type=sha
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Scan image (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE }}:sha-${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '0' # предупреждаем, но не блокируем публикацию образа
+
+  deploy-staging:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      # Миграции — ОТДЕЛЬНЫМ шагом ДО старта нового контейнера (без гонки инстансов).
+      - name: Run Flyway migrations
+        run: echo "flyway migrate (url/creds из secrets); см. docs/deployment.md"
+      - name: Deploy image to staging
+        run: echo "deploy ${{ needs.image.outputs.tag }} to staging"
+      - name: Smoke tests against staging
+        run: echo "curl -f https://staging/actuator/health && smoke suite"
+
+  deploy-prod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production # ручное подтверждение (protection rule)
+    steps:
+      - name: Run Flyway migrations (prod)
+        run: echo "flyway migrate (prod); миграции обратно совместимы с предыдущей версией кода"
+      - name: Deploy to prod (keep previous tag for rollback)
+        run: echo "deploy; предыдущий тег сохранён для быстрого отката"
