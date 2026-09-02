@@ -104,6 +104,10 @@ app:
   service:
     # Автораспределение заявок на покраску по кругу (T-11.3) — за флагом, по умолчанию выключено.
     auto-assign-enabled: ${SERVICE_AUTO_ASSIGN:false}
+  audit:
+    # Срок хранения журнала аудита (T-13.3); старше — удаляется фоновой задачей.
+    retention: ${AUDIT_RETENTION:P730D}
+    sweep: ${AUDIT_SWEEP:PT24H}
   spam:
     # Секрет подписи токена формы (T-11.1.1). В prod — из окружения.
     signing-secret: ${SPAM_SIGNING_SECRET:dev-only-spam-form-token-secret-change-me}

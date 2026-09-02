@@ -12,6 +12,7 @@ import com.tzevabest.catalog.dto.CategoryTranslationsRequest;
 import com.tzevabest.catalog.dto.ReorderEntry;
 import com.tzevabest.catalog.repository.CategoryRepository;
 import com.tzevabest.catalog.repository.CategoryTranslationRepository;
+import com.tzevabest.admin.service.Audited;
 import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.error.ValidationException;
@@ -74,6 +75,7 @@ public class CategoryService {
     // ── Админ: CRUD ──────────────────────────────────────────────────────────────
 
     @Transactional
+    @Audited(entity = "category", action = "category.create")
     public CategoryResponse create(CategorySaveRequest request) {
         Category parent = resolveParent(request.parentId());
         if (depthOf(parent) + 1 > MAX_DEPTH) {
@@ -92,6 +94,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @Audited(entity = "category", action = "category.update")
     public CategoryResponse update(long id, CategorySaveRequest request) {
         Category category = categories.findById(id)
                 .orElseThrow(() -> new NotFoundException("catalog.category.not_found"));
@@ -121,6 +124,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @Audited(entity = "category", action = "category.delete")
     public void delete(long id) {
         Category category = categories.findById(id)
                 .orElseThrow(() -> new NotFoundException("catalog.category.not_found"));
