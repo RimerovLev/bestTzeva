@@ -19,6 +19,9 @@ management:
     # В тестах нет SMTP-сервера — иначе mail-индикатор уронит /health в DOWN.
     mail:
       enabled: false
+    # S3-бакет создаётся не во всех тестах — не даём s3-индикатору ронять /health.
+    s3:
+      enabled: false
 
 logging:
   level:

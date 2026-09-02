@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+      Маскирование секретов в логах встроенным %replace (без кастомного converter — совместимо с
+      logback 1.5.x). Regex не содержит фигурных скобок (иначе ломает разбор опций %replace).
+      Программная маскировка произвольного текста — LogMasker (T-14.1).
+    -->
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level [%X{trace_id}] %logger{36} - %replace(%replace(%msg){'(?i)(password|passwd|pwd|token|secret|otp|api[_-]?key)\s*[=:]\s*[^\s",]+','$1=***'}){'(?i)bearer\s+[A-Za-z0-9._-]+','Bearer ***'}%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>trace_id</includeMdcKeyName>
+                <includeMdcKeyName>user_id</includeMdcKeyName>
+                <includeMdcKeyName>request_uri</includeMdcKeyName>
+                <includeMdcKeyName>duration_ms</includeMdcKeyName>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+</configuration>

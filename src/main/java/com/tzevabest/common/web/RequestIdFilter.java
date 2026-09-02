@@ -1,10 +1,15 @@
 package com.tzevabest.common.web;
 
+import com.tzevabest.common.web.security.AuthPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -23,6 +28,7 @@ public class RequestIdFilter extends OncePerRequestFilter {
 
     public static final String HEADER = "X-Request-Id";
     public static final String MDC_KEY = "trace_id";
+    private static final Logger ACCESS = LoggerFactory.getLogger("access");
 
     /**
      * Допустимый формат входящего идентификатора. Значение уходит в MDC и в логи,
@@ -39,11 +45,30 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
 
         MDC.put(MDC_KEY, requestId);
+        MDC.put("request_uri", request.getRequestURI());
         response.setHeader(HEADER, requestId);
+        long start = System.currentTimeMillis();
         try {
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove(MDC_KEY);
+            long duration = System.currentTimeMillis() - start;
+            MDC.put("duration_ms", Long.toString(duration));
+            String userId = currentUserId();
+            if (userId != null) {
+                MDC.put("user_id", userId);
+            }
+            ACCESS.info("{} {} -> {} ({} ms)", request.getMethod(), request.getRequestURI(),
+                    response.getStatus(), duration);
+            MDC.clear(); // очистка всех ключей MDC (trace_id, request_uri, user_id, duration_ms)
         }
+    }
+
+    /** id текущего пользователя из SecurityContext (после аутентификации), либо null. */
+    private static String currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof AuthPrincipal principal) {
+            return Long.toString(principal.userId());
+        }
+        return null;
     }
 }

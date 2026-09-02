@@ -30,6 +30,7 @@ val jjwtVersion: String by project
 val awsSdkVersion: String by project
 val poiVersion: String by project
 val pdfboxVersion: String by project
+val logstashVersion: String by project
 
 dependencies {
     // --- Spring Boot starters ---
@@ -40,6 +41,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("net.logstash.logback:logstash-logback-encoder:$logstashVersion")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 
@@ -92,6 +95,10 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+springBoot {
+    buildInfo() // /actuator/info: версия сборки (T-14.1)
 }
 
 tasks.withType<JavaCompile> {
