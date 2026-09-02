@@ -61,6 +61,7 @@ class AuditTest extends IntegrationTest {
         changes.put("password", "topsecret");
         changes.put("reset_token", "abc123");
         changes.put("customer_phone", "+972501234567");
+        changes.put("customer_email", "ivan@example.com");
         changes.put("price", 100);
         auditService.record(1L, "1.2.3.4", "test.sensitive", "thing", 7L, changes);
 
@@ -69,6 +70,7 @@ class AuditTest extends IntegrationTest {
         assertThat(ch.has("password")).isFalse();      // секрет не записан
         assertThat(ch.has("reset_token")).isFalse();   // токен не записан
         assertThat(ch.get("customer_phone").asText()).isEqualTo("***4567"); // телефон замаскирован
+        assertThat(ch.get("customer_email").asText()).isEqualTo("i***@example.com"); // email замаскирован (R-59)
         assertThat(ch.get("price").asInt()).isEqualTo(100); // обычное поле сохранено
     }
 

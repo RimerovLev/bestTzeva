@@ -38,6 +38,10 @@ public class PrivacyService {
     @Value("${app.privacy.photo-retention:P365D}")
     private Duration photoRetention;
 
+    /** Соль проекта для псевдонимизации контактов при анонимизации (R-59/R-64). */
+    @Value("${app.privacy.pseudonym-secret:dev-only-pseudonym-secret-change-me}")
+    private String pseudonymSecret;
+
     /** Сборка всех данных по телефону или email в один объект. Факт доступа пишется в audit_log. */
     @Transactional
     public Map<String, Object> exportSubject(String contact) {
@@ -62,7 +66,19 @@ public class PrivacyService {
         return data;
     }
 
-    /** Обезличивает заявки по контакту (имя/телефон/email/адрес → маркер); строки и позиции сохраняются. */
+    /**
+     * Обезличивает по контакту все таблицы, где он хранится (полный перечень — в docs/privacy.md):
+     * <ul>
+     *   <li>заявки {@code product_requests}/{@code service_requests} — имя/телефон/email/адрес → маркер,
+     *       строки и позиции сохраняются для отчётности по спросу;</li>
+     *   <li>{@code notifications_log} — {@code recipient} → маркер, снимок тела/темы/ошибки очищается;
+     *       остаются template_code, канал, статус и время (доказательство факта отправки, R-64);</li>
+     *   <li>{@code consents} — {@code contact} → непрозрачный псевдоним; тип согласия, версия политики и
+     *       время сохраняются (запись согласия — доказательство законности обработки, стирать нельзя).</li>
+     * </ul>
+     * Полного контакта после этого не остаётся ни в одной таблице, включая {@code audit_log}, куда
+     * телефон/email пишутся только маскированными (R-59).
+     */
     @Transactional
     public int anonymize(String contact) {
         int product = jdbc.update("update product_requests set customer_name = ?, customer_phone = ?, "
@@ -71,8 +87,31 @@ public class PrivacyService {
         int service = jdbc.update("update service_requests set customer_name = ?, customer_phone = ?, "
                 + "customer_email = null, address = null, comment = null "
                 + "where customer_phone = ? or customer_email = ?", MARKER, MARKER, contact, contact);
+        // Журнал уведомлений: контакт и снимок сообщения — персональные данные; факт отправки остаётся.
+        jdbc.update("update notifications_log set recipient = ?, subject = null, body_snapshot = null, "
+                + "error_message = null, updated_at = now() where recipient = ?", MARKER, contact);
+        // consents append-only: контакт заменяем псевдонимом санкционированным UPDATE (V48).
+        jdbc.execute("set local tzevabest.consent_anonymize = 'on'");
+        jdbc.update("update consents set contact = ? where contact = ?", pseudonym(contact), contact);
         auditAccess("privacy.anonymize", contact);
         return product + service;
+    }
+
+    /** Стабильный непрозрачный псевдоним контакта: SHA-256 от соли проекта и контакта, 16 hex. */
+    private String pseudonym(String contact) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest((pseudonymSecret + ":" + contact)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("anon:");
+            for (int i = 0; i < 8; i++) {
+                sb.append(Character.forDigit((hash[i] >> 4) & 0xF, 16))
+                        .append(Character.forDigit(hash[i] & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /**

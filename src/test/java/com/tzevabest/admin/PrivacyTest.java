@@ -41,6 +41,8 @@ class PrivacyTest extends IntegrationTest {
     @Autowired
     private PrivacyService privacy;
     @Autowired
+    private com.tzevabest.admin.service.AuditService audit;
+    @Autowired
     private S3Client s3;
 
     @BeforeEach
@@ -85,6 +87,63 @@ class PrivacyTest extends IntegrationTest {
         Integer items = jdbcTemplate.queryForObject(
                 "select count(*) from product_request_items where request_id = ?", Integer.class, id);
         assertThat(items).isEqualTo(1);
+    }
+
+    @Test
+    void anonymize_leaves_no_full_contact_in_any_table_but_keeps_proof() {
+        // R-59/R-64: после анонимизации контакт (email и телефон) не должен встречаться ни в одной
+        // текстовой/jsonb-колонке, включая notifications_log, consents и audit_log; при этом факт
+        // отправки уведомления и запись согласия сохраняются.
+        String email = "erase-me@example.com";
+        long id = jdbcTemplate.queryForObject("insert into product_requests "
+                + "(request_number, customer_name, customer_phone, customer_email, source, consent_given_at, "
+                + " policy_version, status) values (?, 'Dana', ?, ?, 'SITE_FORM', now(), '2026-08-01', 'NEW') returning id",
+                Long.class, "PR-" + uid(), PHONE, email);
+        jdbcTemplate.update("insert into consents (contact, consent_type, granted, source, policy_version) "
+                + "values (?, 'MARKETING', true, 'product_request', '2026-08-01')", email);
+        jdbcTemplate.update("insert into notifications_log (channel, template_code, recipient, status, priority, "
+                + "attempt_count, body_snapshot) values ('EMAIL','product_request_received', ?, 'SENT','NORMAL',1, ?)",
+                email, "Здравствуйте! Ваша заявка. " + email);
+        // Аудит правки заявки: телефон/email должны попасть в audit_log только маскированными.
+        java.util.Map<String, Object> ch = new java.util.LinkedHashMap<>();
+        ch.put("customer_email", email);
+        ch.put("customer_phone", PHONE);
+        audit.record(1L, "1.2.3.4", "product_request.edit", "product_request", id, ch);
+
+        privacy.anonymize(email);
+
+        // консент сохранён (доказательство законности обработки), контакт — псевдоним, granted не тронут
+        Boolean granted = jdbcTemplate.queryForObject("select granted from consents where contact like 'anon:%' "
+                + "and consent_type = 'MARKETING' order by id desc limit 1", Boolean.class);
+        assertThat(granted).isTrue();
+        // факт отправки уведомления сохранён (template_code/канал/статус)
+        Integer sent = jdbcTemplate.queryForObject(
+                "select count(*) from notifications_log where template_code = 'product_request_received' "
+                        + "and status = 'SENT'", Integer.class);
+        assertThat(sent).isEqualTo(1);
+
+        // ни email, ни телефон не находятся нигде
+        assertThat(contactFoundAnywhere(email)).as("email must be gone").isFalse();
+        assertThat(contactFoundAnywhere(PHONE)).as("phone must be gone").isFalse();
+    }
+
+    /** Ищет подстроку по всем текстовым и jsonb-колонкам public-схемы. */
+    private boolean contactFoundAnywhere(String needle) {
+        var cols = jdbcTemplate.queryForList(
+                "select table_name, column_name from information_schema.columns "
+                        + "where table_schema = 'public' and table_name <> 'flyway_schema_history' "
+                        + "and data_type in ('text','character varying','character','jsonb')");
+        for (var c : cols) {
+            String table = (String) c.get("table_name");
+            String col = (String) c.get("column_name");
+            Integer n = jdbcTemplate.queryForObject(
+                    "select count(*) from \"" + table + "\" where \"" + col + "\"::text like ?",
+                    Integer.class, "%" + needle + "%");
+            if (n != null && n > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

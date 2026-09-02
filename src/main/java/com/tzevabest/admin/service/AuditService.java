@@ -19,8 +19,10 @@ public class AuditService {
     /** Чувствительные поля исключаются из diff (T-13.3): пароли, токены, секреты. */
     private static final Pattern SENSITIVE = Pattern.compile(
             "(?i).*(password|token|secret|otp|hash|credential).*");
-    /** Телефоны клиентов не пишутся целиком — маскируются. */
+    /** Телефоны клиентов не пишутся целиком — маскируются до последних 4 цифр. */
     private static final Pattern PHONE = Pattern.compile("(?i).*phone.*");
+    /** Email клиентов не пишется целиком — маскируется до первой буквы и домена (R-59). */
+    private static final Pattern EMAIL = Pattern.compile("(?i).*e[-_]?mail.*");
 
     private final AuditLogRepository auditLog;
 
@@ -50,6 +52,8 @@ public class AuditService {
             }
             if (PHONE.matcher(key).matches()) {
                 clean.put(key, maskPhone(String.valueOf(e.getValue())));
+            } else if (EMAIL.matcher(key).matches()) {
+                clean.put(key, maskEmail(String.valueOf(e.getValue())));
             } else {
                 clean.put(key, e.getValue());
             }
@@ -62,5 +66,17 @@ public class AuditService {
             return "***";
         }
         return "***" + value.substring(value.length() - 4).toLowerCase(Locale.ROOT);
+    }
+
+    /** Первая буква локальной части + домен: {@code ivan@example.com → i***@example.com}. */
+    private static String maskEmail(String value) {
+        if (value == null || "null".equals(value)) {
+            return "***";
+        }
+        int at = value.indexOf('@');
+        if (at <= 0) {
+            return "***"; // не похоже на email — не рискуем
+        }
+        return value.charAt(0) + "***" + value.substring(at);
     }
 }

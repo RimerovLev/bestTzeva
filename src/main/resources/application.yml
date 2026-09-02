@@ -112,6 +112,8 @@ app:
     # Срок хранения фото помещений из заявок после завершения/отказа (T-14.2).
     photo-retention: ${PRIVACY_PHOTO_RETENTION:P365D}
     photo-purge-sweep: ${PRIVACY_PHOTO_PURGE_SWEEP:PT24H}
+    # Соль для псевдонимизации контактов при анонимизации (R-59/R-64). В prod — из окружения.
+    pseudonym-secret: ${PRIVACY_PSEUDONYM_SECRET:dev-only-pseudonym-secret-change-me}
   service:
     # Автораспределение заявок на покраску по кругу (T-11.3) — за флагом, по умолчанию выключено.
     auto-assign-enabled: ${SERVICE_AUTO_ASSIGN:false}
