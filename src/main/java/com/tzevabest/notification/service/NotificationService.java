@@ -47,6 +47,7 @@ public class NotificationService {
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
     private final UnsubscribeService unsubscribe;
+    private final NotificationMetrics metrics;
 
     /** Рендерит сообщение без отправки — точка для тестов и предпросмотра. */
     public RenderedMessage render(NotificationTemplate template, String localeParam, NotificationModel model) {
@@ -71,8 +72,11 @@ public class NotificationService {
     }
 
     /**
-     * Рендерит, отправляет по каналу шаблона и пишет запись в журнал. Ошибка канала не пробрасывается
-     * наверх: она фиксируется в журнале со статусом FAILED (устойчивость доводит T-12.2).
+     * Рендерит, отправляет по каналу шаблона синхронно и пишет запись в журнал. Ошибка канала не
+     * пробрасывается наверх. При временном сбое (не {@link NonRetryableNotificationException})
+     * сообщение НЕ хоронится, а ставится в очередь ({@code QUEUED}, {@code next_attempt_at = now})
+     * с приоритетом шаблона — фоновый обработчик доретраит его (для IMMEDIATE — секундными
+     * задержками, R-58). Так самые критичные уведомления (OTP, сброс пароля) тоже получают ретраи.
      */
     @Transactional
     public void send(NotificationTemplate template, String recipient, String localeParam, NotificationModel model) {
@@ -88,15 +92,25 @@ public class NotificationService {
         entry.setLocale(resolveLocale(localeParam));
         entry.setSubject(rendered.subject());
         entry.setBodySnapshot(rendered.body());
+        entry.setPriority(template.priority().name());
         entry.setAttemptCount(1);
+        long started = System.currentTimeMillis();
         try {
             entry.setProviderMessageId(dispatch(template.channel(), recipient, rendered));
             entry.setStatus(NotificationStatus.SENT);
             entry.setSentAt(Instant.now());
-        } catch (RuntimeException e) {
+            metrics.recordSent(template.channel().name(), System.currentTimeMillis() - started);
+        } catch (NonRetryableNotificationException e) {
             entry.setStatus(NotificationStatus.FAILED);
             entry.setErrorMessage(e.getMessage());
-            log.warn("Notification {} to {} failed", template.code(), recipient, e);
+            metrics.recordFailed(template.channel().name());
+            log.warn("Notification {} to {} rejected (non-retryable)", template.code(), recipient, e);
+        } catch (RuntimeException e) {
+            entry.setStatus(NotificationStatus.QUEUED);
+            entry.setNextAttemptAt(Instant.now());
+            entry.setErrorMessage(e.getMessage());
+            metrics.recordRetry(template.channel().name());
+            log.warn("Notification {} to {} failed synchronously, queued for retry", template.code(), recipient, e);
         }
         logs.save(entry);
     }

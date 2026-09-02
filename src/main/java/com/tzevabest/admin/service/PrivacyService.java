@@ -1,11 +1,11 @@
 package com.tzevabest.admin.service;
 
+import com.tzevabest.common.lock.DistributedLock;
 import com.tzevabest.common.web.security.CurrentUser;
 import com.tzevabest.media.service.MediaStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,7 @@ public class PrivacyService {
     private final MediaStorage mediaStorage;
     private final AuditService audit;
     private final CurrentUser currentUser;
-    private final StringRedisTemplate redis;
+    private final DistributedLock lock;
 
     @Value("${app.privacy.photo-retention:P365D}")
     private Duration photoRetention;
@@ -81,11 +81,7 @@ public class PrivacyService {
      */
     @Transactional
     public int purgeExpiredPhotos() {
-        Boolean acquired = redis.opsForValue().setIfAbsent(LOCK_KEY, "1", LOCK_TTL);
-        if (!Boolean.TRUE.equals(acquired)) {
-            return 0;
-        }
-        try {
+        return lock.runIfAcquired(LOCK_KEY, LOCK_TTL, handle -> {
             long seconds = photoRetention.getSeconds();
             List<Map<String, Object>> expired = jdbc.queryForList(
                     "select m.id, m.object_key from service_request_media m "
@@ -105,9 +101,7 @@ public class PrivacyService {
                 log.info("Privacy photo retention: purged {} photo(s)", expired.size());
             }
             return expired.size();
-        } finally {
-            redis.delete(LOCK_KEY);
-        }
+        }, 0);
     }
 
     private void auditAccess(String action, String contact) {

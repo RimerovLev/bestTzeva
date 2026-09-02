@@ -1,8 +1,8 @@
 package com.tzevabest.admin.service;
 
+import com.tzevabest.common.lock.DistributedLock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ public class AuditRetentionService {
     private static final Duration LOCK_TTL = Duration.ofMinutes(10);
 
     private final JdbcTemplate jdbc;
-    private final StringRedisTemplate redis;
+    private final DistributedLock lock;
 
     @Value("${app.audit.retention:P730D}")
     private Duration retention;
@@ -33,17 +33,11 @@ public class AuditRetentionService {
      */
     @Transactional
     public int purge() {
-        Boolean acquired = redis.opsForValue().setIfAbsent(LOCK_KEY, "1", LOCK_TTL);
-        if (!Boolean.TRUE.equals(acquired)) {
-            return 0;
-        }
-        try {
+        return lock.runIfAcquired(LOCK_KEY, LOCK_TTL, handle -> {
             jdbc.execute("set local tzevabest.audit_purge = 'on'");
             long seconds = retention.getSeconds();
             return jdbc.update(
                     "delete from audit_log where created_at < now() - (? || ' seconds')::interval", seconds);
-        } finally {
-            redis.delete(LOCK_KEY);
-        }
+        }, 0);
     }
 }

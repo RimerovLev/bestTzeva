@@ -1,8 +1,8 @@
 package com.tzevabest.request.service;
 
+import com.tzevabest.common.lock.DistributedLock;
 import com.tzevabest.inventory.service.InventoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,32 +24,29 @@ import java.util.List;
 public class ReservationExpiryService {
 
     static final int BATCH = 100;
+    static final int MAX_BATCHES = 100;
     private static final String LOCK_KEY = "inventory:reservation-sweep:lock";
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
 
     private final InventoryService inventory;
     private final JdbcTemplate jdbc;
-    private final StringRedisTemplate redis;
+    private final DistributedLock lock;
     private final PlatformTransactionManager txManager;
 
     /** Прогнать уборку. Возвращает число заявок, переведённых в LOST. */
     public int sweep() {
-        Boolean acquired = redis.opsForValue().setIfAbsent(LOCK_KEY, "1", LOCK_TTL);
-        if (!Boolean.TRUE.equals(acquired)) {
-            return 0; // уборку уже ведёт другой инстанс
-        }
-        try {
+        return lock.runIfAcquired(LOCK_KEY, LOCK_TTL, handle -> {
             TransactionTemplate tx = new TransactionTemplate(txManager);
             int total = 0;
-            int processed;
-            do {
-                processed = tx.execute(status -> processBatch());
+            for (int batch = 0; batch < MAX_BATCHES; batch++) {
+                int processed = tx.execute(status -> processBatch());
                 total += processed;
-            } while (processed == BATCH);
+                if (processed < BATCH || !handle.extend()) {
+                    break; // очередь исчерпана либо владение блокировкой утеряно
+                }
+            }
             return total;
-        } finally {
-            redis.delete(LOCK_KEY);
-        }
+        }, 0);
     }
 
     private int processBatch() {

@@ -145,6 +145,57 @@ class NotificationOutboxTest extends IntegrationTest {
         assertThat(count).isEqualTo(1);
     }
 
+    @Test
+    void crash_between_send_and_result_duplicates_at_most_one_message_not_whole_batch() {
+        // R-57: отправка вынесена из транзакции, каждое сообщение фиксирует статус своим апдейтом.
+        // Падение на одном сообщении не откатывает SENT остальных.
+        for (int i = 0; i < 5; i++) {
+            notifications.enqueue(NotificationTemplate.PRODUCT_REQUEST_RECEIVED, "batch" + i + "@x.test", "he",
+                    new ProductRequestModel("PR-B" + i), "PR-B" + i);
+        }
+        sender.crashAfterSendFor = "batch2@x.test"; // это сообщение «уйдёт, но не запишется»
+        dispatcher.dispatchDue();
+
+        // Остальные четыре зафиксированы SENT, несмотря на сбой третьего (нет отката всей пачки).
+        for (int i = 0; i < 5; i++) {
+            if (i == 2) {
+                continue;
+            }
+            assertThat(status("batch" + i + "@x.test")).isEqualTo("SENT");
+        }
+        // Сбойное — вернулось в очередь на ретрай, не FAILED.
+        assertThat(status("batch2@x.test")).isEqualTo("QUEUED");
+
+        // Шлюз в норме, срок ретрая наступил — досылаем (ровно один повтор).
+        sender.crashAfterSendFor = null;
+        jdbcTemplate.update("update notifications_log set next_attempt_at = now() where recipient = 'batch2@x.test'");
+        dispatcher.dispatchDue();
+
+        assertThat(status("batch2@x.test")).isEqualTo("SENT");
+        assertThat(sender.countFor("batch2@x.test")).isEqualTo(2); // один дубль, а не повтор всей пачки
+        assertThat(sender.total()).isEqualTo(6);                   // 5 уникальных + 1 повтор
+    }
+
+    @Test
+    void immediate_failure_is_queued_for_retry_then_delivered_after_recovery() {
+        // R-58: критичное IMMEDIATE (OTP) при сбое шлюза не хоронится в FAILED, а ставится в очередь
+        // с ближайшей попыткой; после восстановления шлюза доставляется.
+        sender.mode = Mode.RETRYABLE;
+        notifications.notify(NotificationTemplate.OTP_CODE, "+972509998877", "he",
+                new OtpModel("555555"), "imm-fail");
+
+        var queued = jdbcTemplate.queryForMap("select status, priority, next_attempt_at <= now() + interval '2 minutes' "
+                + "as soon from notifications_log where recipient = '+972509998877'");
+        assertThat(queued.get("status")).isEqualTo("QUEUED"); // не FAILED
+        assertThat(queued.get("priority")).isEqualTo("IMMEDIATE");
+        assertThat(queued.get("soon")).isEqualTo(true);       // ближайшая попытка, а не через минуты
+
+        sender.mode = Mode.OK;
+        dispatcher.dispatchDue();
+        assertThat(status("+972509998877")).isEqualTo("SENT");
+        assertThat(sender.total()).isEqualTo(1);
+    }
+
     private String status(String recipient) {
         return jdbcTemplate.queryForObject(
                 "select status from notifications_log where recipient = ? order by id desc limit 1",
@@ -157,11 +208,14 @@ class NotificationOutboxTest extends IntegrationTest {
 
     static class ControllableSender implements EmailSender, SmsSender, WhatsappSender {
         volatile Mode mode = Mode.OK;
+        /** Получатель, для которого имитируется «отправлено, но результат не записан» (крах, R-57). */
+        volatile String crashAfterSendFor;
         private final AtomicInteger total = new AtomicInteger();
         private final ConcurrentHashMap<String, AtomicInteger> perRecipient = new ConcurrentHashMap<>();
 
         void reset() {
             mode = Mode.OK;
+            crashAfterSendFor = null;
             total.set(0);
             perRecipient.clear();
         }
@@ -174,6 +228,11 @@ class NotificationOutboxTest extends IntegrationTest {
             return perRecipient.values().stream().mapToInt(AtomicInteger::get).max().orElse(0);
         }
 
+        int countFor(String to) {
+            AtomicInteger c = perRecipient.get(to);
+            return c == null ? 0 : c.get();
+        }
+
         private String handle(String to) {
             switch (mode) {
                 case RETRYABLE -> throw new RuntimeException("temporary channel error");
@@ -181,6 +240,11 @@ class NotificationOutboxTest extends IntegrationTest {
                 case OK -> {
                     total.incrementAndGet();
                     perRecipient.computeIfAbsent(to, k -> new AtomicInteger()).incrementAndGet();
+                    // Физически отправили, но «процесс упал» до записи результата: наверх — ошибка,
+                    // строка вернётся в очередь и уйдёт повторно (ровно один дубль, не вся пачка).
+                    if (to.equals(crashAfterSendFor)) {
+                        throw new RuntimeException("crash after send");
+                    }
                 }
             }
             return "test-" + to;
