@@ -10,33 +10,37 @@ import com.tzevabest.notification.domain.NotificationPriority;
  */
 public enum NotificationTemplate {
 
-    PRODUCT_REQUEST_RECEIVED("product_request_received", NotificationChannel.EMAIL, "notification.product_request.created", false, NotificationPriority.NORMAL),
-    PRODUCT_REQUEST_CONTACTED("product_request_contacted", NotificationChannel.EMAIL, "notification.product_request.contacted", false, NotificationPriority.NORMAL),
-    PRODUCT_REQUEST_RESERVED("product_request_reserved", NotificationChannel.EMAIL, "notification.product_request.reserved", false, NotificationPriority.NORMAL),
-    PRODUCT_REQUEST_EXPIRED("product_request_expired", NotificationChannel.EMAIL, "notification.product_request_expired", false, NotificationPriority.NORMAL),
-    SERVICE_REQUEST_RECEIVED("service_request_received", NotificationChannel.EMAIL, "notification.service_request_received", false, NotificationPriority.NORMAL),
-    SERVICE_REQUEST_QUOTED("service_request_quoted", NotificationChannel.EMAIL, "notification.service_request_quoted", false, NotificationPriority.NORMAL),
-    MEASUREMENT_REMINDER("measurement_reminder", NotificationChannel.SMS, "notification.measurement_reminder", false, NotificationPriority.NORMAL),
-    PASSWORD_RESET("password_reset", NotificationChannel.EMAIL, "notification.password_reset", false, NotificationPriority.IMMEDIATE),
-    EMAIL_VERIFICATION("email_verification", NotificationChannel.EMAIL, "notification.email_verification", false, NotificationPriority.IMMEDIATE),
-    OTP_CODE("otp_code", NotificationChannel.SMS, "notification.otp_code", false, NotificationPriority.IMMEDIATE),
-    ACCOUNT_LOCKED("account_locked", NotificationChannel.EMAIL, "notification.account_locked", false, NotificationPriority.NORMAL),
-    TOKEN_REPLAY("token_replay", NotificationChannel.EMAIL, "notification.token_replay", false, NotificationPriority.NORMAL),
-    LOW_STOCK_ALERT("low_stock_alert", NotificationChannel.EMAIL, "notification.low_stock_alert", true, NotificationPriority.NORMAL),
-    NEW_REQUEST_ADMIN("new_request_admin", NotificationChannel.EMAIL, "notification.new_request_admin", true, NotificationPriority.NORMAL);
+    PRODUCT_REQUEST_RECEIVED("product_request_received", NotificationChannel.EMAIL, "notification.product_request.created", false, true, NotificationPriority.NORMAL),
+    PRODUCT_REQUEST_CONTACTED("product_request_contacted", NotificationChannel.EMAIL, "notification.product_request.contacted", false, true, NotificationPriority.NORMAL),
+    PRODUCT_REQUEST_RESERVED("product_request_reserved", NotificationChannel.EMAIL, "notification.product_request.reserved", false, true, NotificationPriority.NORMAL),
+    PRODUCT_REQUEST_EXPIRED("product_request_expired", NotificationChannel.EMAIL, "notification.product_request_expired", false, true, NotificationPriority.NORMAL),
+    SERVICE_REQUEST_RECEIVED("service_request_received", NotificationChannel.EMAIL, "notification.service_request_received", false, true, NotificationPriority.NORMAL),
+    SERVICE_REQUEST_QUOTED("service_request_quoted", NotificationChannel.EMAIL, "notification.service_request_quoted", false, true, NotificationPriority.NORMAL),
+    MEASUREMENT_REMINDER("measurement_reminder", NotificationChannel.SMS, "notification.measurement_reminder", false, true, NotificationPriority.NORMAL),
+    PASSWORD_RESET("password_reset", NotificationChannel.EMAIL, "notification.password_reset", false, true, NotificationPriority.IMMEDIATE),
+    EMAIL_VERIFICATION("email_verification", NotificationChannel.EMAIL, "notification.email_verification", false, true, NotificationPriority.IMMEDIATE),
+    OTP_CODE("otp_code", NotificationChannel.SMS, "notification.otp_code", false, true, NotificationPriority.IMMEDIATE),
+    ACCOUNT_LOCKED("account_locked", NotificationChannel.EMAIL, "notification.account_locked", false, true, NotificationPriority.NORMAL),
+    TOKEN_REPLAY("token_replay", NotificationChannel.EMAIL, "notification.token_replay", false, true, NotificationPriority.NORMAL),
+    LOW_STOCK_ALERT("low_stock_alert", NotificationChannel.EMAIL, "notification.low_stock_alert", true, true, NotificationPriority.NORMAL),
+    NEW_REQUEST_ADMIN("new_request_admin", NotificationChannel.EMAIL, "notification.new_request_admin", true, true, NotificationPriority.NORMAL),
+    // Информационная рассылка клиенту — НЕтранзакционная: подавляется для отписавшихся и несёт ссылку отписки.
+    MARKETING_NEWS("marketing_news", NotificationChannel.EMAIL, "notification.marketing_news", false, false, NotificationPriority.NORMAL);
 
     private final String code;
     private final NotificationChannel channel;
     private final String keyStem;
     private final boolean internal;
+    private final boolean transactional;
     private final NotificationPriority priority;
 
     NotificationTemplate(String code, NotificationChannel channel, String keyStem, boolean internal,
-                         NotificationPriority priority) {
+                         boolean transactional, NotificationPriority priority) {
         this.code = code;
         this.channel = channel;
         this.keyStem = keyStem;
         this.internal = internal;
+        this.transactional = transactional;
         this.priority = priority;
     }
 
@@ -46,11 +50,11 @@ public enum NotificationTemplate {
 
     /**
      * Транзакционные уведомления (статус заявки, безопасность, OTP, сброс пароля) не отписываются —
-     * они не рекламные. Маркетинговые/информационные рассылки вернут {@code false} и будут подавлены
-     * для отписавшихся. В текущем наборе все шаблоны транзакционные.
+     * они не рекламные. Маркетинговые/информационные рассылки ({@code false}) подавляются для
+     * отписавшихся и несут ссылку отписки.
      */
     public boolean transactional() {
-        return true;
+        return transactional;
     }
 
     public String code() {

@@ -42,6 +42,10 @@ app:
   jwt:
     # В prod секрет обязателен (без дефолта).
     secret: ${JWT_SECRET}
+  notification:
+    # В prod оба секрета обязательны (без дефолтов), как JWT_SECRET (R-66).
+    webhook-secret: ${NOTIFICATION_WEBHOOK_SECRET}
+    unsubscribe-secret: ${NOTIFICATION_UNSUBSCRIBE_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   security:

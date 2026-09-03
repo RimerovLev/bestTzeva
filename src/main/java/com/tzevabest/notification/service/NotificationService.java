@@ -51,6 +51,16 @@ public class NotificationService {
 
     /** Рендерит сообщение без отправки — точка для тестов и предпросмотра. */
     public RenderedMessage render(NotificationTemplate template, String localeParam, NotificationModel model) {
+        return render(template, localeParam, model, null);
+    }
+
+    /**
+     * Рендерит сообщение. Для нетранзакционных (информационных) email в подвал добавляется ссылка
+     * отписки на {@code recipient} (T-12.3, R-61); для транзакционных писем и при неизвестном
+     * получателе ссылка не ставится, и блок в шаблоне не появляется.
+     */
+    public RenderedMessage render(NotificationTemplate template, String localeParam, NotificationModel model,
+                                  String recipient) {
         Locale locale = Locale.forLanguageTag(resolveLocale(localeParam));
         Object[] args = model.args();
         String bodyText = messages.getMessage(template.keyStem() + ".body", args, locale);
@@ -64,6 +74,9 @@ public class NotificationService {
             ctx.setVariable("align", isRtl(locale) ? "right" : "left");
             ctx.setVariable("company", COMPANY);
             ctx.setVariable("year", Year.now().getValue());
+            if (!template.transactional() && recipient != null) {
+                ctx.setVariable("unsubscribeUrl", unsubscribe.unsubscribeLink(recipient));
+            }
             String html = templateEngine.process(EMAIL_TEMPLATE, ctx);
             return new RenderedMessage(NotificationChannel.EMAIL, subject, html);
         }
@@ -83,7 +96,7 @@ public class NotificationService {
         if (unsubscribe.suppresses(template.transactional(), recipient)) {
             return; // получатель отписался от нетранзакционных рассылок
         }
-        RenderedMessage rendered = render(template, localeParam, model);
+        RenderedMessage rendered = render(template, localeParam, model, recipient);
 
         NotificationLog entry = new NotificationLog();
         entry.setChannel(template.channel());
@@ -148,7 +161,7 @@ public class NotificationService {
         if (unsubscribe.suppresses(template.transactional(), recipient)) {
             return; // получатель отписался от нетранзакционных рассылок
         }
-        RenderedMessage rendered = render(template, localeParam, model);
+        RenderedMessage rendered = render(template, localeParam, model, recipient);
         String idempotencyKey = referenceId == null ? null
                 : template.code() + ":" + recipient + ":" + referenceId;
         java.sql.Timestamp nextAttempt = sendAt == null ? null : java.sql.Timestamp.from(sendAt);

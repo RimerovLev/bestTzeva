@@ -9,9 +9,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 /**
- * Публичный приём вебхуков доставки от провайдеров. Аутентификация — по подписи тела (HMAC), не по
- * токену; защита от повторов внутри сервиса.
+ * Публичный приём вебхуков доставки от провайдеров. Аутентификация — по подписи (схема на провайдера,
+ * R-60), не по токену; защита от повторов внутри сервиса. Заголовки передаются целиком: разные
+ * провайдеры подписывают в разных заголовках.
  */
 @RestController
 @RequestMapping("/webhooks/notifications")
@@ -23,7 +26,7 @@ public class NotificationWebhookController {
     @PostMapping("/{provider}")
     public void receive(@PathVariable String provider,
                         @RequestBody String rawBody,
-                        @RequestHeader(name = "X-Signature", required = false) String signature) {
-        webhooks.handle(provider, rawBody, signature);
+                        @RequestHeader Map<String, String> headers) {
+        webhooks.handle(provider, rawBody, headers);
     }
 }

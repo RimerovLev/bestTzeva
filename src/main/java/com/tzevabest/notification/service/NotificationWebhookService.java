@@ -3,24 +3,32 @@ package com.tzevabest.notification.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tzevabest.common.web.error.BusinessException;
-import lombok.RequiredArgsConstructor;
+import com.tzevabest.notification.service.webhook.WebhookVerifier;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Приём вебхуков доставки от провайдеров (T-12.3). Эндпоинт публичный, поэтому обязательны проверка
- * подписи (HMAC тела) и защита от повторов (event_id в Redis с TTL) — по образцу защиты публичной
- * формы заявки. Обновляет статус в notifications_log по provider_message_id.
+ * подписи и защита от повторов.
+ * <p>
+ * Подпись проверяет {@link WebhookVerifier}, выбранный по {@code {provider}} из пути — у каждого
+ * провайдера своя схема (R-60). Неизвестный провайдер отклоняется как неподдерживаемый (а не молча
+ * принимается). Защита от повторов: по {@code event_id}, а при его отсутствии — по хешу тела в
+ * пределах временного окна; тело без {@code event_id} и без метки времени отклоняется (R-72).
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class NotificationWebhookService {
 
     private static final Duration REPLAY_TTL = Duration.ofDays(2);
@@ -28,26 +36,52 @@ public class NotificationWebhookService {
     private final ObjectMapper json;
     private final StringRedisTemplate redis;
     private final JdbcTemplate jdbc;
+    private final Map<String, WebhookVerifier> verifiers;
 
-    @Value("${app.notification.signing-secret}")
-    private String secret;
+    public NotificationWebhookService(ObjectMapper json, StringRedisTemplate redis, JdbcTemplate jdbc,
+                                      List<WebhookVerifier> verifiers) {
+        this.json = json;
+        this.redis = redis;
+        this.jdbc = jdbc;
+        this.verifiers = verifiers.stream()
+                .collect(Collectors.toMap(v -> v.provider().toLowerCase(), Function.identity()));
+    }
 
-    /** Проверяет подпись и повтор, применяет событие. Бросает 401 при неверной подписи. */
-    public void handle(String provider, String rawBody, String signature) {
-        if (!HmacSigner.matches(HmacSigner.hexHmac(secret, rawBody), signature)) {
+    /** Проверяет провайдера, подпись и повтор, применяет событие. */
+    public void handle(String provider, String rawBody, Map<String, String> headers) {
+        WebhookVerifier verifier = verifiers.get(provider == null ? "" : provider.toLowerCase());
+        if (verifier == null) {
+            throw new BusinessException("notification.webhook.unsupported_provider", HttpStatus.BAD_REQUEST);
+        }
+        if (!verifier.verify(rawBody, lowerKeys(headers))) {
             throw new BusinessException("notification.webhook.invalid_signature", HttpStatus.UNAUTHORIZED);
         }
         JsonNode payload = parse(rawBody);
-        String eventId = text(payload, "event_id");
-        if (eventId != null) {
-            Boolean fresh = redis.opsForValue()
-                    .setIfAbsent("notif:webhook:evt:" + provider + ":" + eventId, "1", REPLAY_TTL);
-            if (!Boolean.TRUE.equals(fresh)) {
-                log.debug("Duplicate delivery webhook {} from {}", eventId, provider);
-                return; // повтор — молча игнорируем
-            }
+        if (isReplay(provider, payload, rawBody)) {
+            return; // повтор — молча игнорируем
         }
         apply(text(payload, "message_id"), text(payload, "status"), text(payload, "error"));
+    }
+
+    /** true, если это повтор уже применённого события (или недопустимый по защите от повторов формат). */
+    private boolean isReplay(String provider, JsonNode payload, String rawBody) {
+        String eventId = text(payload, "event_id");
+        String key;
+        if (eventId != null) {
+            key = "notif:webhook:evt:" + provider + ":" + eventId;
+        } else if (timestamp(payload) != null) {
+            // Нет event_id, но есть метка времени: дедуп по хешу тела в пределах окна REPLAY_TTL.
+            key = "notif:webhook:body:" + provider + ":" + sha256Hex(rawBody);
+        } else {
+            // Ни идентификатора события, ни метки времени — подписанное тело можно крутить вечно.
+            throw new BusinessException("notification.webhook.replay_unprotected", HttpStatus.BAD_REQUEST);
+        }
+        Boolean fresh = redis.opsForValue().setIfAbsent(key, "1", REPLAY_TTL);
+        if (!Boolean.TRUE.equals(fresh)) {
+            log.debug("Duplicate delivery webhook from {} ({})", provider, eventId != null ? eventId : "body-hash");
+            return true;
+        }
+        return false;
     }
 
     private void apply(String messageId, String status, String error) {
@@ -68,6 +102,34 @@ public class NotificationWebhookService {
             return json.readTree(body);
         } catch (Exception e) {
             throw new BusinessException("notification.webhook.malformed", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    /** Метка времени события: верхнеуровневая {@code timestamp} или {@code signature.timestamp} (Mailgun). */
+    private static String timestamp(JsonNode node) {
+        String top = text(node, "timestamp");
+        if (top != null) {
+            return top;
+        }
+        JsonNode sig = node.get("signature");
+        return sig == null ? null : text(sig, "timestamp");
+    }
+
+    private static Map<String, String> lowerKeys(Map<String, String> headers) {
+        return headers.entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue, (a, b) -> a));
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16)).append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
 

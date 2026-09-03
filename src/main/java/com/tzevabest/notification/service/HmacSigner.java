@@ -7,12 +7,12 @@ import java.security.MessageDigest;
 import java.util.Base64;
 
 /** HMAC-SHA256 в hex + константное сравнение — для подписи вебхуков и токенов отписки (T-12.3). */
-final class HmacSigner {
+public final class HmacSigner {
 
     private HmacSigner() {
     }
 
-    static String hexHmac(String secret, String data) {
+    public static String hexHmac(String secret, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
@@ -27,7 +27,7 @@ final class HmacSigner {
         }
     }
 
-    static boolean matches(String expected, String actual) {
+    public static boolean matches(String expected, String actual) {
         if (expected == null || actual == null) {
             return false;
         }

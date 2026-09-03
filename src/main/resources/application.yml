@@ -140,8 +140,12 @@ app:
   notification:
     # Период разбора очереди уведомлений (transactional outbox, T-12.2).
     dispatch-interval: ${NOTIFICATION_DISPATCH_INTERVAL:PT30S}
-    # Секрет для подписи вебхуков доставки и токенов отписки (T-12.3). В prod — из окружения.
-    signing-secret: ${NOTIFICATION_SIGNING_SECRET:dev-only-notification-signing-secret-change-me}
+    # Разные контуры доверия (R-66): секрет вебхуков известен внешнему провайдеру, секрет отписки —
+    # только нам. Разведены, чтобы утечка одного не компрометировала другой. В prod — из окружения.
+    webhook-secret: ${NOTIFICATION_WEBHOOK_SECRET:dev-only-notification-webhook-secret-change-me}
+    unsubscribe-secret: ${NOTIFICATION_UNSUBSCRIBE_SECRET:dev-only-notification-unsubscribe-secret-change-me}
+    # Срок действия токена отписки (R-62): по истечении ссылка недействительна.
+    unsubscribe-ttl: ${NOTIFICATION_UNSUBSCRIBE_TTL:P30D}
     whatsapp:
       # WhatsApp Business API за флагом (T-12.3): по умолчанию выключен.
       enabled: ${NOTIFICATION_WHATSAPP_ENABLED:false}

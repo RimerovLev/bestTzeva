@@ -74,6 +74,20 @@ class NotificationRenderTest extends IntegrationTest {
         assertThat((String) row.get("body_snapshot")).contains("123456");
     }
 
+    @Test
+    void informational_email_carries_unsubscribe_link_transactional_does_not() {
+        String recipient = "reader@example.com";
+        // R-61: информационное (нетранзакционное) письмо несёт ссылку отписки с токеном
+        RenderedMessage info = notifications.render(NotificationTemplate.MARKETING_NEWS, "en",
+                new com.tzevabest.notification.dto.MarketingNewsModel(), recipient);
+        assertThat(info.body()).contains("/api/v1/notifications/unsubscribe?token=");
+
+        // транзакционное — не несёт (блок скрыт)
+        RenderedMessage txn = notifications.render(NotificationTemplate.PRODUCT_REQUEST_RECEIVED, "en",
+                new ProductRequestModel("PR-260101-0001"), recipient);
+        assertThat(txn.body()).doesNotContain("unsubscribe");
+    }
+
     private static NotificationModel sampleModel(NotificationTemplate template) {
         return switch (template) {
             case PRODUCT_REQUEST_RECEIVED, PRODUCT_REQUEST_CONTACTED, PRODUCT_REQUEST_RESERVED,
@@ -86,6 +100,7 @@ class NotificationRenderTest extends IntegrationTest {
             case ACCOUNT_LOCKED, TOKEN_REPLAY -> new AccountAlertModel();
             case LOW_STOCK_ALERT -> new LowStockAlertModel("SKU-1", "WH-1", 2, 10);
             case NEW_REQUEST_ADMIN -> new NewRequestAdminModel("PR-260101-0001", "product");
+            case MARKETING_NEWS -> new com.tzevabest.notification.dto.MarketingNewsModel();
         };
     }
 }
