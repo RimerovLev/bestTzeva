@@ -61,14 +61,21 @@ public class ServiceRequestService {
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
 
-    /** Presigned-ссылки на загрузку фото помещения в приватный бакет. */
-    public PresignResponse presignPhotos(PresignRequest req) {
+    /**
+     * Presigned-ссылки на загрузку фото помещения в приватный бакет. Каждая выдача фиксируется в
+     * media_upload_intents (ключ, ip): по ней осиротевшие загрузки убирает фоновая задача, а привязка
+     * к заявке проверяется на подлинность ключа (R-67).
+     */
+    @Transactional
+    public PresignResponse presignPhotos(PresignRequest req, String ip) {
         List<PresignedUploadView> uploads = new ArrayList<>();
         for (PresignItem file : req.files()) {
             if (file.contentType() == null || !file.contentType().startsWith("image/")) {
                 throw new ValidationException("service_request.photo_type");
             }
             var presigned = presigner.presignUpload(PHOTO_PREFIX, file.filename(), file.contentType());
+            jdbc.update("insert into media_upload_intents (object_key, ip) values (?, ?)",
+                    presigned.objectKey(), ip);
             uploads.add(new PresignedUploadView(presigned.objectKey(), presigned.uploadUrl()));
         }
         return new PresignResponse(uploads);
@@ -146,8 +153,12 @@ public class ServiceRequestService {
         }
         List<ServiceRequestMedia> rows = new ArrayList<>();
         for (String key : keys) {
-            if (!presigner.hasPrefix(key, PHOTO_PREFIX)) {
-                throw new ValidationException("service_request.photo_key_invalid"); // чужой ключ
+            // Ключ должен быть реально выдан нами и ещё не использован (R-67): помечаем intent
+            // использованным атомарно; 0 обновлённых строк — чужой/подобранный/повторный ключ.
+            int claimed = jdbc.update(
+                    "update media_upload_intents set used_at = now() where object_key = ? and used_at is null", key);
+            if (claimed == 0 || !presigner.hasPrefix(key, PHOTO_PREFIX)) {
+                throw new ValidationException("service_request.photo_key_invalid");
             }
             ServiceRequestMedia m = new ServiceRequestMedia();
             m.setRequest(request);

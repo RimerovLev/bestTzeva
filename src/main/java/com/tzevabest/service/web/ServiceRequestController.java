@@ -65,7 +65,7 @@ public class ServiceRequestController {
 
     @PostMapping("/photos/presign")
     @RateLimit(key = "ip", limit = 20, windowSeconds = 3600)
-    public PresignResponse presignPhotos(@Valid @RequestBody PresignRequest request) {
-        return service.presignPhotos(request);
+    public PresignResponse presignPhotos(@Valid @RequestBody PresignRequest request, HttpServletRequest http) {
+        return service.presignPhotos(request, clientIpResolver.resolve(http));
     }
 }

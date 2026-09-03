@@ -117,6 +117,9 @@ app:
   service:
     # Автораспределение заявок на покраску по кругу (T-11.3) — за флагом, по умолчанию выключено.
     auto-assign-enabled: ${SERVICE_AUTO_ASSIGN:false}
+    # Срок жизни неиспользованной presigned-загрузки фото до уборки (R-67).
+    upload-intent-retention: ${SERVICE_UPLOAD_INTENT_RETENTION:P1D}
+    upload-intent-sweep: ${SERVICE_UPLOAD_INTENT_SWEEP:PT1H}
   audit:
     # Срок хранения журнала аудита (T-13.3); старше — удаляется фоновой задачей.
     retention: ${AUDIT_RETENTION:P730D}
