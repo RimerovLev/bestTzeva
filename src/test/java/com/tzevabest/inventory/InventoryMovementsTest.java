@@ -158,6 +158,35 @@ class InventoryMovementsTest extends IntegrationTest {
     }
 
     @Test
+    void concurrent_transfers_into_empty_warehouse_sum_without_conflict() throws Exception {
+        // R-65: две одновременные приёмки на один пустой склад раньше ловили uq_inventory_variant_warehouse
+        // и отдавали невнятный 409. Upsert сливает количества без ошибки.
+        long v = seedVariant();
+        long src1 = seedWarehouse();
+        long src2 = seedWarehouse();
+        long target = seedWarehouse(); // пустой — строки inventory для него ещё нет
+        inventory.receive(v, src1, 5);
+        inventory.receive(v, src2, 5);
+
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var results = pool.invokeAll(List.of(
+                () -> {
+                    inventory.transfer(v, src1, target, 5, CTX);
+                    return "ok";
+                },
+                () -> {
+                    inventory.transfer(v, src2, target, 5, CTX);
+                    return "ok";
+                }));
+        for (var f : results) {
+            assertThat(f.get()).isEqualTo("ok"); // ни одна не упала
+        }
+        pool.shutdown();
+
+        assertThat(qty(v, target)).isEqualTo(10); // суммарное количество
+    }
+
+    @Test
     void transfer_rejects_insufficient_source_and_same_warehouse() {
         long v = seedVariant();
         long w1 = seedWarehouse();

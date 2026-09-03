@@ -64,12 +64,11 @@ public class InventoryService {
     @Transactional
     public void receive(long variantId, long warehouseId, int qty, MovementContext ctx, String comment) {
         requirePositive(qty);
-        int updated = jdbc.update("update inventory set qty = qty + ?, version = version + 1 "
-                + "where variant_id = ? and warehouse_id = ?", qty, variantId, warehouseId);
-        if (updated == 0) {
-            jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
-                    variantId, warehouseId, qty);
-        }
+        // Один upsert вместо «update, иначе insert» (R-65): две одновременные операции на пустой склад
+        // не поймают уникальное нарушение — прибавка сливается.
+        jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0) "
+                + "on conflict (variant_id, warehouse_id) do update set qty = inventory.qty + excluded.qty, "
+                + "version = inventory.version + 1", variantId, warehouseId, qty);
         InvRow after = requireRow(variantId, warehouseId);
         recordMovement(variantId, warehouseId, MovementType.RECEIPT, qty, after.qty(), 0, after.reserved(),
                 ctx, comment);
@@ -277,13 +276,11 @@ public class InventoryService {
         if (countedQty < reserved) {
             throw new ConflictException("inventory.stocktake_below_reserved", reserved);
         }
-        if (before == null) {
-            jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
-                    variantId, warehouseId, countedQty);
-        } else {
-            jdbc.update("update inventory set qty = ?, version = version + 1 "
-                    + "where variant_id = ? and warehouse_id = ?", countedQty, variantId, warehouseId);
-        }
+        // Инвентаризация присваивает АБСОЛЮТНОЕ значение, поэтому конфликтная ветка тоже присваивает
+        // (excluded.qty), а не прибавляет (R-65): гонка на пустой склад не даст уникального нарушения.
+        jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0) "
+                + "on conflict (variant_id, warehouse_id) do update set qty = excluded.qty, "
+                + "version = inventory.version + 1", variantId, warehouseId, countedQty);
         InvRow after = requireRow(variantId, warehouseId);
         recordMovement(variantId, warehouseId, MovementType.STOCKTAKE, countedQty - oldQty, after.qty(), 0,
                 after.reserved(), ctx, null);
@@ -302,7 +299,9 @@ public class InventoryService {
         if (fromWarehouseId == toWarehouseId) {
             throw new ValidationException("inventory.transfer_same_warehouse");
         }
-        // Детерминированный порядок блокировок: существующие строки обоих складов — по возрастанию id.
+        // Детерминированный порядок блокировок существующих строк обоих складов — по warehouse_id
+        // (R-45, R-68). Для встречного переноса (from/to меняются местами) множество строк то же самое,
+        // а порядок захвата один и тот же, поэтому дедлока нет; сортировки по id для этого не требуется.
         jdbc.queryForList("select id from inventory where variant_id = ? and warehouse_id in (?, ?) "
                         + "order by warehouse_id for update",
                 Long.class, variantId, fromWarehouseId, toWarehouseId);
@@ -317,12 +316,11 @@ public class InventoryService {
         recordMovement(variantId, fromWarehouseId, MovementType.TRANSFER_OUT, -qty, fromRow.qty(), 0,
                 fromRow.reserved(), ctx, null);
 
-        int in = jdbc.update("update inventory set qty = qty + ?, version = version + 1 "
-                + "where variant_id = ? and warehouse_id = ?", qty, variantId, toWarehouseId);
-        if (in == 0) {
-            jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0)",
-                    variantId, toWarehouseId, qty);
-        }
+        // Приём на склад-получатель — upsert (R-65): если строки ещё нет, две одновременные приёмки
+        // на один пустой склад сливаются, а не падают на уникальном индексе с невнятным 409.
+        jdbc.update("insert into inventory (variant_id, warehouse_id, qty, reserved_qty) values (?, ?, ?, 0) "
+                + "on conflict (variant_id, warehouse_id) do update set qty = inventory.qty + excluded.qty, "
+                + "version = inventory.version + 1", variantId, toWarehouseId, qty);
         InvRow toRow = requireRow(variantId, toWarehouseId);
         recordMovement(variantId, toWarehouseId, MovementType.TRANSFER_IN, qty, toRow.qty(), 0,
                 toRow.reserved(), ctx, null);
