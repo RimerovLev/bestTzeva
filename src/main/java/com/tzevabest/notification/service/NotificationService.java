@@ -70,6 +70,8 @@ public class NotificationService {
             Context ctx = new Context(locale);
             ctx.setVariable("subject", subject);
             ctx.setVariable("body", bodyText);
+            // Абзацы по пустой строке (R-70): иначе многострочное тело схлопнулось бы в один абзац.
+            ctx.setVariable("bodyParagraphs", paragraphs(bodyText));
             ctx.setVariable("dir", isRtl(locale) ? "rtl" : "ltr");
             ctx.setVariable("align", isRtl(locale) ? "right" : "left");
             ctx.setVariable("company", COMPANY);
@@ -181,6 +183,21 @@ public class NotificationService {
             case WHATSAPP -> whatsappSender.send(recipient, rendered.body());
             case PUSH -> throw new UnsupportedOperationException("PUSH channel is not implemented");
         };
+    }
+
+    /** Разбивает тело на абзацы по пустой строке; экранирование остаётся за th:text в шаблоне. */
+    private static java.util.List<String> paragraphs(String body) {
+        if (body == null || body.isBlank()) {
+            return java.util.List.of();
+        }
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        for (String p : body.strip().split("\\n\\s*\\n")) {
+            String trimmed = p.strip();
+            if (!trimmed.isEmpty()) {
+                parts.add(trimmed);
+            }
+        }
+        return parts;
     }
 
     private static boolean isRtl(Locale locale) {

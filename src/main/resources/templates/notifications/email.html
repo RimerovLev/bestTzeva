@@ -27,7 +27,9 @@
                         th:style="'padding:28px; color:#111827; font-size:16px; line-height:1.6; text-align:' + ${align} + ';'">
                         <h1 th:text="${subject}"
                             style="margin:0 0 16px 0; font-size:22px; color:#111827;">Subject</h1>
-                        <p th:text="${body}" style="margin:0;">Body</p>
+                        <!-- Абзацы по пустой строке (R-70); th:text экранирует HTML в подстановках. -->
+                        <p th:each="para : ${bodyParagraphs}" th:text="${para}"
+                           style="margin:0 0 12px 0;">Body</p>
                     </td>
                 </tr>
                 <!-- Подвал -->

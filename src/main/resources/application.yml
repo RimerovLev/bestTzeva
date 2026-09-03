@@ -43,6 +43,13 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
+  servlet:
+    multipart:
+      # Лимиты загрузки заданы осознанно (R-69): импорт каталога 5000 строк в XLSX не влезает в
+      # дефолтные 1 МБ. Превышение отдаётся 413 problem+json (GlobalExceptionHandler).
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:20MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:25MB}
+
   jackson:
     property-naming-strategy: SNAKE_CASE
     default-property-inclusion: non_null

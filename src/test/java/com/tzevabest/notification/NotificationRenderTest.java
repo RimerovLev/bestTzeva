@@ -88,6 +88,15 @@ class NotificationRenderTest extends IntegrationTest {
         assertThat(txn.body()).doesNotContain("unsubscribe");
     }
 
+    @Test
+    void email_body_is_split_into_paragraphs() {
+        // R-70: тело из двух абзацев (разделены пустой строкой) выводится двумя <p>, а не одним.
+        RenderedMessage r = notifications.render(NotificationTemplate.MARKETING_NEWS, "en",
+                new com.tzevabest.notification.dto.MarketingNewsModel(), "reader@example.com");
+        int paragraphs = r.body().split("margin:0 0 12px 0;", -1).length - 1;
+        assertThat(paragraphs).isEqualTo(2);
+    }
+
     private static NotificationModel sampleModel(NotificationTemplate template) {
         return switch (template) {
             case PRODUCT_REQUEST_RECEIVED, PRODUCT_REQUEST_CONTACTED, PRODUCT_REQUEST_RESERVED,

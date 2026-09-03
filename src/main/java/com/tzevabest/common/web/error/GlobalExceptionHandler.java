@@ -137,6 +137,14 @@ public class GlobalExceptionHandler {
                 responder.resolve(CODE_MEDIA_TYPE, null), null, req, ex);
     }
 
+    // ── Загруженный файл/запрос превышает лимит multipart (413) ──────────────────
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ProblemDetail> handleMaxUpload(
+            org.springframework.web.multipart.MaxUploadSizeExceededException ex, HttpServletRequest req) {
+        String code = "common.upload.too_large";
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, code, responder.resolve(code, null), null, req, ex);
+    }
+
     // ── Нарушение целостности данных (в лог, без утечки SQL наружу) ──────────────
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ProblemDetail> handleDataIntegrity(DataIntegrityViolationException ex,
