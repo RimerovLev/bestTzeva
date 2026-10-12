@@ -57,6 +57,36 @@
         }
       }
     },
+    "/api/v1/test-errors/body": {
+      "post": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "body",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/service-requests": {
       "post": {
         "tags": [
@@ -573,6 +603,269 @@
         "responses": {
           "202": {
             "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/validation": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "validation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/typed/{id}": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "typed",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/spring-access": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "springAccess",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/not-found": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "notFound",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/external": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "external",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/data-integrity": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "dataIntegrity",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/constraint": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "constraint",
+        "parameters": [
+          {
+            "name": "value",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/conflict": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "conflict",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/business": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "business",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/boom": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "boom",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/auth": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "auth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/test-errors/access": {
+      "get": {
+        "tags": [
+          "error-test-controller"
+        ],
+        "operationId": "access",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -1118,6 +1411,17 @@
   },
   "components": {
     "schemas": {
+      "SampleDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "ServiceRequestCreate": {
         "required": [
           "customer_name",

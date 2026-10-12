@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { resolveErrorMessage } from "@/lib/api/messages";
 import { StatusBadge } from "./StatusBadge";
+import { AssigneeSelect } from "@/features/shared/assignees";
 import {
   getServiceRequest,
   transitionServiceRequest,
@@ -17,6 +18,7 @@ import {
   createQuote,
   getQuotePdfUrl,
   createPortfolioFromRequest,
+  listServiceRequestMedia,
   genericTransitions,
   canScheduleMeasurement,
   canQuote,
@@ -226,11 +228,7 @@ export function ServiceRequestDetailModal({
             )}
           </section>
 
-          {/* Фото клиента — контрактный пробел */}
-          <section>
-            <h3 className="mb-1 text-sm font-semibold text-navy">{t.photosTitle}</h3>
-            <p className="rounded-control border border-dashed border-line p-3 text-xs text-ink-soft">{t.photosGap}</p>
-          </section>
+          <ClientMedia id={id} />
 
           {actionError && <div className="rounded-control border border-red-200 bg-red-50 p-3 text-sm text-red-700">{actionError}</div>}
 
@@ -333,10 +331,12 @@ export function ServiceRequestDetailModal({
           {/* Назначение менеджера */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-navy">{t.assignment}</h3>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-ink-soft">
-                {detail.assigned_manager_id != null ? t.managerId.replace("{id}", String(detail.assigned_manager_id)) : t.unassigned}
-              </span>
+            <div className="flex flex-wrap items-start gap-2 text-sm">
+              <AssigneeSelect
+                value={detail.assigned_manager_id}
+                disabled={busy}
+                onChange={(m) => assignM.mutate(m)}
+              />
               {user && detail.assigned_manager_id !== user.id && (
                 <Button variant="outline" disabled={busy} onClick={() => assignM.mutate(user.id)}>
                   {t.assignToMe}
@@ -345,13 +345,7 @@ export function ServiceRequestDetailModal({
               <Button variant="outline" disabled={busy} onClick={() => autoAssignM.mutate()}>
                 {t.autoAssign}
               </Button>
-              {detail.assigned_manager_id != null && (
-                <Button variant="muted" disabled={busy} onClick={() => assignM.mutate(null)}>
-                  {t.unassign}
-                </Button>
-              )}
             </div>
-            <p className="mt-1 text-xs text-ink-soft">{t.assignNote}</p>
           </section>
 
           {/* История */}
@@ -400,6 +394,69 @@ export function ServiceRequestDetailModal({
         </div>
       )}
     </Modal>
+  );
+}
+
+/** Ссылки живут ~5 минут — перечитываем чуть раньше, пока карточка открыта. */
+const MEDIA_REFRESH_MS = 4 * 60_000;
+
+/**
+ * Фото помещения от клиента. Открываются по временным ссылкам из приватного хранилища; список
+ * запрашивается при открытии карточки (каждый запрос — запись в аудит доступа к персональным данным).
+ */
+function ClientMedia({ id }: { id: number }) {
+  const { dict } = useI18n();
+  const t = dict.serviceRequests;
+  const q = useQuery({
+    queryKey: ["service-request-media", id],
+    queryFn: () => listServiceRequestMedia(id),
+    staleTime: MEDIA_REFRESH_MS,
+    refetchInterval: MEDIA_REFRESH_MS,
+    refetchOnWindowFocus: false,
+  });
+  const items = q.data ?? [];
+  const images = items.filter((m) => upper(m.type) === "IMAGE" && m.url);
+  const others = items.filter((m) => upper(m.type) !== "IMAGE" && m.url);
+
+  return (
+    <section>
+      <h3 className="mb-1 text-sm font-semibold text-navy">{t.photosTitle}</h3>
+      {q.isLoading ? (
+        <div className="grid grid-cols-4 gap-2">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="aspect-square w-full" />)}
+        </div>
+      ) : q.isError ? (
+        <p className="text-sm text-red-700">{t.photosError}</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-ink-soft">{t.photosEmpty}</p>
+      ) : (
+        <>
+          {images.length > 0 && (
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {images.map((m) => (
+                <li key={m.id}>
+                  <a href={m.url} target="_blank" rel="noopener noreferrer" title={t.photoOpen} className="block overflow-hidden rounded-control border border-line">
+                    <img src={m.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {others.length > 0 && (
+            <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+              {others.map((m) => (
+                <li key={m.id}>
+                  <a href={m.url} target="_blank" rel="noopener noreferrer" className="text-brass underline">
+                    {upper(m.type) === "VIDEO" ? t.mediaVideo : t.mediaDoc} #{m.id}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-ink-soft">{t.photosTemp}</p>
+        </>
+      )}
+    </section>
   );
 }
 

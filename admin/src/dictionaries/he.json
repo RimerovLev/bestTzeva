@@ -180,7 +180,11 @@
     "formNew": "צבע חדש",
     "formEdit": "עריכת צבע",
     "deleteConfirm": "למחוק את הצבע?",
-    "systems": { "RAL": "RAL", "NCS": "NCS", "INTERNAL": "פנימית" }
+    "systems": {
+      "RAL": "RAL",
+      "NCS": "NCS",
+      "INTERNAL": "פנימית"
+    }
   },
   "importDlg": {
     "title": "ייבוא קטלוג",
@@ -218,7 +222,11 @@
     "colStatus": "סטטוס",
     "colCrit": "קריטיות",
     "colActions": "פעולות",
-    "statuses": { "IN_STOCK": "במלאי", "LOW": "מעט", "OUT": "אזל" },
+    "statuses": {
+      "IN_STOCK": "במלאי",
+      "LOW": "מעט",
+      "OUT": "אזל"
+    },
     "export": "ייצוא XLSX",
     "warehouses": "מחסנים",
     "receipt": "קבלה",
@@ -285,7 +293,6 @@
     "colManager": "מנהל",
     "colCreated": "נוצר",
     "unassigned": "לא שויך",
-    "managerId": "מנהל #{id}",
     "staleHint": "ללא מנהל מעל 24 שעות",
     "metricsTitle": "משפך פניות",
     "metricTotal": "סה\"כ",
@@ -311,8 +318,6 @@
     "statusCommentPlaceholder": "הערה למעבר (רשות)",
     "assignment": "שיוך מנהל",
     "assignToMe": "שייך אליי",
-    "unassign": "בטל שיוך",
-    "assignNote": "אין עדיין רשימת מנהלים ב-API — זמין שיוך אליי בלבד.",
     "history": "היסטוריית סטטוסים",
     "comments": "הערות פנימיות",
     "noComments": "אין הערות",
@@ -329,24 +334,65 @@
   },
   "enums": {
     "request_status": {
-      "NEW": "חדש", "CONTACTED": "נוצר קשר", "RESERVED": "שוריין",
-      "COMPLETED": "הושלם", "CANCELLED": "בוטל", "LOST": "אבוד"
+      "NEW": "חדש",
+      "CONTACTED": "נוצר קשר",
+      "RESERVED": "שוריין",
+      "COMPLETED": "הושלם",
+      "CANCELLED": "בוטל",
+      "LOST": "אבוד"
     },
     "paint_type": {
-      "INTERIOR": "פנים", "EXTERIOR": "חוץ", "WOOD": "עץ", "METAL": "מתכת",
-      "PRIMER": "יסוד", "ENAMEL": "אמייל", "OTHER": "אחר"
+      "INTERIOR": "פנים",
+      "EXTERIOR": "חוץ",
+      "WOOD": "עץ",
+      "METAL": "מתכת",
+      "PRIMER": "יסוד",
+      "ENAMEL": "אמייל",
+      "OTHER": "אחר"
     },
-    "usage_area": { "INDOOR": "פנים", "OUTDOOR": "חוץ", "BOTH": "פנים וחוץ" },
+    "usage_area": {
+      "INDOOR": "פנים",
+      "OUTDOOR": "חוץ",
+      "BOTH": "פנים וחוץ"
+    },
     "finish": {
-      "MATTE": "מט", "SATIN": "סאטן", "GLOSS": "מבריק", "SEMI_GLOSS": "חצי-מבריק", "TEXTURED": "מרקם"
+      "MATTE": "מט",
+      "SATIN": "סאטן",
+      "GLOSS": "מבריק",
+      "SEMI_GLOSS": "חצי-מבריק",
+      "TEXTURED": "מרקם"
     },
-    "base_type": { "WATER": "מים", "SOLVENT": "ממס", "EPOXY": "אפוקסי" },
-    "property_type": { "APARTMENT": "דירה", "HOUSE": "בית", "OFFICE": "משרד", "COMMERCIAL": "מסחרי", "OTHER": "אחר" },
-    "work_type": { "WALLS": "קירות", "CEILING": "תקרות", "FACADE": "חזית", "WOOD": "עץ", "METAL": "מתכת", "DECORATIVE": "דקורטיבי" },
+    "base_type": {
+      "WATER": "מים",
+      "SOLVENT": "ממס",
+      "EPOXY": "אפוקסי"
+    },
+    "property_type": {
+      "APARTMENT": "דירה",
+      "HOUSE": "בית",
+      "OFFICE": "משרד",
+      "COMMERCIAL": "מסחרי",
+      "OTHER": "אחר"
+    },
+    "work_type": {
+      "WALLS": "קירות",
+      "CEILING": "תקרות",
+      "FACADE": "חזית",
+      "WOOD": "עץ",
+      "METAL": "מתכת",
+      "DECORATIVE": "דקורטיבי"
+    },
     "service_status": {
-      "NEW": "חדש", "CONTACTED": "נוצר קשר", "MEASUREMENT_SCHEDULED": "מדידה נקבעה", "MEASURED": "נמדד",
-      "QUOTED": "הצעת מחיר", "ACCEPTED": "אושר", "IN_PROGRESS": "בעבודה", "COMPLETED": "הושלם",
-      "REJECTED": "נדחה", "LOST": "אבוד"
+      "NEW": "חדש",
+      "CONTACTED": "נוצר קשר",
+      "MEASUREMENT_SCHEDULED": "מדידה נקבעה",
+      "MEASURED": "נמדד",
+      "QUOTED": "הצעת מחיר",
+      "ACCEPTED": "אושר",
+      "IN_PROGRESS": "בעבודה",
+      "COMPLETED": "הושלם",
+      "REJECTED": "נדחה",
+      "LOST": "אבוד"
     }
   },
   "serviceRequests": {
@@ -386,7 +432,6 @@
     "estimateRange": "טווח מחיר",
     "quotedPrice": "מחיר בהצעה",
     "photosTitle": "תמונות הלקוח",
-    "photosGap": "צפייה בתמונות אינה זמינה: אין עדיין נקודת קצה בממשק הניהול לקישורי צפייה חתומים לבאקט הפרטי.",
     "changeStatus": "שינוי סטטוס",
     "statusCommentPlaceholder": "הערה למעבר (רשות)",
     "measurementTitle": "תזמון מדידה",
@@ -405,9 +450,6 @@
     "assignment": "שיוך מנהל",
     "assignToMe": "שייך אליי",
     "autoAssign": "שיוך אוטומטי",
-    "unassign": "בטל שיוך",
-    "managerId": "מנהל #{id}",
-    "assignNote": "אין עדיין רשימת מנהלים ב-API — זמין שיוך אליי או אוטומטי.",
     "history": "היסטוריית סטטוסים",
     "comments": "הערות פנימיות",
     "noComments": "אין הערות",
@@ -427,7 +469,13 @@
     "pricingColMinOrder": "מינימום הזמנה",
     "pricingColActive": "פעיל",
     "edit": "עריכה",
-    "loadError": "טעינת הפנייה נכשלה"
+    "loadError": "טעינת הפנייה נכשלה",
+    "photosEmpty": "הלקוח לא צירף תמונות.",
+    "photosError": "לא הצלחנו לטעון את התמונות. נסו לפתוח את הפנייה שוב.",
+    "photosTemp": "הקישורים זמניים (כמה דקות) ומתרעננים מעצמם כל עוד הכרטיס פתוח. אין להעביר אותם הלאה — אלה נתונים אישיים של הלקוח; כל צפייה נרשמת ביומן.",
+    "photoOpen": "פתיחה בגודל מלא",
+    "mediaVideo": "וידאו",
+    "mediaDoc": "מסמך"
   },
   "errors": {
     "client.unknown": "אירעה שגיאה. נסו שוב מאוחר יותר.",
@@ -439,5 +487,12 @@
     "common.rate_limited": "יותר מדי בקשות. נסו שוב מאוחר יותר.",
     "common.validation_error": "בדקו את הנתונים שהוזנו.",
     "traceLabel": "מזהה בקשה"
+  },
+  "assignees": {
+    "label": "אחראי",
+    "none": "לא שויך",
+    "me": "(את/ה)",
+    "filterAll": "כל האחראים",
+    "loadError": "לא הצלחנו לטעון את רשימת העובדים. שיוך לעצמך עדיין זמין."
   }
 }

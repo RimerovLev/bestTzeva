@@ -628,6 +628,22 @@ export interface paths {
         patch: operations["setPublished"];
         trace?: never;
     };
+    "/api/v1/admin/users/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["assignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/service-requests": {
         parameters: {
             query?: never;
@@ -668,6 +684,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["quotePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/service-requests/{id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["media"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1495,6 +1527,13 @@ export interface components {
             /** Format: int64 */
             manager_id?: number;
         };
+        AssigneeView: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            /** @enum {string} */
+            role?: "CUSTOMER" | "SUPPORT" | "WAREHOUSE" | "MANAGER" | "ADMIN";
+        };
         Order: {
             property?: string;
             /** @enum {string} */
@@ -1556,6 +1595,15 @@ export interface components {
             source?: string;
             /** Format: date-time */
             created_at?: string;
+        };
+        ServiceRequestMediaView: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            type?: "IMAGE" | "VIDEO" | "DOC";
+            /** Format: date-time */
+            uploaded_at?: string;
+            url?: string;
         };
         ServiceRequestMetrics: {
             /** Format: int64 */
@@ -3053,6 +3101,26 @@ export interface operations {
             };
         };
     };
+    assignees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AssigneeView"][];
+                };
+            };
+        };
+    };
     list_2: {
         parameters: {
             query: {
@@ -3127,6 +3195,28 @@ export interface operations {
                     "*/*": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ServiceRequestMediaView"][];
                 };
             };
         };

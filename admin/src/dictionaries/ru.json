@@ -180,7 +180,11 @@
     "formNew": "Новый цвет",
     "formEdit": "Редактирование цвета",
     "deleteConfirm": "Удалить цвет?",
-    "systems": { "RAL": "RAL", "NCS": "NCS", "INTERNAL": "Внутренняя" }
+    "systems": {
+      "RAL": "RAL",
+      "NCS": "NCS",
+      "INTERNAL": "Внутренняя"
+    }
   },
   "importDlg": {
     "title": "Импорт каталога",
@@ -218,7 +222,11 @@
     "colStatus": "Статус",
     "colCrit": "Критичность",
     "colActions": "Действия",
-    "statuses": { "IN_STOCK": "В наличии", "LOW": "Мало", "OUT": "Нет" },
+    "statuses": {
+      "IN_STOCK": "В наличии",
+      "LOW": "Мало",
+      "OUT": "Нет"
+    },
     "export": "Экспорт XLSX",
     "warehouses": "Склады",
     "receipt": "Приход",
@@ -285,7 +293,6 @@
     "colManager": "Менеджер",
     "colCreated": "Создана",
     "unassigned": "Не назначен",
-    "managerId": "Менеджер #{id}",
     "staleHint": "Без менеджера более 24 ч",
     "metricsTitle": "Воронка заявок",
     "metricTotal": "Всего",
@@ -311,8 +318,6 @@
     "statusCommentPlaceholder": "Комментарий к переходу (необязательно)",
     "assignment": "Назначение менеджера",
     "assignToMe": "Назначить на себя",
-    "unassign": "Снять назначение",
-    "assignNote": "В API пока нет списка менеджеров — доступно только назначение на себя.",
     "history": "История статусов",
     "comments": "Внутренние комментарии",
     "noComments": "Комментариев нет",
@@ -329,24 +334,65 @@
   },
   "enums": {
     "request_status": {
-      "NEW": "Новая", "CONTACTED": "Связались", "RESERVED": "Зарезервировано",
-      "COMPLETED": "Завершена", "CANCELLED": "Отменена", "LOST": "Потеряна"
+      "NEW": "Новая",
+      "CONTACTED": "Связались",
+      "RESERVED": "Зарезервировано",
+      "COMPLETED": "Завершена",
+      "CANCELLED": "Отменена",
+      "LOST": "Потеряна"
     },
     "paint_type": {
-      "INTERIOR": "Для внутренних работ", "EXTERIOR": "Для наружных работ", "WOOD": "По дереву",
-      "METAL": "По металлу", "PRIMER": "Грунт", "ENAMEL": "Эмаль", "OTHER": "Другое"
+      "INTERIOR": "Для внутренних работ",
+      "EXTERIOR": "Для наружных работ",
+      "WOOD": "По дереву",
+      "METAL": "По металлу",
+      "PRIMER": "Грунт",
+      "ENAMEL": "Эмаль",
+      "OTHER": "Другое"
     },
-    "usage_area": { "INDOOR": "Внутри", "OUTDOOR": "Снаружи", "BOTH": "Внутри и снаружи" },
+    "usage_area": {
+      "INDOOR": "Внутри",
+      "OUTDOOR": "Снаружи",
+      "BOTH": "Внутри и снаружи"
+    },
     "finish": {
-      "MATTE": "Матовая", "SATIN": "Сатин", "GLOSS": "Глянец", "SEMI_GLOSS": "Полуглянец", "TEXTURED": "Фактурная"
+      "MATTE": "Матовая",
+      "SATIN": "Сатин",
+      "GLOSS": "Глянец",
+      "SEMI_GLOSS": "Полуглянец",
+      "TEXTURED": "Фактурная"
     },
-    "base_type": { "WATER": "Водная", "SOLVENT": "Растворитель", "EPOXY": "Эпоксидная" },
-    "property_type": { "APARTMENT": "Квартира", "HOUSE": "Дом", "OFFICE": "Офис", "COMMERCIAL": "Коммерческое", "OTHER": "Другое" },
-    "work_type": { "WALLS": "Стены", "CEILING": "Потолки", "FACADE": "Фасад", "WOOD": "Дерево", "METAL": "Металл", "DECORATIVE": "Декоративная" },
+    "base_type": {
+      "WATER": "Водная",
+      "SOLVENT": "Растворитель",
+      "EPOXY": "Эпоксидная"
+    },
+    "property_type": {
+      "APARTMENT": "Квартира",
+      "HOUSE": "Дом",
+      "OFFICE": "Офис",
+      "COMMERCIAL": "Коммерческое",
+      "OTHER": "Другое"
+    },
+    "work_type": {
+      "WALLS": "Стены",
+      "CEILING": "Потолки",
+      "FACADE": "Фасад",
+      "WOOD": "Дерево",
+      "METAL": "Металл",
+      "DECORATIVE": "Декоративная"
+    },
     "service_status": {
-      "NEW": "Новая", "CONTACTED": "Связались", "MEASUREMENT_SCHEDULED": "Замер назначен", "MEASURED": "Замерено",
-      "QUOTED": "Котировка", "ACCEPTED": "Принята", "IN_PROGRESS": "В работе", "COMPLETED": "Завершена",
-      "REJECTED": "Отклонена", "LOST": "Потеряна"
+      "NEW": "Новая",
+      "CONTACTED": "Связались",
+      "MEASUREMENT_SCHEDULED": "Замер назначен",
+      "MEASURED": "Замерено",
+      "QUOTED": "Котировка",
+      "ACCEPTED": "Принята",
+      "IN_PROGRESS": "В работе",
+      "COMPLETED": "Завершена",
+      "REJECTED": "Отклонена",
+      "LOST": "Потеряна"
     }
   },
   "serviceRequests": {
@@ -386,7 +432,6 @@
     "estimateRange": "Диапазон цены",
     "quotedPrice": "Цена в котировке",
     "photosTitle": "Фото клиента",
-    "photosGap": "Просмотр фото недоступен: в админ-API пока нет эндпоинта, отдающего presigned-ссылки на приватный бакет.",
     "changeStatus": "Смена статуса",
     "statusCommentPlaceholder": "Комментарий к переходу (необязательно)",
     "measurementTitle": "Планирование замера",
@@ -405,9 +450,6 @@
     "assignment": "Назначение менеджера",
     "assignToMe": "Назначить на себя",
     "autoAssign": "Автоназначение",
-    "unassign": "Снять назначение",
-    "managerId": "Менеджер #{id}",
-    "assignNote": "В API пока нет списка менеджеров — доступно назначение на себя или автоназначение.",
     "history": "История статусов",
     "comments": "Внутренние комментарии",
     "noComments": "Комментариев нет",
@@ -427,7 +469,13 @@
     "pricingColMinOrder": "Мин. заказ",
     "pricingColActive": "Активно",
     "edit": "Изменить",
-    "loadError": "Не удалось загрузить заявку"
+    "loadError": "Не удалось загрузить заявку",
+    "photosEmpty": "Клиент не прикладывал фото.",
+    "photosError": "Не удалось получить фото. Попробуйте открыть заявку ещё раз.",
+    "photosTemp": "Ссылки временные (несколько минут) и обновляются сами, пока карточка открыта. Не пересылайте их — это персональные данные клиента; каждый просмотр фиксируется в журнале.",
+    "photoOpen": "Открыть в полном размере",
+    "mediaVideo": "Видео",
+    "mediaDoc": "Документ"
   },
   "errors": {
     "client.unknown": "Произошла ошибка. Попробуйте позже.",
@@ -439,5 +487,12 @@
     "common.rate_limited": "Слишком много запросов. Попробуйте позже.",
     "common.validation_error": "Проверьте введённые данные.",
     "traceLabel": "ID запроса"
+  },
+  "assignees": {
+    "label": "Исполнитель",
+    "none": "Не назначен",
+    "me": "(вы)",
+    "filterAll": "Все исполнители",
+    "loadError": "Не удалось загрузить список сотрудников. Назначение на себя по-прежнему работает."
   }
 }

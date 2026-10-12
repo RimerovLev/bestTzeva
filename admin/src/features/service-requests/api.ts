@@ -9,6 +9,7 @@ export type CommentView = components["schemas"]["CommentView"];
 export type PricingRuleView = components["schemas"]["PricingRuleView"];
 export type PricingRuleUpdate = components["schemas"]["PricingRuleUpdate"];
 export type QuoteRequest = components["schemas"]["QuoteRequest"];
+export type ServiceRequestMedia = components["schemas"]["ServiceRequestMediaView"];
 
 export type ServiceStatus =
   | "NEW"
@@ -137,6 +138,14 @@ export async function scheduleMeasurement(id: number, atIso: string): Promise<Se
 
 export async function createQuote(id: number, body: QuoteRequest): Promise<ServiceRequestDetail> {
   return unwrap(await api.POST("/api/v1/admin/service-requests/{id}/quote", { params: { path: { id } }, body }));
+}
+
+/**
+ * Фото клиента: presigned GET из приватного бакета, ссылки живут ~5 минут. Каждый вызов пишется
+ * в аудит на бэкенде (доступ к персональным данным) — не дёргать без надобности.
+ */
+export async function listServiceRequestMedia(id: number): Promise<ServiceRequestMedia[]> {
+  return unwrap(await api.GET("/api/v1/admin/service-requests/{id}/media", { params: { path: { id } } }));
 }
 
 /** GET /quote-pdf → { url: presigned }. Возвращаем ссылку на сгенерированный PDF. */

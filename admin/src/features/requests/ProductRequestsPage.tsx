@@ -3,6 +3,8 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { FilterPanel } from "@/components/ui/FilterPanel";
+import { AssigneeName } from "@/features/shared/assignees";
+import { useAssignees } from "@/features/shared/useAssignees";
 import { StatusBadge } from "./StatusBadge";
 import { ProductRequestDetailModal } from "./ProductRequestDetailModal";
 import {
@@ -31,6 +33,7 @@ export function ProductRequestsPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const assignees = useAssignees();
 
   const effective = { ...filters, q: q.trim() || undefined };
   const listQuery = useQuery({
@@ -77,12 +80,7 @@ export function ProductRequestsPage() {
     {
       key: "assigned_manager_id",
       header: t.colManager,
-      render: (r) =>
-        r.assigned_manager_id != null ? (
-          <span className="numeric">#{r.assigned_manager_id}</span>
-        ) : (
-          <span className="text-ink-soft">{t.unassigned}</span>
-        ),
+      render: (r) => <AssigneeName id={r.assigned_manager_id} emptyLabel={t.unassigned} />,
     },
     { key: "created_at", header: t.colCreated, render: (r) => <span className="numeric">{dateFmt(r.created_at)}</span> },
   ];
@@ -124,6 +122,19 @@ export function ProductRequestsPage() {
               <option key={s} value={s}>
                 {dict.enums.request_status[s]}
               </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-ink-soft">
+          {dict.assignees.label}
+          <select
+            value={filters.manager_id ?? ""}
+            onChange={(e) => patch({ manager_id: e.target.value ? Number(e.target.value) : undefined })}
+            className="rounded-control border border-line px-3 py-2 text-ink"
+          >
+            <option value="">{dict.assignees.filterAll}</option>
+            {assignees.list.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
         </label>

@@ -1776,6 +1776,29 @@
         }
       }
     },
+    "/api/v1/admin/users/assignees": {
+      "get": {
+        "tags": [
+          "admin-user-controller"
+        ],
+        "operationId": "assignees",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssigneeView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/service-requests": {
       "get": {
         "tags": [
@@ -1965,6 +1988,40 @@
                   "type": "object",
                   "additionalProperties": {
                     "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/service-requests/{id}/media": {
+      "get": {
+        "tags": [
+          "admin-service-request-controller"
+        ],
+        "operationId": "media",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceRequestMediaView"
                   }
                 }
               }
@@ -4499,6 +4556,28 @@
           }
         }
       },
+      "AssigneeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "SUPPORT",
+              "WAREHOUSE",
+              "MANAGER",
+              "ADMIN"
+            ]
+          }
+        }
+      },
       "Order": {
         "type": "object",
         "properties": {
@@ -4637,6 +4716,30 @@
           }
         },
         "description": "Элементы текущей страницы"
+      },
+      "ServiceRequestMediaView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "IMAGE",
+              "VIDEO",
+              "DOC"
+            ]
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
       },
       "ServiceRequestMetrics": {
         "type": "object",

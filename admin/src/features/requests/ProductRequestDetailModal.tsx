@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { resolveErrorMessage } from "@/lib/api/messages";
 import { StatusBadge } from "./StatusBadge";
+import { AssigneeSelect } from "@/features/shared/assignees";
 import {
   getProductRequest,
   transitionProductRequest,
@@ -228,24 +229,14 @@ export function ProductRequestDetailModal({
           {/* Назначение менеджера */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-navy">{t.assignment}</h3>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-ink-soft">
-                {detail.assigned_manager_id != null
-                  ? t.managerId.replace("{id}", String(detail.assigned_manager_id))
-                  : t.unassigned}
-              </span>
+            <div className="flex flex-wrap items-start gap-2 text-sm">
+              <AssigneeSelect value={detail.assigned_manager_id} disabled={busy} onChange={(m) => assignM.mutate(m)} />
               {user && detail.assigned_manager_id !== user.id && (
                 <Button variant="outline" disabled={busy} onClick={() => assignM.mutate(user.id)}>
                   {t.assignToMe}
                 </Button>
               )}
-              {detail.assigned_manager_id != null && (
-                <Button variant="muted" disabled={busy} onClick={() => assignM.mutate(null)}>
-                  {t.unassign}
-                </Button>
-              )}
             </div>
-            <p className="mt-1 text-xs text-ink-soft">{t.assignNote}</p>
           </section>
 
           {/* История статусов */}
