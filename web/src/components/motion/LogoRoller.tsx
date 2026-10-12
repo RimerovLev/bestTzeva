@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useRef } from "react";
-import { BRIGHT, useMotion } from "./MotionProvider";
 
 const DURATION = 1700;
 
@@ -17,7 +16,6 @@ const DURATION = 1700;
  * при prefers-reduced-motion логотип виден целиком: прячем его только из JS прямо перед анимацией.
  */
 export function LogoRoller() {
-  const { burst } = useMotion();
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,9 +46,6 @@ export function LogoRoller() {
         state = "done";
         el.classList.remove("rolling");
         el.classList.add("rolled");
-        // брызги — из-под валика, у правого края красной полосы
-        const r = el.getBoundingClientRect();
-        burst(r.left + r.width * 0.83, r.top + r.height * 0.4, 22, BRIGHT, 0.7);
       };
       raf = requestAnimationFrame(step);
     };
@@ -71,7 +66,7 @@ export function LogoRoller() {
       el.classList.remove("rolling", "rolled");
       el.style.removeProperty("--rp");
     };
-  }, [burst]);
+  }, []);
 
   return (
     <div className="ml-art" ref={box} dir="ltr">
