@@ -55,6 +55,17 @@ export function getPortfolioList(filters: PortfolioFilters, page: number, o: Opt
   return apiGet<PortfolioPage>("/api/v1/portfolio", { ...filters, page, size: 24 }, o);
 }
 
+/** Все slug'и проектов — для sitemap. */
+export async function listPortfolioSlugs(o: Opts): Promise<string[]> {
+  const slugs: string[] = [];
+  for (let page = 0; page < 50; page++) {
+    const res = await apiGet<PortfolioPage>("/api/v1/portfolio", { page, size: 100 }, o);
+    for (const p of res.items ?? []) if (p.slug) slugs.push(p.slug);
+    if (page + 1 >= (res.total_pages ?? 0)) break;
+  }
+  return slugs;
+}
+
 export function getPortfolioProject(slug: string, o: Opts): Promise<PortfolioProject> {
   return apiGet<PortfolioProject>(`/api/v1/portfolio/${encodeURIComponent(slug)}`, {}, o);
 }

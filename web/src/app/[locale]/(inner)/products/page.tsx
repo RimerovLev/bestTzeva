@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -22,7 +23,7 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   const dict = await getDictionary(locale);
-  return { title: dict.catalog.title, description: dict.catalog.subtitle };
+  return pageMeta({ locale, path: "/products", siteName: dict.meta.siteName, title: dict.catalog.title, description: dict.catalog.subtitle });
 }
 
 export default async function ProductsPage({

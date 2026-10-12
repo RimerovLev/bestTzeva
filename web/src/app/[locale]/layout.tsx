@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { locales, dir, isLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { fontVariables } from "@/lib/fonts";
+import { SITE_URL } from "@/lib/seo";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MotionProvider } from "@/components/motion/MotionProvider";
@@ -22,11 +23,14 @@ export async function generateMetadata({
   if (!isLocale(locale)) return {};
   const dict = await getDictionary(locale);
   return {
+    metadataBase: new URL(SITE_URL),
     title: {
       default: `${dict.meta.siteName} — ${dict.meta.tagline}`,
       template: `%s · ${dict.meta.siteName}`,
     },
     description: dict.home.hero.body,
+    applicationName: dict.meta.siteName,
+    formatDetection: { telephone: false },
   };
 }
 

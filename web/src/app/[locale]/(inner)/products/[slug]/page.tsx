@@ -11,12 +11,13 @@ import {
 import { ApiError } from "@/lib/api/problem";
 import { ProductDetail } from "@/components/product/ProductDetail";
 import { Breadcrumbs, type Crumb } from "@/components/product/Breadcrumbs";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
 import { PageBand, type BandTone } from "@/components/motion/PageBand";
 
 /** Цвет плашки товара — по id, чтобы соседние товары отличались, а у одного товара не менялся. */
 const BAND_TONES: BandTone[] = ["blue", "violet", "mint", "yellow"];
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 async function loadCard(slug: string, locale: Locale): Promise<ProductCard | null> {
   try {
@@ -37,19 +38,16 @@ export async function generateMetadata({
   const card = await loadCard(slug, locale);
   if (!card) return {};
 
-  const canonicalPath = `/${locale}/products/${card.slug ?? slug}`;
-  const description = card.short_description ?? card.description ?? undefined;
-  return {
+  const dict = await getDictionary(locale);
+  const image = card.media?.find((m) => m.type === "IMAGE" && m.url)?.url;
+  return pageMeta({
+    locale,
+    path: `/products/${card.slug ?? slug}`,
+    siteName: dict.meta.siteName,
     title: card.name ?? card.sku,
-    description,
-    alternates: { canonical: canonicalPath },
-    openGraph: {
-      type: "website",
-      title: card.name ?? card.sku ?? "",
-      description,
-      url: SITE_URL ? `${SITE_URL}${canonicalPath}` : canonicalPath,
-    },
-  };
+    description: card.short_description ?? card.description,
+    image,
+  });
 }
 
 export default async function ProductPage({
@@ -63,7 +61,7 @@ export default async function ProductPage({
   const [dict, card, categories] = await Promise.all([
     getDictionary(locale),
     loadCard(slug, locale),
-    getCategories({ locale, revalidate: 3600 }).catch(() => [] as CategoryResponse[]),
+    getCategories({ locale, revalidate: 300 }).catch(() => [] as CategoryResponse[]),
   ]);
 
   if (!card) notFound();
@@ -79,7 +77,7 @@ export default async function ProductPage({
 
   return (
     <article>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       <PageBand
         tone={BAND_TONES[(card.id ?? 0) % BAND_TONES.length] ?? "blue"}
         title={card.name ?? card.sku ?? ""}
@@ -141,6 +139,7 @@ function productJsonLd(card: ProductCard, trail: Crumb[]) {
     name: card.name ?? card.sku,
     sku: card.sku,
     description: card.short_description ?? card.description ?? undefined,
+    image: (card.media ?? []).filter((m) => m.type === "IMAGE" && m.url).map((m) => m.url),
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "ILS",
@@ -150,16 +149,7 @@ function productJsonLd(card: ProductCard, trail: Crumb[]) {
     },
   };
 
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [...trail, { label: card.name ?? card.sku ?? "" }].map((c, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: c.label,
-      item: c.href && SITE_URL ? `${SITE_URL}${c.href}` : undefined,
-    })),
-  };
+  const breadcrumb = breadcrumbLd([...trail, { label: card.name ?? card.sku ?? "" }]);
 
   return [product, breadcrumb];
 }

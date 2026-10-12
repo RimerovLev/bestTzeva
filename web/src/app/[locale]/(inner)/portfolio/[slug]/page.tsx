@@ -7,13 +7,14 @@ import { ApiError } from "@/lib/api/problem";
 import { BeforeAfterSlider } from "@/components/portfolio/BeforeAfterSlider";
 import { ToMeasureLink } from "@/components/portfolio/ToMeasureLink";
 import { PageBand } from "@/components/motion/PageBand";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { abs, pageMeta } from "@/lib/seo";
 import { Breadcrumbs } from "@/components/product/Breadcrumbs";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 async function loadProject(slug: string, locale: Locale): Promise<PortfolioProject | null> {
   try {
-    return await getPortfolioProject(slug, { locale, revalidate: 600 });
+    return await getPortfolioProject(slug, { locale, revalidate: 3600 });
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -29,21 +30,16 @@ export async function generateMetadata({
   if (!isLocale(locale)) return {};
   const p = await loadProject(slug, locale);
   if (!p) return {};
-  const canonicalPath = `/${locale}/portfolio/${p.slug ?? slug}`;
-  const description = p.meta_description ?? p.description ?? undefined;
-  const image = p.pairs?.[0]?.after_url ?? p.standalone?.[0]?.url ?? undefined;
-  return {
+  const dict = await getDictionary(locale);
+  return pageMeta({
+    locale,
+    path: `/portfolio/${p.slug ?? slug}`,
+    siteName: dict.meta.siteName,
     title: p.meta_title ?? p.title ?? undefined,
-    description,
-    alternates: { canonical: canonicalPath },
-    openGraph: {
-      type: "article",
-      title: p.meta_title ?? p.title ?? "",
-      description,
-      url: SITE_URL ? `${SITE_URL}${canonicalPath}` : canonicalPath,
-      images: image ? [image] : undefined,
-    },
-  };
+    description: p.meta_description ?? p.description,
+    image: p.pairs?.[0]?.after_url ?? p.standalone?.[0]?.url,
+    type: "article",
+  });
 }
 
 export default async function PortfolioProjectPage({
@@ -66,7 +62,7 @@ export default async function PortfolioProjectPage({
 
   return (
     <article>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(projectJsonLd(project, locale)) }} />
+      <JsonLd data={projectJsonLd(project, locale)} />
 
       <PageBand
         tone="violet"
@@ -156,6 +152,6 @@ function projectJsonLd(p: PortfolioProject, locale: Locale) {
     dateCreated: p.completed_at ?? undefined,
     image: images.length ? images : undefined,
     locationCreated: p.city ? { "@type": "Place", name: p.city } : undefined,
-    url: SITE_URL ? `${SITE_URL}${canonicalPath}` : canonicalPath,
+    url: abs(canonicalPath),
   };
 }

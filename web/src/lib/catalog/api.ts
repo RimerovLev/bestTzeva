@@ -73,6 +73,21 @@ export function getProducts(
   );
 }
 
+/** Размер страницы при обходе всего каталога (sitemap). */
+const CRAWL_PAGE_SIZE = 100;
+const CRAWL_MAX_PAGES = 50;
+
+/** Все slug'и товаров — для sitemap. Обходит страницы списка; кэш revalidate как у карточек. */
+export async function listProductSlugs(options: GetOptions): Promise<string[]> {
+  const slugs: string[] = [];
+  for (let page = 0; page < CRAWL_MAX_PAGES; page++) {
+    const res = await apiGet<ProductSearchResult>("/api/v1/products", { page, size: CRAWL_PAGE_SIZE }, options);
+    for (const p of res.products?.items ?? []) if (p.slug) slugs.push(p.slug);
+    if (page + 1 >= (res.products?.total_pages ?? 0)) break;
+  }
+  return slugs;
+}
+
 /** Дерево категорий (плоско, с локализованными именами и счётчиками товаров). */
 export function getCategories(options: GetOptions): Promise<CategoryResponse[]> {
   return apiGet<CategoryResponse[]>("/api/v1/categories", {}, options);

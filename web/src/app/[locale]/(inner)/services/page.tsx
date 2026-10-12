@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -17,7 +18,7 @@ export async function generateMetadata({
   const { locale } = await params;
   if (!isLocale(locale)) return {};
   const dict = await getDictionary(locale);
-  return { title: dict.services.title, description: dict.services.subtitle };
+  return pageMeta({ locale, path: "/services", siteName: dict.meta.siteName, title: dict.services.title, description: dict.services.subtitle });
 }
 
 export default async function ServicesPage({
