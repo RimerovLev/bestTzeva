@@ -447,27 +447,17 @@
   background: var(--paper); border-radius: clamp(18px, 3vw, 32px); box-shadow: clamp(6px, 1vw, 12px) clamp(6px, 1vw, 12px) 0 var(--yellow);
   rotate: -1.5deg; transition: rotate .6s var(--spring), transform .6s var(--spring);
 }
-.mega-logo img { display: block; width: 100%; height: auto; }
-/* Валик проявляет логотип: всё левее --rp покрашено. Без JS --rp не задан — логотип виден целиком. */
-.ml-art { position: relative; --rp: 100%; }
-.ml-paint { clip-path: inset(-4% calc(100% - var(--rp)) -4% 0); }
-.ml-roller {
-  position: absolute; top: -22%; bottom: -22%; left: var(--rp); width: clamp(26px, 4.4vw, 46px); transform: translateX(-50%);
-  opacity: 0; pointer-events: none; transition: opacity .35s;
-}
-.ml-art.rolling .ml-roller { opacity: 1; }
-.ml-art.rolled .ml-roller { opacity: 0; transition-duration: .6s; }
-.ml-cyl {
-  position: absolute; inset: 0; border-radius: 999px; border: 3px solid var(--ink); box-shadow: 4px 4px 0 rgba(18, 18, 18, .35);
-  background:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, .28) 0 3px, transparent 3px 8px),
-    linear-gradient(90deg, #b8211b, var(--red) 45%, #ff6a5f 60%, var(--red) 75%, #b8211b);
-  background-size: 100% 16px, 100% 100%;
-}
-.ml-art.rolling .ml-cyl { animation: nap .28s linear infinite; }
-@keyframes nap { to { background-position: 0 16px, 0 0; } }
-/* ручка: от верхнего торца валика вверх-вправо, как у валика на логотипе */
-.ml-handle { position: absolute; bottom: 100%; left: 50%; width: 140%; height: auto; margin-bottom: -6px; transform: translateX(-18%); overflow: visible; }
+.ml-paint img { display: block; width: 100%; height: auto; }
+/*
+ * Валик проявляет логотип. --rp — прогресс 0…1 (без JS не задан → 1, логотип собран целиком).
+ * Геометрия в долях исходника 649px: валик вырезан с x=521 (80.277%) шириной 128px (19.723%),
+ * центр его «шубы» — +18px (2.773%). Старт — центр шубы у левого края надписи.
+ */
+.ml-art { position: relative; --rp: 1; --rx: calc(-2.773% + var(--rp) * 83.05%); }
+.ml-paint { clip-path: inset(-6% calc(100% - var(--rx) - 2.773%) -6% 0); }
+.ml-roller { position: absolute; top: 0; left: var(--rx); width: 19.723%; height: 100%; pointer-events: none; }
+.ml-art.rolling .ml-roller { animation: rollJit .16s ease-in-out infinite alternate; }
+@keyframes rollJit { to { transform: translateY(-1.5%) rotate(-.6deg); } }
 .mega-logo:hover { rotate: 1deg; transform: scale(1.02); }
 .foot { display: flex; flex-wrap: wrap; gap: 16px 36px; align-items: center; justify-content: space-between; margin-top: 26px; padding-top: 22px; border-top: 2px solid rgba(251, 248, 243, .2); }
 .foot nav { display: flex; flex-wrap: wrap; gap: 6px 20px; }
