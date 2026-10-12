@@ -8,36 +8,27 @@ import { useRequest } from "@/lib/request/RequestProvider";
 import type { ProductRequestResponse } from "@/lib/catalog/api";
 import { RequestItemsPanel } from "./RequestItemsPanel";
 import { RequestForm } from "./RequestForm";
+import { BRIGHT, useMotion } from "@/components/motion/MotionProvider";
 
 export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const r = dict.request;
   const request = useRequest();
   const [unavailableIds, setUnavailableIds] = useState<Set<number>>(new Set());
   const [success, setSuccess] = useState<ProductRequestResponse | null>(null);
+  const { burst } = useMotion();
 
   if (success) {
     return (
-      <div className="mx-auto max-w-md rounded-card border border-line bg-surface p-8 text-center shadow-card">
-        <p className="text-h2 font-bold text-navy">{r.successTitle}</p>
-        <p className="mt-4 text-sm text-ink-soft">{r.successNumber}</p>
-        <p className="numeric text-h1 font-bold text-brass">
-          <bdi>{success.request_number}</bdi>
-        </p>
-        <p className="mt-2 text-ink-soft">{r.successBody}</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Link
-            href={`/${locale}/products`}
-            className="rounded-control border border-line-strong px-4 py-2 text-sm text-ink-soft hover:bg-paper-warm"
-          >
-            {r.toCatalog}
-          </Link>
-          <button
-            type="button"
-            onClick={() => setSuccess(null)}
-            className="rounded-control bg-navy px-4 py-2 text-sm text-surface hover:bg-navy-deep"
-          >
-            {r.newRequest}
-          </button>
+      <div className="card ok done" role="status">
+        <span className="ok-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#121212" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
+        </span>
+        <h3>{r.successTitle}</h3>
+        <p>{r.successNumber}: <bdi className="num-big">{success.request_number}</bdi></p>
+        <p>{r.successBody}</p>
+        <div className="row">
+          <Link href={`/${locale}/products`} className="btn btn-sm">{r.toCatalog}</Link>
+          <button type="button" onClick={() => setSuccess(null)} className="btn btn-yellow btn-sm">{r.newRequest}</button>
         </div>
       </div>
     );
@@ -45,21 +36,19 @@ export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary
 
   if (request.items.length === 0) {
     return (
-      <div className="rounded-card border border-line bg-surface p-12 text-center shadow-card">
-        <p className="text-h3 text-navy">{r.emptyTitle}</p>
-        <p className="mt-2 text-ink-soft">{r.emptyBody}</p>
-        <Link
-          href={`/${locale}/products`}
-          className="mt-4 inline-block rounded-control border border-brass px-4 py-2 text-sm text-brass hover:bg-brass hover:text-surface"
-        >
-          {r.toCatalog}
-        </Link>
+      <div className="card empty">
+        <h3>{r.emptyTitle}</h3>
+        <p>{r.emptyBody}</p>
+        <div className="row">
+          <Link href={`/${locale}/products`} className="btn btn-red btn-sm">{r.toCatalog}</Link>
+          <Link href={`/${locale}#colors`} className="btn btn-sm">{r.tryColor}</Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+    <div className="req">
       <RequestItemsPanel
         items={request.items}
         locale={locale}
@@ -80,8 +69,9 @@ export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary
         locale={locale}
         dict={dict}
         onUnavailable={(ids) => setUnavailableIds(new Set(ids))}
-        onSuccess={(res) => {
+        onSuccess={(res, at) => {
           trackSubmitted(res.request_number);
+          if (at) burst(at.x, at.y, 80, BRIGHT, 1.35);
           request.clear();
           setSuccess(res);
         }}

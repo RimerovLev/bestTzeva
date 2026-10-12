@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { RequestItem } from "@/lib/request/RequestProvider";
@@ -28,83 +29,47 @@ export function RequestItemsPanel({
   const total = items.reduce((sum, i) => sum + (i.price ?? 0) * i.qty, 0);
 
   return (
-    <div className="rounded-card border border-line bg-surface shadow-card">
-      <h2 className="border-b border-line px-4 py-3 text-h3 font-bold text-navy">{r.items}</h2>
+    <div className="card req-card">
+      <h2>{r.items}</h2>
 
-      <ul>
+      <ul className="req-list">
         {items.map((item) => {
           const unavailable = unavailableIds.has(item.variantId);
           return (
-            <li
-              key={item.variantId}
-              className={`flex items-center gap-3 border-b border-line px-4 py-3 last:border-0 ${
-                unavailable ? "bg-crit-bg/40" : ""
-              }`}
-            >
-              <span
-                className="h-8 w-8 shrink-0 rounded-pill border border-line"
-                style={{ backgroundColor: item.colorHex ?? "var(--line)" }}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-navy">{item.name}</p>
-                <p className="text-xs text-ink-faint">
-                  {item.colorCode && <span>{item.colorCode} · </span>}
-                  {item.volumeLiters != null && (
-                    <span>
-                      <bdi className="numeric">{item.volumeLiters}</bdi> {dict.product.liters}
-                    </span>
-                  )}
-                </p>
-                {unavailable && <p className="mt-1 text-xs text-crit-fg">{r.unavailable}</p>}
+            <li key={item.variantId} className={`req-row${unavailable ? " bad" : ""}`}>
+              <span className="req-sw" style={{ "--c": item.colorHex ?? "var(--paper)" } as CSSProperties} aria-hidden />
+              <div className="min-w-0">
+                <b>{item.name}</b>
+                <span className="req-meta">
+                  {item.colorCode && <bdi>{item.colorCode}</bdi>}
+                  {item.colorCode && item.volumeLiters != null && " · "}
+                  {item.volumeLiters != null && <><bdi>{item.volumeLiters}</bdi> {dict.product.liters}</>}
+                </span>
+                {unavailable && <p className="req-bad">{r.unavailable}</p>}
               </div>
 
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => onQty(item.variantId, item.qty - 1)}
-                  disabled={item.qty <= 1}
-                  aria-label="-"
-                  className="h-8 w-8 rounded-control border border-line-strong text-ink-soft disabled:opacity-40"
-                >
-                  −
-                </button>
-                <span className="numeric w-8 text-center text-sm">{item.qty}</span>
-                <button
-                  type="button"
-                  onClick={() => onQty(item.variantId, item.qty + 1)}
-                  aria-label="+"
-                  className="h-8 w-8 rounded-control border border-line-strong text-ink-soft"
-                >
-                  +
-                </button>
+              <div className="qty">
+                <button type="button" onClick={() => onQty(item.variantId, item.qty - 1)} disabled={item.qty <= 1} aria-label={r.qtyMinus}>−</button>
+                <span aria-label={r.qty}><bdi>{item.qty}</bdi></span>
+                <button type="button" onClick={() => onQty(item.variantId, item.qty + 1)} aria-label={r.qtyPlus}>+</button>
               </div>
 
-              <span className="numeric w-20 text-end text-sm font-medium text-navy">
-                <bdi>{formatPrice(locale, (item.price ?? 0) * item.qty)}</bdi>
-              </span>
+              <span className="req-sum"><bdi>{formatPrice(locale, (item.price ?? 0) * item.qty)}</bdi></span>
 
-              <button
-                type="button"
-                onClick={() => onRemove(item.variantId)}
-                aria-label={r.remove}
-                className="text-ink-faint hover:text-crit-fg"
-              >
-                ✕
+              <button type="button" className="rm" onClick={() => onRemove(item.variantId)} aria-label={`${r.remove}: ${item.name}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6 6 18" /></svg>
               </button>
             </li>
           );
         })}
       </ul>
 
-      <div className="border-t border-line px-4 py-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-ink-soft">{r.indicativeTotal}</span>
-          <span className="numeric text-h3 font-bold text-navy">
-            <bdi>{formatPrice(locale, total)}</bdi>
-          </span>
+      <div className="req-total">
+        <div>
+          <span>{r.indicativeTotal}</span>
+          <strong><bdi>{formatPrice(locale, total)}</bdi></strong>
         </div>
-        <p className="mt-1 text-xs text-ink-faint">{r.indicativeNote}</p>
+        <p>{r.indicativeNote}</p>
       </div>
     </div>
   );

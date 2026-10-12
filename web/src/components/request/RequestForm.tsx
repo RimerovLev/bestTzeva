@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type InputHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,7 +38,8 @@ export function RequestForm({
   items: RequestItem[];
   locale: Locale;
   dict: Dictionary;
-  onSuccess: (res: ProductRequestResponse) => void;
+  /** at — центр кнопки отправки, откуда летят брызги. */
+  onSuccess: (res: ProductRequestResponse, at: { x: number; y: number } | null) => void;
   onUnavailable: (ids: number[]) => void;
 }) {
   const r = dict.request;
@@ -54,6 +55,7 @@ export function RequestForm({
   });
   const [formError, setFormError] = useState<string | null>(null);
   const consent = watch("consent");
+  const submitAt = useRef<{ x: number; y: number } | null>(null);
 
   /** На blanket-ошибке variant_unavailable сами находим недоступные позиции (бэкенд их не называет). */
   async function detectUnavailable(): Promise<number[]> {
@@ -89,7 +91,7 @@ export function RequestForm({
         },
         { locale },
       );
-      onSuccess(res);
+      onSuccess(res, submitAt.current);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "request.consent_required") {
@@ -111,65 +113,62 @@ export function RequestForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="rounded-card border border-line bg-surface p-5 shadow-card">
-      <h2 className="text-h3 font-bold text-navy">{r.formTitle}</h2>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      onSubmitCapture={(e) => {
+        const b = (e.currentTarget.querySelector("button[type=submit]") as HTMLElement | null)?.getBoundingClientRect();
+        submitAt.current = b ? { x: b.left + b.width / 2, y: b.top + b.height / 2 } : null;
+      }}
+      noValidate
+      className="card form-card tb-form"
+    >
+      <h2>{r.formTitle}</h2>
 
-      <div className="mt-4 space-y-3">
-        <TextField label={r.name} error={errors.name && r.required} {...register("name")} autoComplete="name" />
+      <div className="form-grid">
+        <TextField id="rq-name" label={r.name} error={errors.name && r.required} {...register("name")} autoComplete="name" />
         <TextField
+          id="rq-phone"
           label={r.phone}
           error={errors.phone && r.required}
           {...register("phone")}
           type="tel"
           inputMode="tel"
           autoComplete="tel"
+          dir="ltr"
           placeholder="05X-XXXXXXX"
         />
-        <TextField label={r.email} error={errors.email && r.required} {...register("email")} type="email" autoComplete="email" />
-        <TextField label={r.contactTime} {...register("contactTime")} placeholder={r.contactTimePlaceholder} />
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink-soft">{r.comment}</span>
-          <textarea
-            {...register("comment")}
-            rows={3}
-            className="rounded-control border border-line-strong bg-surface px-3 py-2 text-body outline-none focus:border-brass focus-visible:ring-2 focus-visible:ring-terracotta"
-          />
-        </label>
-
-        {/* Honeypot: не display:none, а увод за экран; боты его заполняют, люди — нет. */}
-        <div aria-hidden className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden">
-          <label>
-            Website
-            <input type="text" tabIndex={-1} autoComplete="off" {...register("website")} />
-          </label>
-        </div>
-
-        <label className="flex items-start gap-2 text-sm text-ink-soft">
-          <input type="checkbox" {...register("consent")} className="mt-1 accent-brass" />
-          <span>
-            {r.consentBefore}{" "}
-            <Link href={`/${locale}/privacy`} className="text-brass underline">
-              {r.policy}
-            </Link>
-            {errors.consent && <span className="block text-xs text-crit-fg">{r.required}</span>}
-          </span>
-        </label>
-
-        {formError && (
-          <div className="rounded-control border border-crit-fg/30 bg-crit-bg px-3 py-2 text-sm text-crit-fg">
-            {formError}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitting || !consent}
-          className="w-full rounded-control bg-navy px-6 py-3 font-medium text-surface transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting ? r.submitting : r.submit}
-        </button>
       </div>
+      <div className="form-grid">
+        <TextField id="rq-email" label={r.email} error={errors.email && r.required} {...register("email")} type="email" autoComplete="email" dir="ltr" />
+        <TextField id="rq-time" label={r.contactTime} {...register("contactTime")} placeholder={r.contactTimePlaceholder} />
+      </div>
+
+      <div className="field">
+        <label htmlFor="rq-comment">{r.comment}</label>
+        <textarea id="rq-comment" {...register("comment")} rows={3} />
+      </div>
+
+      {/* Honeypot: не display:none, а увод за экран; боты его заполняют, люди — нет. */}
+      <div aria-hidden className="hp">
+        <label>
+          Website
+          <input type="text" tabIndex={-1} autoComplete="off" {...register("website")} />
+        </label>
+      </div>
+
+      <label className="consent">
+        <input type="checkbox" {...register("consent")} />
+        <span>
+          {r.consentBefore} <Link href={`/${locale}/privacy`}>{r.policy}</Link>
+          {errors.consent && <span className="field"><span className="err">{r.required}</span></span>}
+        </span>
+      </label>
+
+      {formError && <p className="form-err" role="alert">{formError}</p>}
+
+      <button type="submit" disabled={isSubmitting || !consent} className="btn btn-red">
+        {isSubmitting ? r.submitting : r.submit}
+      </button>
     </form>
   );
 }
@@ -177,17 +176,12 @@ export function RequestForm({
 const TextField = ({
   label,
   error,
+  id,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string | false }) => (
-  <label className="flex flex-col gap-1">
-    <span className="text-sm font-medium text-ink-soft">{label}</span>
-    <input
-      aria-invalid={error ? true : undefined}
-      className={`rounded-control border bg-surface px-3 py-2 text-body outline-none focus:border-brass focus-visible:ring-2 focus-visible:ring-terracotta ${
-        error ? "border-crit-fg" : "border-line-strong"
-      }`}
-      {...props}
-    />
-    {error && <span className="text-xs text-crit-fg">{error}</span>}
-  </label>
+}: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string | false; id: string }) => (
+  <div className="field">
+    <label htmlFor={id}>{label}</label>
+    <input id={id} aria-invalid={error ? true : undefined} {...props} />
+    {error && <span className="err">{error}</span>}
+  </div>
 );

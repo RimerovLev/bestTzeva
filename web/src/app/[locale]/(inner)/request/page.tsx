@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { RequestView } from "@/components/request/RequestView";
+import { PageBand } from "@/components/motion/PageBand";
 
 export async function generateMetadata({
   params,
@@ -27,7 +28,7 @@ export default async function RequestPage({
 
   return (
     <section>
-      <h1 className="display mb-6 text-h1 font-bold text-navy-deep">{dict.request.title}</h1>
+      <PageBand tone="red" eyebrow={dict.header.request} title={dict.request.heading} body={dict.request.intro} dx="-90px" />
       <RequestView locale={locale} dict={dict} />
     </section>
   );
