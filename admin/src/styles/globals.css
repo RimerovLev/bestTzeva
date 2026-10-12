@@ -1,0 +1,45 @@
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-size: var(--fs-body);
+    line-height: 1.6;
+  }
+
+  /* Гарнитура по языку контента: иврит — Heebo, кириллица — Manrope (см. design-system). */
+  :lang(he) { font-family: "Heebo", system-ui, sans-serif; }
+  :lang(ru) { font-family: "Manrope", system-ui, sans-serif; }
+
+  bdi { unicode-bidi: isolate; }
+}
+
+@layer components {
+  /* Данные: артикулы, номера заявок, цены, количества — моноширинный с tabular-nums. */
+  .numeric {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Зеркалятся стрелки, не буквы: только в RTL. Логотип/аватар класс не получают. */
+  [dir="rtl"] .icon-chevron {
+    transform: scaleX(-1);
+  }
+
+  /* Числовые колонки таблиц выравниваются «к концу строки» и в обе стороны. */
+  .col-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,0 +1,35 @@
+name: Admin CI
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths: [ 'admin/**', '.github/workflows/admin-ci.yml' ]
+
+defaults:
+  run:
+    working-directory: admin
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # Типы API сгенерированы из openapi/*.json и закоммичены. Если спек обновили, а типы нет —
+      # сборка падает здесь, а не расхождением в рантайме.
+      - name: API types are in sync with the spec
+        run: pnpm gen:api:check
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Lint
+        run: pnpm lint
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build

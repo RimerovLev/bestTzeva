@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+# esbuild — нативный бандлер Vite/Vitest; без его postinstall бинарь не встанет и сборка не запустится.
+onlyBuiltDependencies:
+  - esbuild

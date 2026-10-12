@@ -1,0 +1,27 @@
+/*
+ * Дизайн-токены Tzeva Best (docs/design-system.md). Совпадают с витриной — единственный
+ * источник цвета, радиуса и отступа. Общий пакет не заводим, пока не начнёт дублироваться.
+ */
+:root {
+  --navy: #1b3050;        --navy-deep: #16243d;
+  --brass: #b98d3e;       --brass-light: #d9b878;
+  --terracotta: #d06b4a;  --sage: #9db09a;  --sage-pale: #e4eadf;
+
+  --paper: #f8f4ec;  --paper-warm: #f2ebdd;  --surface: #ffffff;
+  --ink: #1e2b3c;    --ink-soft: #5a6675;    --ink-faint: #8b94a0;
+  --line: #e2d9c8;   --line-strong: #cabfa8;
+
+  --ok-fg: #2e7d51;   --ok-bg: #dcf0e4;
+  --info-fg: #2563a8; --info-bg: #dce8f5;
+  --warn-fg: #a97918; --warn-bg: #f8eed2;
+  --crit-fg: #b5402f; --crit-bg: #fadfd9;
+
+  --radius-control: 8px;  --radius-card: 12px;  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(30 43 60 / .05), 0 8px 24px rgb(30 43 60 / .06);
+
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px; --sp-16: 64px;
+
+  --fs-display: 44px; --fs-h1: 32px; --fs-h2: 24px; --fs-h3: 18px;
+  --fs-body: 16px; --fs-sm: 14px; --fs-xs: 12px;
+}

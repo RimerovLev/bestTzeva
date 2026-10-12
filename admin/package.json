@@ -1,0 +1,52 @@
+{
+  "name": "tzeva-best-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "spec:pull": "curl -fsS \"${VITE_API_BASE_URL:-http://localhost:8080}/api-docs/public\" -o openapi/public.json && curl -fsS \"${VITE_API_BASE_URL:-http://localhost:8080}/api-docs/admin\" -o openapi/admin.json && node -e \"for(const f of ['openapi/public.json','openapi/admin.json']){const fs=require('fs');fs.writeFileSync(f,JSON.stringify(JSON.parse(fs.readFileSync(f,'utf8')),null,2)+'\\n')}\"",
+    "gen:api": "openapi-typescript openapi/public.json -o src/lib/api/schema.public.ts && openapi-typescript openapi/admin.json -o src/lib/api/schema.admin.ts",
+    "gen:api:check": "pnpm gen:api && git diff --exit-code -- src/lib/api/schema.public.ts src/lib/api/schema.admin.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@tanstack/react-query": "^5.62.11",
+    "@tanstack/react-router": "^1.87.0",
+    "lucide-react": "^0.469.0",
+    "openapi-fetch": "^0.13.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.54.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "jsdom": "^25.0.1",
+    "openapi-typescript": "^7.5.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@11.25.0"
+}
