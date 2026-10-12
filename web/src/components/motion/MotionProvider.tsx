@@ -18,12 +18,10 @@ interface MotionValue {
 const MotionContext = createContext<MotionValue | null>(null);
 
 /**
- * Общий слой анимации сайта: холст брызг поверх страницы, курсор-«капля» с difference-смешиванием
- * (только мышь, без prefers-reduced-motion) и тост. Компоненты зовут burst/say через useMotion().
+ * Общий слой анимации сайта: холст брызг поверх страницы и тост. Компоненты зовут burst/say через useMotion().
  */
 export function MotionProvider({ children }: { children: ReactNode }) {
   const fxRef = useRef<HTMLCanvasElement>(null);
-  const curRef = useRef<HTMLDivElement>(null);
   const parts = useRef<Particle[]>([]);
   const running = useRef(false);
   const [reduce, setReduce] = useState(false);
@@ -52,37 +50,6 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     addEventListener("resize", resize);
     return () => removeEventListener("resize", resize);
   }, []);
-
-  // курсор: плавно догоняет указатель, растёт над интерактивным, прячется над холстом валика
-  useEffect(() => {
-    const cur = curRef.current;
-    if (!cur || reduce || !matchMedia("(pointer: fine)").matches) return;
-    let cx = -100, cy = -100, tx = -100, ty = -100, raf = 0;
-    const onMove = (e: PointerEvent) => {
-      tx = e.clientX;
-      ty = e.clientY;
-      cur.classList.add("on");
-      const t = e.target as Element | null;
-      cur.classList.toggle("big", !!t?.closest?.("a, button, label, input[type=range], .stripe, .lift, .mega-logo"));
-      cur.classList.toggle("hide", !!t?.closest?.(".vz-canvas"));
-    };
-    const onLeave = () => cur.classList.remove("on");
-    const tick = () => {
-      cx += (tx - cx) * 0.25;
-      cy += (ty - cy) * 0.25;
-      cur.style.transform = `translate3d(${cx}px,${cy}px,0) translate(-50%,-50%)`;
-      raf = requestAnimationFrame(tick);
-    };
-    addEventListener("pointermove", onMove, { passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      removeEventListener("pointermove", onMove);
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-      cur.classList.remove("on");
-    };
-  }, [reduce]);
 
   const loop = useCallback(() => {
     const fx = fxRef.current;
@@ -138,7 +105,6 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     <MotionContext.Provider value={value}>
       {children}
       <canvas id="tb-fx" ref={fxRef} aria-hidden />
-      <div id="tb-cursor" ref={curRef} aria-hidden />
       <div className={`toast${toast.show ? " show" : ""}`} role="status" aria-live="polite">
         {toast.text}
       </div>

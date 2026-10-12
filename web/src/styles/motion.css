@@ -4,7 +4,7 @@
  * web/design/prototype/src3.html; физические свойства заменены логическими (RTL).
  *
  * Исключения из «только логические свойства», каждое осознанное:
- *  - #tb-cursor / #tb-fx — оверлеи в координатах указателя (clientX/Y), не раскладка;
+ *  - #tb-fx — оверлей в координатах указателя (clientX/Y), не раскладка;
  *  - .ba / .vz-wrap — картинка не имеет направления письма, внутри принудительно dir="ltr";
  *  - background-position и transform-origin у маркера, прогресса и ползунка зеркалятся через [dir].
  */
@@ -13,14 +13,6 @@
 
 /* ---------- оверлеи: брызги, курсор, тост ---------- */
 #tb-fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 70; }
-#tb-cursor {
-  position: fixed; left: 0; top: 0; width: 18px; height: 18px; border-radius: 50%; background: #fff;
-  mix-blend-mode: difference; pointer-events: none; z-index: 90; opacity: 0;
-  transition: width .35s var(--spring), height .35s var(--spring), opacity .3s;
-}
-#tb-cursor.on { opacity: 1; }
-#tb-cursor.big { width: 56px; height: 56px; }
-#tb-cursor.hide { opacity: 0 !important; }
 .toast {
   position: fixed; inset-inline: 0; margin-inline: auto; width: fit-content; max-width: calc(100% - 32px);
   bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 80;
