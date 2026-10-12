@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
+import { LogoRoller } from "@/components/motion/LogoRoller";
 
 const ANCHORS: { key: keyof Dictionary["nav"]; anchor: string }[] = [
   { key: "works", anchor: "works" },
@@ -12,8 +12,8 @@ const ANCHORS: { key: keyof Dictionary["nav"]; anchor: string }[] = [
 ];
 
 /**
- * Подвал: крупный логотип с валиком на бумажной табличке (на чёрном фоне синее «צבע» иначе
- * теряется), меню и реквизиты. Реквизиты — плейсхолдеры до данных клиента.
+ * Подвал: крупный логотип на бумажной табличке (на чёрном фоне синее «צבע» иначе теряется) —
+ * при прокрутке его «прокатывает» валик (LogoRoller), меню и реквизиты. Реквизиты — плейсхолдеры до данных клиента.
  */
 export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const year = new Date().getFullYear();
@@ -23,7 +23,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
     <footer className="mega-foot">
       <div className="wrap">
         <Link href={`/${locale}`} className="mega-logo" aria-label={name}>
-          <Image src="/assets/motion/logo.webp" alt="" width={649} height={153} sizes="(max-width: 1100px) 90vw, 1000px" />
+          <LogoRoller />
         </Link>
         <div className="foot">
           <nav aria-label={dict.footer.navLabel}>
