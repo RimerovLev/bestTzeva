@@ -12,6 +12,7 @@ import com.tzevabest.service.dto.MeasurementRequest;
 import com.tzevabest.service.dto.QuoteRequest;
 import com.tzevabest.service.dto.ServiceRequestDetail;
 import com.tzevabest.service.dto.ServiceRequestListItem;
+import com.tzevabest.service.dto.ServiceRequestMediaView;
 import com.tzevabest.service.dto.ServiceRequestMetrics;
 import com.tzevabest.service.dto.TransitionRequest;
 import com.tzevabest.service.service.ServiceRequestAdminService;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 /** Воронка заявок на покраску в админке. Доступ — SUPPORT/MANAGER/ADMIN. */
@@ -100,6 +102,15 @@ public class AdminServiceRequestController {
     @PostMapping("/{id}/quote")
     public ServiceRequestDetail quote(@PathVariable long id, @Valid @RequestBody QuoteRequest request) {
         return service.quote(id, request);
+    }
+
+    /** Фото клиента: presigned GET на каждое (живут минуты — фронт запрашивает при открытии карточки). */
+    @GetMapping("/{id}/media")
+    public List<ServiceRequestMediaView> media(@PathVariable long id) {
+        return service.mediaKeys(id).stream()
+                .map(m -> new ServiceRequestMediaView(m.id(), m.type(), m.uploadedAt(),
+                        presigner.presignDownload(m.objectKey())))
+                .toList();
     }
 
     @GetMapping("/{id}/quote-pdf")

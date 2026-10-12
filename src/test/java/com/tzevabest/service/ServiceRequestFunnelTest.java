@@ -118,6 +118,31 @@ class ServiceRequestFunnelTest extends IntegrationTest {
         assertThat(comments).isEqualTo(1);
     }
 
+    @Test
+    void client_photos_are_served_by_short_presigned_links_and_audited() throws Exception {
+        long id = seed("NEW", "dana@x.test");
+        jdbcTemplate.update("""
+                insert into service_request_media (request_id, object_key, type) values (?, ?, 'IMAGE')""",
+                id, "service-requests/" + uid() + ".jpg");
+        // незавершённая загрузка без ключа — не отдаётся
+        jdbcTemplate.update("insert into service_request_media (request_id, type) values (?, 'IMAGE')", id);
+
+        ResponseEntity<String> resp = post0("GET", id + "/media", null);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode items = json.readTree(resp.getBody());
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).get("type").asText()).isEqualToIgnoringCase("image");
+        assertThat(items.get(0).get("url").asText()).contains("tzevabest-private").contains("X-Amz-Signature");
+
+        // просмотр персональных данных — в журнале аудита
+        Integer audited = jdbcTemplate.queryForObject(
+                "select count(*) from audit_log where action = 'service_request.media_view' and entity_id = ?",
+                Integer.class, id);
+        assertThat(audited).isEqualTo(1);
+
+        assertThat(post0("GET", "999999999/media", null).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     private long seed(String status, String email) {

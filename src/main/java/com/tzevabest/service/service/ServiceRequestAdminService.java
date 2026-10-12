@@ -15,6 +15,7 @@ import com.tzevabest.notification.dto.NotificationTemplate;
 import com.tzevabest.notification.dto.ServiceRequestQuotedModel;
 import com.tzevabest.notification.service.NotificationService;
 import com.tzevabest.service.domain.PropertyType;
+import com.tzevabest.service.domain.ServiceMediaType;
 import com.tzevabest.service.domain.ServiceRequestStatus;
 import com.tzevabest.service.domain.WorkType;
 import com.tzevabest.service.dto.CommentView;
@@ -184,6 +185,25 @@ public class ServiceRequestAdminService {
                 (rs, n) -> new CommentView(rs.getLong("id"), (Long) rs.getObject("author_id"),
                         rs.getString("body"), rs.getTimestamp("created_at").toInstant()), id);
         return withChildren(base, history, comments);
+    }
+
+    /** Ключ медиа клиента в приватном бакете — подписывается в ссылку на уровне контроллера. */
+    public record MediaKey(long id, ServiceMediaType type, String objectKey, Instant uploadedAt) {
+    }
+
+    /**
+     * Медиа клиента по заявке (фото помещения). Просмотр — доступ к персональным данным, поэтому
+     * пишется в журнал аудита. Записи без object_key (незавершённая загрузка) не отдаются.
+     */
+    public List<MediaKey> mediaKeys(long id) {
+        currentStatus(id); // 404 на несуществующую заявку
+        List<MediaKey> keys = jdbc.query("""
+                select id, type, object_key, uploaded_at from service_request_media
+                where request_id = ? and object_key is not null order by uploaded_at, id""",
+                (rs, n) -> new MediaKey(rs.getLong("id"), ServiceMediaType.valueOf(rs.getString("type")),
+                        rs.getString("object_key"), rs.getTimestamp("uploaded_at").toInstant()), id);
+        audit("service_request.media_view", id, Map.of("count", keys.size()));
+        return keys;
     }
 
     // ── Машина состояний ─────────────────────────────────────────────────────────

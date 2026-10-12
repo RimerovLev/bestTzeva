@@ -39,6 +39,8 @@
 | `/api/v1/admin/dashboard/**` | дашборд | ✗ | ✓ | ✗ | ✓ | ✓ |
 | `/api/v1/admin/products/**`, `/categories/**`, `/colors/**`, `/reports/**` | каталог, цены, отчёты | ✗ | ✗ | ✗ | ✓ | ✓ |
 | `/api/v1/admin/audit-log/**`, `/privacy/**` | аудит и приватность | ✗ | ✗ | ✗ | ✗ | ✓ |
+| `GET /api/v1/admin/users/assignees` | исполнители заявок (id, имя, роль) | ✗ | ✓ | ✗ | ✓ | ✓ |
+| `GET /api/v1/admin/service-requests/{id}/media` | фото клиента (presigned, ~5 мин), просмотр — в аудит | ✗ | ✓ | ✗ | ✓ | ✓ |
 | `POST /api/v1/admin/users/{id}/role` | смена ролей | ✗ | ✗ | ✗ | ✗ | ✓ |
 
 ## Владение ресурсом
