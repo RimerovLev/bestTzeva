@@ -1,10 +1,13 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { ServiceCalculator } from "@/components/services/ServiceCalculator";
+import { PageBand } from "@/components/motion/PageBand";
 
 const DIRECTIONS = ["APARTMENT", "HOUSE", "OFFICE", "COMMERCIAL"] as const;
+const ROT = ["-1deg", "1deg", "-.6deg", ".8deg"];
 
 export async function generateMetadata({
   params,
@@ -28,24 +31,26 @@ export default async function ServicesPage({
   const s = dict.services;
 
   return (
-    <div className="space-y-12">
-      <header>
-        <h1 className="display text-h1 font-bold text-navy-deep">{s.title}</h1>
-        <p className="mt-2 max-w-2xl text-ink font-medium">{s.subtitle}</p>
-      </header>
+    <div>
+      <PageBand tone="red" eyebrow={dict.nav.services} title={dict.home.services.title} body={s.subtitle} dx="-40px" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {DIRECTIONS.map((key) => {
+      <div className="stack">
+        {DIRECTIONS.map((key, i) => {
           const d = s.directions[key];
           return (
-            <div key={key} className="flex flex-col rounded-card border border-line bg-surface p-5 shadow-card">
-              <h2 className="text-h3 font-bold text-navy">{d.title}</h2>
-              <dl className="mt-3 space-y-2 text-sm">
-                <div><dt className="text-ink-faint">{s.includesLabel}</dt><dd className="text-ink">{d.includes}</dd></div>
-                <div><dt className="text-ink-faint">{s.timelineLabel}</dt><dd className="text-ink">{d.timeline}</dd></div>
-                <div><dt className="text-ink-faint">{s.priceLabel}</dt><dd className="font-medium text-brass">{d.price}</dd></div>
+            <article key={key} className="svc-card card" style={{ "--i": i, "--rot": ROT[i] } as CSSProperties}>
+              <span className="svc-num" aria-hidden>{String(i + 1).padStart(2, "0")}</span>
+              <div>
+                <h2>{d.title}</h2>
+                <p>{d.includes}</p>
+              </div>
+              <dl className="svc-meta">
+                <dt className="sr-only">{s.timelineLabel}</dt>
+                <dd className="pill">{d.timeline}</dd>
+                <dt className="sr-only">{s.priceLabel}</dt>
+                <dd className="pill y">{d.price}</dd>
               </dl>
-            </div>
+            </article>
           );
         })}
       </div>

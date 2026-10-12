@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -80,65 +80,63 @@ export function ServiceCalculator({ locale, dict }: { locale: Locale; dict: Dict
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-      <form onSubmit={onCalculate} className="rounded-card border border-line bg-surface p-6 shadow-card">
-        <h2 className="text-h2 font-bold text-navy">{s.calcTitle}</h2>
+    <div className="calc2">
+      <form onSubmit={onCalculate} className="card form-card tb-form">
+        <h2>{s.calcTitle}</h2>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="form-grid">
           <Field label={s.propertyType}>
-            <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)} className={inputCls}>
+            <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)}>
               {PROPERTY_TYPES.map((p) => <option key={p} value={p}>{dict.enums.property_type[p]}</option>)}
             </select>
           </Field>
-          <Field label={s.area}><input type="number" inputMode="decimal" min={0} value={area} onChange={(e) => setArea(e.target.value)} className={`numeric ${inputCls}`} /></Field>
-          <Field label={s.ceiling}><input type="number" step="0.1" value={ceiling} onChange={(e) => setCeiling(e.target.value)} className={`numeric ${inputCls}`} /></Field>
-          <Field label={s.rooms}><input type="number" value={rooms} onChange={(e) => setRooms(e.target.value)} className={`numeric ${inputCls}`} /></Field>
+          <Field label={s.area}><input type="number" inputMode="decimal" min={0} dir="ltr" value={area} onChange={(e) => setArea(e.target.value)} /></Field>
+          <Field label={s.ceiling}><input type="number" step="0.1" dir="ltr" value={ceiling} onChange={(e) => setCeiling(e.target.value)} /></Field>
+          <Field label={s.rooms}><input type="number" dir="ltr" value={rooms} onChange={(e) => setRooms(e.target.value)} /></Field>
         </div>
 
         <CheckGroup label={s.workTypes} values={WORK_TYPES} selected={workTypes} labels={dict.enums.work_type} onToggle={(v) => setWorkTypes((l) => toggle(l, v))} />
         <CheckGroup label={s.options} values={SERVICE_OPTIONS} selected={options} labels={dict.enums.service_option} onToggle={(v) => setOptions((l) => toggle(l, v))} />
 
-        <label className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} className="accent-brass" />
+        <label className="chk">
+          <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
           {s.urgent}
         </label>
 
-        {error && <p className="mt-3 text-sm text-crit-fg">{error}</p>}
+        {error && <p className="form-err" role="alert">{error}</p>}
 
-        <button type="submit" disabled={loading} className="mt-5 w-full rounded-control bg-navy px-6 py-3 font-medium text-surface transition-colors hover:bg-navy-deep disabled:opacity-50">
+        <button type="submit" disabled={loading} className="btn btn-red">
           {loading ? s.calculating : s.calcButton}
         </button>
       </form>
 
-      <div className="rounded-card border border-line bg-surface p-6 shadow-card">
-        <div className="flex items-center justify-between">
-          <h2 className="text-h2 font-bold text-navy">{s.resultTitle}</h2>
-          {result?.is_estimate && <span className="rounded-pill bg-warn-bg px-3 py-1 text-xs text-warn-fg">{s.estimateBadge}</span>}
+      <div className="card res-card" aria-live="polite">
+        <div className="res-head">
+          <h2>{s.resultTitle}</h2>
+          {result?.is_estimate && <span className="pill">{s.estimateBadge}</span>}
         </div>
 
         {!result ? (
-          <p className="mt-6 text-ink-faint">—</p>
+          <p className="res-empty">{s.resultEmpty}</p>
         ) : (
-          <div className="mt-4 space-y-4">
+          <>
             <div>
-              <p className="text-sm text-ink-soft">{s.range}</p>
-              <p className="text-display font-bold text-navy">
-                <bdi className="numeric">{formatPrice(locale, result.price_min ?? 0)}–{formatPrice(locale, result.price_max ?? 0)}</bdi>
+              <p className="lbl">{s.range}</p>
+              <p className="res-range" style={{ margin: 0 }}>
+                <bdi>{formatPrice(locale, result.price_min ?? 0)}–{formatPrice(locale, result.price_max ?? 0)}</bdi>
               </p>
             </div>
 
             {(result.breakdown?.length ?? 0) > 0 && (
               <div>
-                <p className="mb-1 text-sm font-semibold text-ink-soft">{s.breakdown}</p>
-                <table className="w-full text-sm">
+                <p className="lbl">{s.breakdown}</p>
+                <table className="bd">
                   <tbody>
                     {(result.breakdown ?? []).map((b, i) => (
-                      <tr key={i} className="border-b border-line/60 last:border-0">
-                        <td className="py-1.5">{b.work_type ? dict.enums.work_type[b.work_type.toUpperCase() as keyof Dictionary["enums"]["work_type"]] ?? b.work_type : ""}</td>
-                        <td className="numeric py-1.5 text-end text-ink-soft">{b.area_sqm} m²</td>
-                        <td className="numeric py-1.5 text-end font-medium text-navy">
-                          <bdi>{formatPrice(locale, b.price_min ?? 0)}–{formatPrice(locale, b.price_max ?? 0)}</bdi>
-                        </td>
+                      <tr key={i}>
+                        <td>{b.work_type ? dict.enums.work_type[b.work_type.toUpperCase() as keyof Dictionary["enums"]["work_type"]] ?? b.work_type : ""}</td>
+                        <td className="m"><bdi>{b.area_sqm} {s.areaUnit}</bdi></td>
+                        <td><b><bdi>{formatPrice(locale, b.price_min ?? 0)}–{formatPrice(locale, b.price_max ?? 0)}</bdi></b></td>
                       </tr>
                     ))}
                   </tbody>
@@ -146,40 +144,32 @@ export function ServiceCalculator({ locale, dict }: { locale: Locale; dict: Dict
               </div>
             )}
 
-            {result.disclaimer && <p className="rounded-control bg-paper-warm px-3 py-2 text-xs text-ink-soft">{result.disclaimer}</p>}
+            {result.disclaimer && <p className="note-box">{result.disclaimer}</p>}
 
-            <button type="button" onClick={toMeasure} className="w-full rounded-control bg-brass px-6 py-3 font-medium text-surface transition-colors hover:bg-brass-light">
-              {s.toMeasure}
-            </button>
-          </div>
+            <button type="button" onClick={toMeasure} className="btn btn-red">{s.toMeasure}</button>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-const inputCls = "rounded-control border border-line-strong bg-surface px-3 py-2 text-body outline-none focus:border-brass focus-visible:ring-2 focus-visible:ring-terracotta";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="flex flex-col gap-1"><span className="text-sm font-medium text-ink-soft">{label}</span>{children}</label>;
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="field"><span className="field-l">{label}</span>{children}</label>;
 }
 
 function CheckGroup<T extends string>({ label, values, selected, labels, onToggle }: {
   label: string; values: readonly T[]; selected: T[]; labels: Record<string, string>; onToggle: (v: T) => void;
 }) {
   return (
-    <div className="mt-4">
-      <p className="mb-2 text-sm font-medium text-ink-soft">{label}</p>
-      <div className="flex flex-wrap gap-2">
-        {values.map((v) => {
-          const active = selected.includes(v);
-          return (
-            <button key={v} type="button" onClick={() => onToggle(v)} aria-pressed={active}
-              className={`rounded-control border px-3 py-1.5 text-sm transition-colors ${active ? "border-brass bg-brass/10 font-medium text-navy" : "border-line-strong text-ink-soft hover:bg-paper-warm"}`}>
-              {labels[v] ?? v}
-            </button>
-          );
-        })}
+    <div>
+      <p className="lbl">{label}</p>
+      <div className="opt-list" role="group" aria-label={label}>
+        {values.map((v) => (
+          <button key={v} type="button" className="opt" onClick={() => onToggle(v)} aria-pressed={selected.includes(v)}>
+            {labels[v] ?? v}
+          </button>
+        ))}
       </div>
     </div>
   );
