@@ -28,13 +28,17 @@
 `✓` = 200 (доступ разрешён), `✗` = 403 (запрещено). Все `/api/v1/admin/**` для `CUSTOMER` — `✗`
 на уровне цепочки (не служебная роль).
 
+`orders` и финансовые отчёты сняты со сносом онлайн-покупки (T-16.1); заглушечный `AdminController`
+с маршрутами `/admin/orders`, `/admin/catalog`, `/admin/reports/finance`, `PUT /admin/inventory`,
+`PUT /admin/service-requests/{id}/status` удалён (B-03). Ниже — реальные эндпоинты.
+
 | Эндпоинт | Зона | CUSTOMER | SUPPORT | WAREHOUSE | MANAGER | ADMIN |
 |----------|------|:--------:|:-------:|:---------:|:-------:|:-----:|
-| `GET /api/v1/admin/orders` | чтение заказов | ✗ | ✓ | ✓ | ✓ | ✓ |
-| `PUT /api/v1/admin/inventory` | правка остатков | ✗ | ✗ | ✓ | ✓ | ✓ |
-| `PUT /api/v1/admin/service-requests/{id}/status` | статусы заявок | ✗ | ✓ | ✗ | ✓ | ✓ |
-| `PUT /api/v1/admin/catalog` | правка каталога/цен | ✗ | ✗ | ✗ | ✓ | ✓ |
-| `GET /api/v1/admin/reports/finance` | финансовые отчёты | ✗ | ✗ | ✗ | ✓ | ✓ |
+| `/api/v1/admin/inventory/**`, `/warehouses/**` | склад: остатки и операции | ✗ | ✗ | ✓ | ✓ | ✓ |
+| `/api/v1/admin/service-requests/**`, `/product-requests/**` | заявки: статусы, назначение | ✗ | ✓ | ✗ | ✓ | ✓ |
+| `/api/v1/admin/dashboard/**` | дашборд | ✗ | ✓ | ✗ | ✓ | ✓ |
+| `/api/v1/admin/products/**`, `/categories/**`, `/colors/**`, `/reports/**` | каталог, цены, отчёты | ✗ | ✗ | ✗ | ✓ | ✓ |
+| `/api/v1/admin/audit-log/**`, `/privacy/**` | аудит и приватность | ✗ | ✗ | ✗ | ✗ | ✓ |
 | `POST /api/v1/admin/users/{id}/role` | смена ролей | ✗ | ✗ | ✗ | ✗ | ✓ |
 
 ## Владение ресурсом

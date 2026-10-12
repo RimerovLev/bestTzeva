@@ -42,18 +42,20 @@ class RoleMatrixTest extends IntegrationTest {
         };
     }
 
-    /** Таблица прав из docs/roles.md: метод, путь, и ожидаемый статус по ролям (C/SU/WH/M/A). */
+    /**
+     * Матрица прав из docs/roles.md на РЕАЛЬНЫХ эндпоинтах (заглушки AdminController удалены в B-03).
+     * Каждая строка проверяет свою границу роли на GET-эндпоинте (тело не валидируется раньше authz):
+     * склад — WAREHOUSE+, заявки на покраску — SUPPORT+ (но не WAREHOUSE), каталог — MANAGER+.
+     * Значение по роли: 403 — доступ запрещён; 200 — «не запрещён» (проверяется как «не 403»).
+     */
     static Stream<Arguments> matrix() {
         record Endpoint(HttpMethod method, String path, int customer, int support, int warehouse, int manager, int admin) {
         }
         List<Endpoint> endpoints = List.of(
-                new Endpoint(HttpMethod.GET, "/api/v1/admin/orders", 403, 200, 200, 200, 200),
-                new Endpoint(HttpMethod.PUT, "/api/v1/admin/inventory", 403, 403, 200, 200, 200),
-                new Endpoint(HttpMethod.PUT, "/api/v1/admin/service-requests/1/status", 403, 200, 403, 200, 200),
-                new Endpoint(HttpMethod.PUT, "/api/v1/admin/catalog", 403, 403, 403, 200, 200),
-                new Endpoint(HttpMethod.GET, "/api/v1/admin/reports/finance", 403, 403, 403, 200, 200));
+                new Endpoint(HttpMethod.GET, "/api/v1/admin/inventory/low-stock", 403, 403, 200, 200, 200),
+                new Endpoint(HttpMethod.GET, "/api/v1/admin/service-requests/metrics", 403, 200, 403, 200, 200),
+                new Endpoint(HttpMethod.GET, "/api/v1/admin/products", 403, 403, 403, 200, 200));
 
-        String[] roles = {"CUSTOMER", "SUPPORT", "WAREHOUSE", "MANAGER", "ADMIN"};
         return endpoints.stream().flatMap(e -> Stream.of(
                 Arguments.of("CUSTOMER", e.method(), e.path(), e.customer()),
                 Arguments.of("SUPPORT", e.method(), e.path(), e.support()),
@@ -67,7 +69,13 @@ class RoleMatrixTest extends IntegrationTest {
     void role_endpoint_matrix(String role, HttpMethod method, String path, int expectedStatus) {
         int actual = rest.exchange(path, method, new HttpEntity<>(headers(role)), String.class)
                 .getStatusCode().value();
-        assertThat(actual).isEqualTo(expectedStatus);
+        // 403 сверяем точно (отказ авторизации); «разрешено» — как «не 403» (реальный эндпоинт может
+        // вернуть 200/400/404 по бизнес-причинам, но не отказ доступа).
+        if (expectedStatus == 403) {
+            assertThat(actual).isEqualTo(403);
+        } else {
+            assertThat(actual).isNotEqualTo(403);
+        }
     }
 
     @Test
