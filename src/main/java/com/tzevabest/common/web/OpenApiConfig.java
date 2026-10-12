@@ -1,5 +1,7 @@
 package com.tzevabest.common.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -28,6 +30,18 @@ public class OpenApiConfig {
 
     private static final String BEARER_SCHEME = "bearerAuth";
 
+    /**
+     * Springdoc по умолчанию строит имена свойств схемы из имён полей Java (camelCase), игнорируя
+     * глобальную стратегию Jackson. На проводе же JSON идёт в snake_case
+     * ({@code spring.jackson.property-naming-strategy: SNAKE_CASE}), поэтому сгенерированные из
+     * OpenAPI типы фронта расходились бы с реальным телом. Отдаём swagger-у ObjectMapper приложения,
+     * чтобы имена в схеме совпадали с проводом.
+     */
+    @Bean
+    public ModelResolver modelResolver(ObjectMapper objectMapper) {
+        return new ModelResolver(objectMapper);
+    }
+
     @Bean
     public OpenAPI tzevaBestOpenAPI() {
         return new OpenAPI()
@@ -35,7 +49,10 @@ public class OpenApiConfig {
                         .title("Tzeva Best API")
                         .version("v1")
                         .description("REST API интернет-магазина красок и услуг покраски Tzeva Best. "
-                                + "Формат ошибок — RFC 9457 (application/problem+json).")
+                                + "Формат ошибок — RFC 9457 (application/problem+json). "
+                                + "Аутентификация: access-токен в теле ответа (Bearer), refresh-токен — "
+                                + "в httpOnly-куке (B-01); /auth/refresh и /auth/logout читают его из куки, "
+                                + "тело с refresh_token — запасной путь за флагом app.auth.refresh-token-in-body.")
                         .contact(new Contact()
                                 .name("Tzeva Best Dev")
                                 .email("dev@tzevabest.co.il")
