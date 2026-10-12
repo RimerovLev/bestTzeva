@@ -1,37 +1,26 @@
+import { ralHex } from "./ral";
+
 /**
- * Подборка оттенков для примерки. Коды и HEX — справочные значения RAL (экранное приближение,
- * не колориметрия), названия — в словарях локали по коду (home.colors.names). Финальный оттенок
- * подтверждается по веерной карте — об этом говорит подпись под калькулятором.
- *
- * Палитра статична намеренно: примерке нужны выверенные HEX под рендер краски, а /api/v1/colors
- * отдаёт весь каталог без отбора. Перейти на API — отдельное решение с клиентом.
+ * Цвета для примерки: короткая подборка с названиями, полный RAL Classic (lib/motion/ral.ts) и
+ * произвольный цвет из пикера. HEX — экранное приближение RAL; финальный оттенок подтверждается по
+ * веерной карте — об этом говорит подпись под калькулятором.
  */
 export interface Swatch { code: string; hex: string; /** цвет текста на полосе */ on?: string }
 
-export const SWATCHES: Swatch[] = [
-  { code: "9010", hex: "#f1ece1" },
-  { code: "1015", hex: "#e6d2b5" },
-  { code: "1023", hex: "#f7b500", on: "#121212" },
-  { code: "2004", hex: "#e25303" },
-  { code: "3020", hex: "#c1121c" },
-  { code: "4010", hex: "#bc4077" },
-  { code: "4005", hex: "#7a6aa8" },
-  { code: "5015", hex: "#2271b3" },
-  { code: "5011", hex: "#1f3350" },
-  { code: "6018", hex: "#57a639" },
-  { code: "6021", hex: "#89ac76", on: "#121212" },
-  { code: "7016", hex: "#383e42" },
+/** Подборка с локализованными названиями (home.colors.studio.names). HEX — из таблицы RAL Classic. */
+const CURATED: { code: string; on?: string }[] = [
+  { code: "9010" }, { code: "1015" }, { code: "1023", on: "#121212" }, { code: "2004" },
+  { code: "3020" }, { code: "4010" }, { code: "4005" }, { code: "5015" },
+  { code: "5011" }, { code: "6018" }, { code: "6021", on: "#121212" }, { code: "7016" },
 ];
+export const SWATCHES: Swatch[] = CURATED.map(({ code, on }) => ({ code, hex: ralHex(code) ?? "#cccccc", ...(on ? { on } : {}) }));
 
 /** Полосы над визуализатором — яркая часть подборки. */
 export const STRIPES = ["3020", "2004", "1023", "6018", "5015", "4010", "6021", "7016"];
 
-/** Демо-цикл, пока человек ничего не трогал. */
-export const DEMO_ORDER = ["3020", "6018", "1023", "5015"];
-
 export const DEFAULT_SWATCH = "5015";
 
-const FALLBACK: Swatch = { code: "5015", hex: "#2271b3" };
+const FALLBACK: Swatch = { code: "5015", hex: ralHex("5015") ?? "#3172ad" };
 export const swatchByCode = (code: string): Swatch => SWATCHES.find((s) => s.code === code) ?? FALLBACK;
 
 /** Примерные цвета кружков под банками в ленте каталога (у товара в API цвета нет). */

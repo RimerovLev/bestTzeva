@@ -5,9 +5,11 @@ import type { Locale } from "@/lib/i18n/config";
 import { RollerEngine, type RollerMode } from "@/lib/motion/roller";
 import { sweepHint } from "@/lib/motion/sweep";
 import {
-  CAN_LITERS, COVERAGE_M2_PER_L, DEFAULT_SWATCH, DEMO_ORDER, STRIPES, SWATCHES, swatchByCode,
+  CAN_LITERS, COVERAGE_M2_PER_L, DEFAULT_SWATCH, STRIPES, SWATCHES, swatchByCode,
 } from "@/lib/motion/palette";
 import { useMotion } from "./MotionProvider";
+import { ColorPicker } from "./ColorPicker";
+import { RAL_CLASSIC, nearestRal, ralHex } from "@/lib/motion/ral";
 
 type PluralForms = { one: string; few: string; many: string; other: string };
 
@@ -32,6 +34,14 @@ export interface ColorStudioText {
   helpPaint: string;
   helpErase: string;
   paletteLabel: string;
+  tabs: { set: string; ral: string; any: string };
+  ralSearch: string;
+  ralNone: string;
+  customColor: string;
+  nearest: string;
+  pickerSquare: string;
+  pickerHue: string;
+  pickerNote: string;
   compare: string;
   undo: string;
   clear: string;
@@ -55,8 +65,8 @@ export interface ColorStudioText {
 const SIZES = [6, 14, 28, 52, 90];
 const SIZE_DOTS = [4, 8, 13, 19, 26];
 const NUMBER_LOCALE: Record<Locale, string> = { he: "he-IL", ru: "ru-RU" };
-const DEMO_SRC = "/assets/motion/demo.webp";
-const DEMO_MASK = "/assets/motion/demomask.png";
+/** Пример: та же гостиная с белыми стенами — красит сам человек. */
+const DEMO_SRC = "/assets/motion/demo-white.webp";
 
 /**
  * Примерка цвета: полосы-оттенки, холст с валиком и панель. Фото обрабатывается только в браузере.
@@ -75,9 +85,12 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
   const engineRef = useRef<RollerEngine | null>(null);
   const userTouched = useRef(false);
   const cmpTouched = useRef(false);
-  const demoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [code, setCode] = useState(DEFAULT_SWATCH);
+  /** Выбранный цвет: HEX и код RAL (null — произвольный цвет из пикера). */
+  const [hex, setHex] = useState(() => swatchByCode(DEFAULT_SWATCH).hex);
+  const [code, setCode] = useState<string | null>(DEFAULT_SWATCH);
+  const [tab, setTab] = useState<"set" | "ral" | "any">("set");
+  const [ralQuery, setRalQuery] = useState("");
   const [mode, setMode] = useState<RollerMode>("paint");
   const [size, setSize] = useState(28);
   const [busy, setBusy] = useState(false);
@@ -92,30 +105,25 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
   const textRef = useRef(text);
   textRef.current = text;
 
-  const stopDemo = useCallback(() => {
-    if (demoTimer.current) clearInterval(demoTimer.current);
-    demoTimer.current = null;
-  }, []);
   const touch = useCallback(() => {
     userTouched.current = true;
-    stopDemo();
     setHint((h) => (h === "hidden" ? h : "hidden"));
-  }, [stopDemo]);
+  }, []);
 
-  // движок + демо-фото с размеченной стеной
+  // движок + демо-фото (белые стены, ничего не закрашено)
   useEffect(() => {
     const canvas = canvasRef.current, orig = origRef.current, ring = ringRef.current, roller = rollerRef.current, wrap = wrapRef.current;
     if (!canvas || !orig || !ring || !roller || !wrap) return;
     const engine = new RollerEngine({ canvas, orig, ring, roller, wrap }, {
       onBusy: setBusy,
       onUndoChange: setCanUndo,
-      onTouch: () => { userTouched.current = true; if (demoTimer.current) clearInterval(demoTimer.current); demoTimer.current = null; setHint("hidden"); },
+      onTouch: () => { userTouched.current = true; setHint("hidden"); },
       onError: () => say(textRef.current.toastOpenError),
     });
     engine.color = swatchByCode(DEFAULT_SWATCH).hex;
     roller.style.setProperty("--c", engine.color);
     engineRef.current = engine;
-    void engine.load(DEMO_SRC, DEMO_MASK);
+    void engine.load(DEMO_SRC);
     return () => { engine.dispose(); engineRef.current = null; };
   }, [say]);
 
@@ -123,32 +131,31 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
   useEffect(() => { engineRef.current?.setMode(mode); }, [mode]);
   useEffect(() => { engineRef.current?.setBrush(size); }, [size]);
 
-  const pick = useCallback((next: string, fromUser: boolean) => {
-    setCode(next);
+  /** Новый цвет: перекрасить закрашенное (валик проезжает) или подсказать, что пора красить. */
+  const applyHex = useCallback((nextHex: string, nextCode: string | null, quiet = false) => {
+    setHex(nextHex);
+    setCode(nextCode);
     const engine = engineRef.current;
     if (!engine) return;
-    const painted = engine.setColor(swatchByCode(next).hex);
-    if (!painted && fromUser && engine.loaded) say(textRef.current.toastPicked);
+    const painted = engine.setColor(nextHex);
+    if (!painted && !quiet && engine.loaded) say(textRef.current.toastPicked);
   }, [say]);
+  const pick = useCallback((nextCode: string) => applyHex(ralHex(nextCode) ?? swatchByCode(nextCode).hex, nextCode), [applyHex]);
 
-  // демо: пока человек ничего не трогал и блок на экране, пример сам перебирает цвета
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || reduce) return;
-    let i = 0;
-    const io = new IntersectionObserver(([en]) => {
-      if (en?.isIntersecting && !userTouched.current && !demoTimer.current) {
-        demoTimer.current = setInterval(() => {
-          const engine = engineRef.current;
-          if (userTouched.current || !engine || engine.busy || !engine.loaded) { stopDemo(); return; }
-          pick(DEMO_ORDER[i++ % DEMO_ORDER.length] ?? DEFAULT_SWATCH, false);
-          if (i >= 8) stopDemo();
-        }, 2600);
-      } else if (!en?.isIntersecting) stopDemo();
-    }, { threshold: 0.5 });
-    io.observe(stage);
-    return () => { io.disconnect(); stopDemo(); };
-  }, [reduce, pick, stopDemo]);
+  // пикер шлёт цвет на каждое движение: образец обновляем сразу, а стену перекрашиваем, когда рука
+  // остановилась (иначе валик проезжал бы на каждый пиксель перетаскивания); подсказка — один раз
+  const pickerToastShown = useRef(false);
+  const pickerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pickAny = useCallback((nextHex: string) => {
+    setHex(nextHex);
+    setCode(null);
+    if (pickerTimer.current) clearTimeout(pickerTimer.current);
+    pickerTimer.current = setTimeout(() => {
+      applyHex(nextHex, null, pickerToastShown.current);
+      pickerToastShown.current = true;
+    }, 180);
+  }, [applyHex]);
+  useEffect(() => () => { if (pickerTimer.current) clearTimeout(pickerTimer.current); }, []);
 
   const setCmp = useCallback((on: boolean) => {
     setCompare(on);
@@ -190,7 +197,11 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
 
   const dragDepth = useRef(0);
 
-  const swatch = swatchByCode(code);
+  // подпись выбранного: название из подборки → код RAL → «свой цвет»
+  const near = nearestRal(hex);
+  const pickedName = code ? text.names[code] ?? `RAL ${code}` : text.customColor;
+  const pickedCode = code ? `RAL ${code} · ${hex.toUpperCase()}` : `${hex.toUpperCase()} · ≈ RAL ${near.code}`;
+  const ralList = ralQuery ? RAL_CLASSIC.filter(([c]) => c.startsWith(ralQuery)) : RAL_CLASSIC;
   const nf = new Intl.NumberFormat(NUMBER_LOCALE[locale], { maximumFractionDigits: 1 });
   const areaNum = Math.max(0, parseFloat(area.replace(",", ".")) || 0);
   const liters = (areaNum * coats) / COVERAGE_M2_PER_L;
@@ -217,7 +228,7 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
               style={{ "--c": s.hex, "--on": s.on ?? "#fff" } as CSSProperties}
               onClick={() => {
                 touch();
-                pick(c, true);
+                pick(c);
                 const r = rootRef.current?.querySelector(".vz")?.getBoundingClientRect();
                 if (r && (r.top > innerHeight * 0.6 || r.bottom < 0)) rootRef.current?.querySelector(".vz")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
               }}
@@ -317,25 +328,87 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
           </div>
 
           <div className="picked">
-            <span className="big" style={{ "--c": swatch.hex } as CSSProperties} />
+            <span className="big" style={{ "--c": hex } as CSSProperties} />
             <div>
-              <b>{text.names[swatch.code]}</b>
-              <code><bdi>RAL {swatch.code} · {swatch.hex.toUpperCase()}</bdi></code>
+              <b>{pickedName}</b>
+              <code><bdi>{pickedCode}</bdi></code>
             </div>
           </div>
-          <div className="swatches" role="group" aria-label={text.paletteLabel}>
-            {SWATCHES.map((s) => (
-              <button
-                key={s.code}
-                type="button"
-                className="sw"
-                style={{ "--c": s.hex } as CSSProperties}
-                aria-pressed={s.code === code}
-                aria-label={`RAL ${s.code} ${text.names[s.code]}`}
-                onClick={() => { touch(); if (mode !== "paint") setMode("paint"); pick(s.code, true); }}
-              />
+
+          <div className="pal-tabs" role="tablist" aria-label={text.paletteLabel}>
+            {(["set", "ral", "any"] as const).map((t) => (
+              <button key={t} type="button" role="tab" aria-selected={tab === t} className="pal-tab" onClick={() => setTab(t)}>
+                {text.tabs[t]}
+              </button>
             ))}
           </div>
+
+          {tab === "set" && (
+            <div className="swatches" role="group" aria-label={text.paletteLabel}>
+              {SWATCHES.map((s) => (
+                <button
+                  key={s.code}
+                  type="button"
+                  className="sw"
+                  style={{ "--c": s.hex } as CSSProperties}
+                  aria-pressed={s.code === code}
+                  aria-label={`RAL ${s.code} ${text.names[s.code]}`}
+                  onClick={() => { touch(); if (mode !== "paint") setMode("paint"); pick(s.code); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {tab === "ral" && (
+            <div className="ral-all">
+              <input
+                className="ral-search"
+                type="search"
+                inputMode="numeric"
+                dir="ltr"
+                placeholder={text.ralSearch}
+                aria-label={text.ralSearch}
+                value={ralQuery}
+                onChange={(e) => setRalQuery(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              />
+              <div className="ral-grid" role="group" aria-label={text.tabs.ral}>
+                {ralList.map(([c, h]) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="ral-sw"
+                    style={{ "--c": h } as CSSProperties}
+                    aria-pressed={c === code}
+                    title={`RAL ${c}`}
+                    onClick={() => { touch(); if (mode !== "paint") setMode("paint"); pick(c); }}
+                  >
+                    <bdi>{c}</bdi>
+                  </button>
+                ))}
+                {ralList.length === 0 && <p className="small">{text.ralNone}</p>}
+              </div>
+            </div>
+          )}
+
+          {tab === "any" && (
+            <div>
+              <ColorPicker
+                value={hex}
+                onChange={(h) => { touch(); if (mode !== "paint") setMode("paint"); pickAny(h); }}
+                labels={{ square: text.pickerSquare, hue: text.pickerHue, hex: "HEX" }}
+              />
+              {code === null && (
+                <div className="near">
+                  <span>{text.nearest}</span>
+                  <button type="button" className="near-btn" onClick={() => pick(near.code)}>
+                    <i style={{ background: near.hex }} />
+                    <bdi>RAL {near.code}</bdi>
+                  </button>
+                </div>
+              )}
+              <p className="small">{text.pickerNote}</p>
+            </div>
+          )}
 
           <div className="actions">
             <button className="act" type="button" aria-pressed={compare} onClick={() => setCmp(!compare)}>
@@ -372,7 +445,7 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
                 if (!engine || engine.busy) return;
                 setCmp(false);
                 touch();
-                if (await engine.load(DEMO_SRC, DEMO_MASK)) say(text.toastDemo);
+                if (await engine.load(DEMO_SRC)) say(text.toastDemo);
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

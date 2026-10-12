@@ -333,6 +333,40 @@
 .sw { aspect-ratio: 1; border-radius: 12px; border: 2px solid var(--ink); background: var(--c); cursor: pointer; padding: 0; transition: transform .3s var(--spring); }
 .sw:hover { transform: translateY(-4px) rotate(-6deg); }
 .sw[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); }
+/* вкладки палитры: подборка / все RAL / любой цвет */
+.pal-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 2px solid var(--ink); border-radius: 14px; overflow: hidden; }
+.pal-tab { padding: 10px 6px; border: 0; background: var(--paper); font: 700 13px/1.1 var(--f-body); cursor: pointer; }
+.pal-tab + .pal-tab { border-inline-start: 2px solid var(--ink); }
+.pal-tab[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.ral-all { display: grid; gap: 10px; }
+.ral-search { width: 100%; padding: 10px 12px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font: 600 15px/1.2 var(--f-mono); }
+.ral-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; max-height: 280px; overflow-y: auto; padding: 2px 4px 4px 2px; }
+.ral-sw {
+  display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 1; padding: 0 0 3px; border-radius: 10px; border: 2px solid var(--ink);
+  background: linear-gradient(var(--c), var(--c)) top / 100% 68% no-repeat, var(--paper); font: 600 10px/1 var(--f-mono); color: var(--ink); cursor: pointer;
+}
+.ral-sw:hover { transform: translateY(-2px); }
+.ral-sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+/* пикер «как в Paint» */
+.cp { display: grid; gap: 10px; }
+.cp-sq {
+  position: relative; aspect-ratio: 4 / 3; border-radius: 12px; border: 2px solid var(--ink); cursor: crosshair; touch-action: none;
+  background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--hue));
+}
+.cp-sq:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+.cp-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px var(--ink); transform: translate(-50%, -50%); pointer-events: none; }
+.cp-hue {
+  width: 100%; -webkit-appearance: none; appearance: none; height: 16px; border-radius: 999px; border: 2px solid var(--ink); margin: 0;
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.cp-hue::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); cursor: pointer; }
+.cp-hue::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); cursor: pointer; }
+.cp-hex { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--f-mono); color: var(--ink-soft); }
+.cp-hex input { width: 9ch; padding: 8px 10px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; font: 600 14px/1 var(--f-mono); color: var(--ink); }
+.near { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+.near-btn { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper); font: 700 13px/1 var(--f-mono); cursor: pointer; }
+.near-btn i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink); }
+.near-btn:hover { background: var(--yellow); }
 .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .act {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 10px; border-radius: 14px; border: 2px solid var(--ink);
