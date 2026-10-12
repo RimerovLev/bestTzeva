@@ -30,7 +30,16 @@ export interface RollerCallbacks {
 }
 
 interface RegionMeta { a: number; b: number; y: number }
-interface Prepared { tr: number; tg: number; tb: number; Yref: Float32Array; Yg: number }
+interface Prepared {
+  tr: number; tg: number; tb: number; Yref: Float32Array; Yg: number;
+  /** Множитель освещённости для закрашенных пикселей (0 — не посчитан, берётся Ys/Yref). */
+  fac: Float32Array;
+}
+
+/** Сколько крупного перепада света (окно, угол комнаты) оставить на краске: 0 — стена ровная, 1 — как на фото. */
+const BROAD_KEEP = 0.15;
+/** Расширение готовой маски (демо) на тёмную синеватую кромку исходной стены, px. */
+const MASK_EDGE_GROW = 3;
 
 const MAX_SIDE = 1100;
 
@@ -149,7 +158,43 @@ export class RollerEngine {
     };
     const Yref = new Float32Array(R);
     for (let r = 1; r < R; r++) Yref[r] = pct(hist, r * 256, tot[r]!);
-    this.P = { tr, tg, tb, Yref, Yg: pct(gh, 0, gt) || 0.5 };
+    const Yg = pct(gh, 0, gt) || 0.5;
+    this.P = { tr, tg, tb, Yref, Yg, fac: this.lightFactor(Yref, Yg) };
+  }
+
+  /**
+   * Освещённость краски без крупного перепада света. На фото стена у окна может быть в разы темнее,
+   * чем у противоположного края, — перенесённый «как есть», этот перепад делает новый цвет двухцветным.
+   * Считаем крупномасштабный свет внутри закрашенного (нормированное размытие Ys по маске, радиус ~1/12
+   * кадра) и оставляем от него BROAD_KEEP; фактура и мелкие тени (Ys / размытое) сохраняются целиком.
+   */
+  private lightFactor(Yref: Float32Array, Yg: number): Float32Array {
+    const { N, W, H, mask, rid, Ys } = this;
+    let num: Float32Array = new Float32Array(N), den: Float32Array = new Float32Array(N);
+    for (let i = 0; i < N; i++) if (mask[i]) { num[i] = Ys[i]!; den[i] = 1; }
+    const r = Math.max(4, Math.round(Math.max(W, H) / 12));
+    for (let k = 0; k < 2; k++) { num = this.boxBlur(num, r); den = this.boxBlur(den, r); }
+    const fac = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!mask[i] || den[i]! < 1e-4) continue;
+      const broad = num[i]! / den[i]!, ref = Yref[rid[i]!] || Yg;
+      if (broad > 1e-5) fac[i] = (Ys[i]! / broad) * Math.pow(broad / ref, BROAD_KEEP);
+    }
+    return fac;
+  }
+
+  /** Расширить маску на тёмную синеватую кромку (смешанные с карнизом пиксели исходной стены). */
+  private growMaskEdge(n: number) {
+    const { W, H, N, Ys, CB } = this;
+    for (let k = 0; k < n; k++) {
+      const add: number[] = [];
+      for (let i = 0; i < N; i++) {
+        if (this.mask[i] || Ys[i]! >= 0.35 || CB[i]! >= -1) continue;
+        const x = i % W, y = (i / W) | 0;
+        if ((x > 0 && this.mask[i - 1]) || (x < W - 1 && this.mask[i + 1]) || (y > 0 && this.mask[i - W]) || (y < H - 1 && this.mask[i + W])) add.push(i);
+      }
+      for (const i of add) this.mask[i] = 1;
+    }
   }
 
   /** Новый мазок присоединяется к соседней поверхности того же цвета или становится новой. */
@@ -202,14 +247,15 @@ export class RollerEngine {
     }
   }
   private compose(x0: number, y0: number, x1: number, y1: number) {
-    const { W, H, alpha, rid, Ys } = this, o = this.origPx!, d = this.result!.data, { tr, tg, tb, Yref, Yg } = this.P!;
+    const { W, H, alpha, rid, Ys } = this, o = this.origPx!, d = this.result!.data, { tr, tg, tb, Yref, Yg, fac } = this.P!;
     x0 = Math.max(0, x0); y0 = Math.max(0, y0); x1 = Math.min(W - 1, x1); y1 = Math.min(H - 1, y1);
     for (let y = y0; y <= y1; y++) {
       let i = y * W + x0, p = i * 4;
       for (let x = x0; x <= x1; x++, i++, p += 4) {
         const al = alpha[i]!;
         if (al <= 0) { d[p] = o[p]!; d[p + 1] = o[p + 1]!; d[p + 2] = o[p + 2]!; d[p + 3] = 255; continue; }
-        let f = Ys[i]! / (Yref[rid[i]!] || Yg);
+        // посчитан в prepare — без крупного перепада света; свежий мазок до отпускания — по-старому
+        let f = fac[i] || Ys[i]! / (Yref[rid[i]!] || Yg);
         // тени смягчаем вдвое, блики ограничиваем — иначе тёмная часть стены уходит в чёрный
         f = f < 1 ? 0.5 + 0.5 * f : Math.min(1.12, 1 + 0.5 * (f - 1));
         const r = GAM[gi(tr * f)]!, g = GAM[gi(tg * f)]!, b = GAM[gi(tb * f)]!;
@@ -261,6 +307,7 @@ export class RollerEngine {
           tx.drawImage(m, 0, 0, W, H);
           const md = tx.getImageData(0, 0, W, H).data;
           for (let i = 0, p = 0; i < this.N; i++, p += 4) this.mask[i] = md[p]! > 127 ? 1 : 0;
+          this.growMaskEdge(MASK_EDGE_GROW);
           this.assignNew();
           this.updateAlpha(0, 0, W - 1, H - 1);
         }
