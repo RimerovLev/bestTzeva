@@ -128,6 +128,14 @@
     radial-gradient(25% 35% at 35% 20%, rgba(46, 209, 160, .6), transparent 70%);
 }
 .hero.fluid .hero-fallback { display: none; }
+/* После холста и до контента по DOM: лежит над краской, под карточкой и заголовком. Плавный переход
+   (несколько промежуточных стопов), чтобы на стыке с синим не было видно ступеньки. */
+.hero-fade {
+  position: absolute; inset-inline: 0; bottom: 0; height: clamp(140px, 26vh, 260px); z-index: 0; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgba(43, 89, 240, 0) 0%, rgba(43, 89, 240, .08) 18%, rgba(43, 89, 240, .25) 38%,
+    rgba(43, 89, 240, .5) 58%, rgba(43, 89, 240, .78) 78%, var(--blue) 100%);
+}
 /* без z-index: иначе изолированный контекст и difference-смешивание заголовка не видит краску */
 .hero-in { position: relative; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; padding-block: 56px 76px; pointer-events: none; }
 .hero-in a, .hero-in button, .hero-card { pointer-events: auto; }
@@ -167,7 +175,7 @@
 .st-2 { background: var(--mint); inset-inline-end: clamp(16px, 4vw, 60px); top: clamp(330px, 46vh, 470px); rotate: -6deg; }
 
 /* ---------- ленты ---------- */
-.tapes { position: relative; height: clamp(150px, 17vw, 220px); overflow: hidden; background: var(--blue); margin-top: -2px; }
+.tapes { position: relative; height: clamp(150px, 17vw, 220px); overflow: hidden; background: var(--blue); margin-top: -1px; }
 .tape { position: absolute; inset-inline-start: -10%; width: 120%; border-block: 3px solid var(--ink); overflow: hidden; }
 .tape-a { top: 22%; background: var(--ink); color: var(--yellow); rotate: -3.5deg; }
 .tape-b { top: 48%; background: var(--yellow); color: var(--ink); rotate: 2.5deg; }

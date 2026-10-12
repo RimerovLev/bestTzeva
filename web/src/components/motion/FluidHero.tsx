@@ -133,6 +133,8 @@ export function FluidHero({ text }: { text: FluidHeroText }) {
     <section className="hero" ref={heroRef} aria-label={text.label}>
       <canvas className="hero-fluid" ref={canvasRef} aria-hidden />
       <div className="hero-fallback" aria-hidden />
+      {/* краска внизу растворяется в синем блоке лент — без резкой линии на стыке */}
+      <div className="hero-fade" aria-hidden />
       <div className="wrap hero-in">
         <div>
           <span className="kicker ld" style={{ "--d": ".05s" } as CSSProperties}><i />{text.kicker}</span>
