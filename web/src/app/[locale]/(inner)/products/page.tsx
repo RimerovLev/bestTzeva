@@ -10,7 +10,7 @@ import {
 } from "@/lib/catalog/api";
 import { parseFilters } from "@/lib/catalog/params";
 import { CatalogView } from "@/components/catalog/CatalogView";
-import { CatalogHero } from "@/components/catalog/CatalogHero";
+import { PageBand } from "@/components/motion/PageBand";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -57,7 +57,7 @@ export default async function ProductsPage({
 
   return (
     <section>
-      <CatalogHero title={dict.catalog.title} titleEn={dict.catalog.titleEn} subtitle={dict.catalog.subtitle} />
+      <PageBand tone="yellow" eyebrow={dict.nav.prices} title={dict.catalog.heading} body={dict.catalog.subtitle} />
       <CatalogView
         locale={locale}
         dict={dict}

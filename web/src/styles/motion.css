@@ -369,7 +369,7 @@
 .svc-card h3 { font-family: var(--f-display); font-weight: 400; font-size: clamp(24px, 3vw, 38px); line-height: 1; margin: 0 0 8px; text-transform: uppercase; }
 .svc-card p { margin: 0; color: var(--ink-soft); }
 .svc-meta { display: grid; gap: 8px; justify-items: end; text-align: end; }
-.pill { display: inline-block; padding: 8px 13px; border: 2px solid var(--ink); border-radius: 999px; font: 700 14px/1 var(--f-body); white-space: nowrap; background: var(--paper); }
+.pill { display: inline-block; padding: 8px 13px; border: 2px solid var(--ink); border-radius: 999px; font: 700 14px/1 var(--f-body); white-space: nowrap; background: var(--paper); color: var(--ink); }
 .pill.y { background: var(--yellow); }
 .est { margin-top: 34px; padding: clamp(22px, 3vw, 36px); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 26px 44px; align-items: center; background: var(--yellow); }
 .est h3 { font-family: var(--f-display); font-weight: 400; font-size: 28px; margin: 0 0 6px; text-transform: uppercase; }

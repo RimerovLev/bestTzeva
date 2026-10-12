@@ -49,68 +49,53 @@ export function CoverageCalculator({
   const selected = result?.variants?.find((v) => v.variant_id === selectedVariantId) ?? result?.variants?.[0];
 
   return (
-    <form onSubmit={onSubmit} className="rounded-card border border-line bg-surface p-5 shadow-card">
-      <h2 className="text-h3 font-bold text-navy">{p.calcTitle}</h2>
+    <form onSubmit={onSubmit} className="card calc-card">
+      <h2>{p.calcTitle}</h2>
 
-      <div className="mt-4 flex flex-wrap items-end gap-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-ink-soft">{p.calcArea}</span>
+      <div className="calc-fields">
+        <div className="field">
+          <label htmlFor="cov-area">{p.calcArea}</label>
           <input
+            id="cov-area"
             type="number"
             inputMode="decimal"
             min={0}
             step="0.5"
+            dir="ltr"
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            className="numeric w-32 rounded-control border border-line-strong bg-surface px-3 py-2 text-body focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
           />
-        </label>
+        </div>
 
-        <div className="flex flex-col gap-1">
-          <span className="text-sm text-ink-soft">{p.calcCoats}</span>
-          <div className="flex gap-1" role="group" aria-label={p.calcCoats}>
+        <div>
+          <p className="lbl">{p.calcCoats}</p>
+          <div className="seg2" role="group" aria-label={p.calcCoats}>
             {COATS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCoats(c)}
-                aria-pressed={coats === c}
-                className={`h-10 w-10 rounded-control border text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta ${
-                  coats === c ? "border-brass bg-brass/10 font-medium text-navy" : "border-line-strong text-ink-soft hover:bg-paper-warm"
-                }`}
-              >
-                <bdi className="numeric">{c}</bdi>
+              <button key={c} type="button" onClick={() => setCoats(c)} aria-pressed={coats === c}>
+                <bdi>{c}</bdi>
               </button>
             ))}
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || !area}
-          className="rounded-control bg-navy px-5 py-2 text-sm font-medium text-surface transition-colors hover:bg-navy-deep disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading || !area} className="btn btn-red btn-sm">
           {loading ? dict.catalog.loading : p.calcButton}
         </button>
       </div>
 
-      {error && <p className="mt-3 text-sm text-crit-fg">{error}</p>}
+      {error && <p className="form-err" role="alert">{error}</p>}
 
-      {result && !result.calculable && (
-        <p className="mt-4 text-sm text-ink-soft">{p.calcNotAvailable}</p>
-      )}
+      {result && !result.calculable && <p className="small">{p.calcNotAvailable}</p>}
 
       {result?.calculable && selected && (
-        <div className="mt-4 rounded-control bg-paper-warm/60 p-4">
-          <p className="text-h3 font-bold text-navy">
+        <div className="calc-res" aria-live="polite">
+          <b>
             {p.calcResult
               .replace("{cans}", String(selected.cans))
               .replace("{volume}", String(selected.volume_liters ?? ""))}
-          </p>
-          <p className="mt-1 text-sm text-ink-soft">
-            {p.calcLeftover.replace("{liters}", String(selected.leftover_liters ?? ""))}
-          </p>
-          <p className="mt-2 text-xs text-ink-faint">{p.calcEstimate}</p>
+          </b>
+          <p>{p.calcLeftover.replace("{liters}", String(selected.leftover_liters ?? ""))}</p>
+          <p>{p.calcEstimate}</p>
         </div>
       )}
     </form>

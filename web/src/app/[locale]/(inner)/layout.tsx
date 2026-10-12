@@ -6,5 +6,5 @@ import type { ReactNode } from "react";
  * не влияет.
  */
 export default function InnerLayout({ children }: { children: ReactNode }) {
-  return <div className="mx-auto w-full max-w-[1200px] px-4 py-8">{children}</div>;
+  return <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-8">{children}</div>;
 }

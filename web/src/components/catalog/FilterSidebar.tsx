@@ -38,10 +38,10 @@ export function FilterSidebar({
   const paintTypeCounts = (facets.paint_type ?? {}) as Record<string, number>;
 
   return (
-    <div className="panel space-y-6 rounded-card p-5">
+    <div className="card flt">
       {/* Категории */}
       <FilterGroup title={c.category}>
-        <ul className="space-y-1">
+        <ul className="opt-list">
           <li>
             <OptionButton
               active={filters.categoryId === undefined}
@@ -67,7 +67,7 @@ export function FilterSidebar({
       {/* Тип краски — из фасетов, со счётчиками */}
       {Object.keys(paintTypeCounts).length > 0 && (
         <FilterGroup title={c.paintType}>
-          <ul className="space-y-1">
+          <ul className="opt-list">
             {Object.entries(paintTypeCounts).map(([key, count]) => {
               const typedKey = key as PaintType;
               const label = dict.enums.paint_type[key as keyof Dictionary["enums"]["paint_type"]] ?? key;
@@ -130,22 +130,17 @@ export function FilterSidebar({
       </FilterGroup>
 
       {/* Наличие */}
-      <label className="flex items-center gap-2 text-sm text-ink-soft">
+      <label className="chk">
         <input
           type="checkbox"
           checked={filters.inStock ?? false}
           onChange={(e) => onChange({ inStock: e.target.checked ? true : undefined })}
-          className="accent-brass"
         />
         {c.inStockOnly}
       </label>
 
       {showReset && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-sm text-brass hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
-        >
+        <button type="button" onClick={onReset} className="link-btn">
           {c.reset}
         </button>
       )}
@@ -156,7 +151,7 @@ export function FilterSidebar({
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-navy">{title}</h3>
+      <h3 className="flt-h">{title}</h3>
       {children}
     </div>
   );
@@ -174,16 +169,9 @@ function OptionButton({
   count?: number;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`flex w-full items-center justify-between gap-2 rounded-control px-2 py-1 text-start text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta ${
-        active ? "bg-brass/10 font-medium text-navy" : "text-ink-soft hover:bg-paper-warm"
-      }`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="opt">
       <span>{label}</span>
-      {count !== undefined && <span className="numeric text-xs text-ink-faint">{count}</span>}
+      {count !== undefined && <bdi className="cnt">{count}</bdi>}
     </button>
   );
 }
@@ -205,7 +193,7 @@ function EnumSelect<T extends string>({
     <select
       value={value ?? ""}
       onChange={(e) => onChange((e.target.value || undefined) as T | undefined)}
-      className="w-full rounded-control border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+      className="inp"
     >
       <option value="">{anyLabel}</option>
       {options.map((opt) => (
@@ -249,7 +237,7 @@ function PriceRange({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="inp-row">
       <input
         type="number"
         inputMode="numeric"
@@ -259,9 +247,9 @@ function PriceRange({
         onChange={(e) => setLocalMin(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === "Enter" && commit()}
-        className="numeric w-full rounded-control border border-line-strong bg-surface px-2 py-1.5 text-sm focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+        className="inp" dir="ltr"
       />
-      <span className="text-ink-faint">–</span>
+      <span aria-hidden>–</span>
       <input
         type="number"
         inputMode="numeric"
@@ -271,7 +259,7 @@ function PriceRange({
         onChange={(e) => setLocalMax(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === "Enter" && commit()}
-        className="numeric w-full rounded-control border border-line-strong bg-surface px-2 py-1.5 text-sm focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+        className="inp" dir="ltr"
       />
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -9,6 +10,7 @@ import { formatPrice } from "@/lib/format";
 import { useRequest } from "@/lib/request/RequestProvider";
 import { Gallery } from "./Gallery";
 import { CoverageCalculator } from "./CoverageCalculator";
+import { useMotion } from "@/components/motion/MotionProvider";
 
 type EnumKey<T extends keyof Dictionary["enums"]> = keyof Dictionary["enums"][T];
 
@@ -26,6 +28,7 @@ export function ProductDetail({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const request = useRequest();
+  const { burst, say } = useMotion();
 
   const variants = card.variants ?? [];
   const paramVariant = Number(searchParams.get("variant"));
@@ -82,37 +85,34 @@ export function ProductDetail({
     });
   }
 
+  function onAdd(e: MouseEvent<HTMLButtonElement>) {
+    addToRequest();
+    const r = e.currentTarget.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, 26, [selected?.color_hex ?? "#e8322b", "#ffc933", "#121212"], 0.8);
+    say(p.addedToast.replace("{name}", card.name ?? card.sku ?? ""));
+  }
+
   return (
-    <div className="space-y-10">
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Gallery media={media} alt={card.name ?? card.sku ?? ""} />
+    <div>
+      <div className="pd">
+        <Gallery media={media} alt={card.name ?? card.sku ?? ""} color={selected?.color_hex ?? null} />
 
-        <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="display text-h1 font-bold text-navy-deep">{card.name}</h1>
-            <p className="mt-1 text-sm text-ink-faint">
-              <bdi className="numeric">{card.sku}</bdi>
-            </p>
-          </div>
-
-          {card.short_description && <p className="text-ink-soft">{card.short_description}</p>}
-
+        <div className="card buy">
           {colors.length > 1 && (
             <Field label={p.color}>
-              <div className="flex flex-wrap gap-2">
+              <div className="buy-swatches">
                 {colors.map((v) => {
                   const isActive = (selected?.color_code ?? "") === (v.color_code ?? "");
                   return (
                     <button
                       key={v.color_code ?? v.id}
                       type="button"
+                      className="sw"
                       onClick={() => pickColor(v.color_code ?? null)}
                       aria-pressed={isActive}
+                      aria-label={v.color_code ?? undefined}
                       title={v.color_code ?? undefined}
-                      className={`h-9 w-9 rounded-pill border-2 transition-transform ${
-                        isActive ? "border-brass scale-110" : "border-line hover:border-line-strong"
-                      }`}
-                      style={{ backgroundColor: v.color_hex ?? "var(--line)" }}
+                      style={{ "--c": v.color_hex ?? "var(--paper)" } as CSSProperties}
                     />
                   );
                 })}
@@ -122,70 +122,67 @@ export function ProductDetail({
 
           {selected && volumesForColor(selected.color_code ?? null).length > 1 && (
             <Field label={p.volume}>
-              <div className="flex flex-wrap gap-2">
-                {volumesForColor(selected.color_code ?? null).map((v) => {
-                  const isActive = selected.volume_liters === v.volume_liters;
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => pickVolume(String(v.volume_liters ?? ""))}
-                      aria-pressed={isActive}
-                      className={`rounded-control border px-3 py-1.5 text-sm transition-colors ${
-                        isActive ? "border-brass bg-brass/10 font-medium text-navy" : "border-line-strong text-ink-soft hover:bg-paper-warm"
-                      }`}
-                    >
-                      <bdi className="numeric">{String(v.volume_liters)}</bdi> {p.liters}
-                    </button>
-                  );
-                })}
+              <div className="opt-list">
+                {volumesForColor(selected.color_code ?? null).map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className="opt"
+                    onClick={() => pickVolume(String(v.volume_liters ?? ""))}
+                    aria-pressed={selected.volume_liters === v.volume_liters}
+                  >
+                    <bdi>{String(v.volume_liters)}</bdi> {p.liters}
+                  </button>
+                ))}
               </div>
             </Field>
           )}
 
           {selected && (
-            <div className="flex items-center gap-4">
-              <span className="text-display font-bold text-navy">
-                <bdi className="numeric">{formatPrice(locale, selected.price ?? 0)}</bdi>
-              </span>
+            <div className="buy-price">
+              <span className="now"><bdi>{formatPrice(locale, selected.price ?? 0)}</bdi></span>
               {selected.old_price != null && (
-                <span className="text-h3 text-ink-faint line-through">
-                  <bdi className="numeric">{formatPrice(locale, selected.old_price)}</bdi>
-                </span>
+                <span className="old"><bdi>{formatPrice(locale, selected.old_price)}</bdi></span>
               )}
               <AvailabilityBadge availability={selected.availability} dict={dict} />
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={addToRequest}
-            disabled={!selected || !selected.can_add_to_request || inRequest}
-            className="mt-2 w-full rounded-control bg-brass px-6 py-3 font-medium text-surface transition-colors hover:bg-brass-light disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-          >
-            {inRequest ? p.inRequest : p.addToRequest}
-          </button>
+          <div style={{ display: "grid", gap: 10 }}>
+            <button
+              type="button"
+              onClick={onAdd}
+              disabled={!selected || !selected.can_add_to_request || inRequest}
+              className="btn btn-red"
+            >
+              {inRequest ? p.inRequest : p.addToRequest}
+            </button>
+            {inRequest && (
+              <Link href={`/${locale}/request`} className="btn btn-yellow">{p.toRequest}</Link>
+            )}
+          </div>
 
           <Characteristics card={card} dict={dict} />
         </div>
       </div>
 
-      <CoverageCalculator slug={card.slug ?? ""} locale={locale} dict={dict} selectedVariantId={selected?.id ?? null} />
-
-      {card.description && (
-        <section className="max-w-3xl">
-          <h2 className="text-h2 font-bold text-navy">{card.name}</h2>
-          <p className="mt-3 whitespace-pre-line text-ink-soft">{card.description}</p>
-        </section>
-      )}
+      <div className="pd-more">
+        <CoverageCalculator slug={card.slug ?? ""} locale={locale} dict={dict} selectedVariantId={selected?.id ?? null} />
+        {card.description && (
+          <section className="card pd-desc">
+            <h2>{p.description}</h2>
+            <p>{card.description}</p>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-sm font-medium text-ink-soft">{label}</p>
+      <p className="lbl">{label}</p>
       {children}
     </div>
   );
@@ -196,11 +193,7 @@ function AvailabilityBadge({ availability, dict }: { availability?: string; dict
   const isOk = availability === "many";
   const isFew = availability === "few";
   return (
-    <span
-      className={`rounded-pill px-3 py-1 text-xs ${
-        isOk ? "bg-ok-bg text-ok-fg" : isFew ? "bg-warn-bg text-warn-fg" : "bg-paper-warm text-ink-soft"
-      }`}
-    >
+    <span className={`avail${isOk ? "" : isFew ? " few" : " out"}`}>
       {dict.product.availability[key] ?? dict.product.availability.out_of_stock}
     </span>
   );
@@ -228,11 +221,11 @@ function Characteristics({ card, dict }: { card: ProductCard; dict: Dictionary }
   if (rows.length === 0) return null;
 
   return (
-    <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
+    <dl className="specs">
       {rows.map((r) => (
-        <div key={r.label} className="flex justify-between gap-3 border-b border-line/60 py-1 last:border-0">
-          <dt className="text-sm text-ink-soft">{r.label}</dt>
-          <dd className="text-sm font-medium text-ink">{r.value}</dd>
+        <div key={r.label}>
+          <dt>{r.label}</dt>
+          <dd>{r.value}</dd>
         </div>
       ))}
     </dl>

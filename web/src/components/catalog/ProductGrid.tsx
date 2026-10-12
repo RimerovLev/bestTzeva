@@ -3,19 +3,9 @@ import type { Dictionary } from "@/lib/i18n/dictionaries";
 import type { ProductSummary } from "@/lib/catalog/api";
 import { ProductCard } from "./ProductCard";
 
-const GRID = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
-
-export function ProductGrid({
-  products,
-  locale,
-  dict,
-}: {
-  products: ProductSummary[];
-  locale: Locale;
-  dict: Dictionary;
-}) {
+export function ProductGrid({ products, locale, dict }: { products: ProductSummary[]; locale: Locale; dict: Dictionary }) {
   return (
-    <div className={GRID}>
+    <div className="prod-grid">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} locale={locale} dict={dict} />
       ))}
@@ -26,15 +16,13 @@ export function ProductGrid({
 /** Скелетон сетки на первичную загрузку/смену фильтров. */
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className={GRID} aria-hidden>
+    <div className="prod-grid" aria-hidden>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-          <div className="aspect-square animate-pulse bg-line/50" />
-          <div className="space-y-2 p-4">
-            <div className="h-3 w-16 animate-pulse rounded bg-line/50" />
-            <div className="h-5 w-3/4 animate-pulse rounded bg-line/50" />
-            <div className="h-4 w-1/3 animate-pulse rounded bg-line/50" />
-          </div>
+        <div key={i} className="prod card sk">
+          <div className="prod-vis" />
+          <div className="sk-line" style={{ width: "40%" }} />
+          <div className="sk-line" style={{ width: "80%", height: 18 }} />
+          <div className="sk-line" style={{ width: "30%" }} />
         </div>
       ))}
     </div>

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import type { ProductMediaView } from "@/lib/catalog/api";
 
 /**
- * Галерея карточки: медиа товара + выбранного варианта. Если картинок нет (в ответе API их может
- * не быть) — нейтральный плейсхолдер. Размеры зафиксированы, чтобы не дёргать вёрстку (CLS).
+ * Галерея карточки: медиа товара + выбранного варианта. Фото в ответе API может не быть — тогда
+ * банка на круге цвета выбранного варианта (его настоящий HEX из API), круг перекрашивается при
+ * смене варианта. Пропорции зафиксированы, чтобы вёрстка не дёргалась (CLS).
  */
-export function Gallery({ media, alt }: { media: ProductMediaView[]; alt: string }) {
+export function Gallery({ media, alt, color }: { media: ProductMediaView[]; alt: string; color: string | null }) {
   const images = media.filter((m) => m.type === "IMAGE" && m.url);
   const [active, setActive] = useState(0);
 
@@ -16,8 +17,8 @@ export function Gallery({ media, alt }: { media: ProductMediaView[]; alt: string
 
   if (images.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-card border border-line bg-gradient-to-br from-paper-warm to-sage-pale">
-        <span className="display text-display text-line-strong/70">בסט</span>
+      <div className="card gal-main gal-ph" style={{ "--c": color ?? "var(--yellow)" } as CSSProperties} role="img" aria-label={alt}>
+        <div className="prod-can" />
       </div>
     );
   }
@@ -25,25 +26,17 @@ export function Gallery({ media, alt }: { media: ProductMediaView[]; alt: string
   const current = images[Math.min(active, images.length - 1)]!;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="aspect-square overflow-hidden rounded-card border border-line bg-surface">
+    <div className="gal">
+      <div className="card gal-main">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={current.url} alt={alt} className="h-full w-full object-cover" width={600} height={600} />
+        <img src={current.url} alt={alt} width={600} height={600} />
       </div>
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="thumbs">
           {images.map((img, i) => (
-            <button
-              key={img.id}
-              type="button"
-              onClick={() => setActive(i)}
-              aria-current={i === active}
-              className={`h-16 w-16 shrink-0 overflow-hidden rounded-control border-2 transition-colors ${
-                i === active ? "border-brass" : "border-line hover:border-line-strong"
-              }`}
-            >
+            <button key={img.id} type="button" className="thumb" onClick={() => setActive(i)} aria-current={i === active}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt="" className="h-full w-full object-cover" width={64} height={64} />
+              <img src={img.url} alt="" width={64} height={64} />
             </button>
           ))}
         </div>

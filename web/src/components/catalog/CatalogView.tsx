@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -89,21 +90,20 @@ export function CatalogView({
   );
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-      {/* Десктоп: фильтры сбоку */}
-      <aside className="hidden w-64 shrink-0 lg:block">{sidebar}</aside>
+    <div className="cat">
+      {/* Десктоп: фильтры сбоку, прилипают при прокрутке */}
+      <aside className="cat-side">{sidebar}</aside>
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-ink-soft">
+      <div className="min-w-0">
+        <div className="cat-bar">
+          <span className="pill">
             {dict.catalog.resultsCount.replace("{count}", String(total))}
-          </p>
+          </span>
           {/* Мобайл: кнопка открытия панели фильтров */}
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="rounded-control border border-line-strong px-3 py-2 text-sm text-ink-soft lg:hidden"
-          >
+          <button type="button" onClick={() => setDrawerOpen(true)} className="btn btn-sm cat-filters-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+              <path d="M4 6h16M7 12h10M10 18h4" />
+            </svg>
             {dict.catalog.openFilters}
           </button>
         </div>
@@ -120,16 +120,12 @@ export function CatalogView({
 
       {/* Мобайл: выдвижная панель фильтров */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-navy-deep/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute inset-inline-start-0 top-0 h-full w-80 max-w-[85%] overflow-y-auto bg-paper p-4 shadow-card">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-h3 font-bold text-navy">{dict.catalog.filters}</h2>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="rounded-control px-3 py-1 text-sm text-ink-soft hover:bg-paper-warm"
-              >
+        <div className="drawer" role="dialog" aria-modal="true" aria-label={dict.catalog.filters}>
+          <button type="button" className="drawer-bg" aria-label={dict.catalog.closeFilters} onClick={() => setDrawerOpen(false)} />
+          <div className="drawer-panel">
+            <div className="drawer-head">
+              <h2>{dict.catalog.filters}</h2>
+              <button type="button" onClick={() => setDrawerOpen(false)} className="btn btn-sm">
                 {dict.catalog.closeFilters}
               </button>
             </div>
@@ -160,13 +156,9 @@ function CatalogResults({
 
   if (query.isError) {
     return (
-      <div className="rounded-card border border-line bg-surface p-8 text-center shadow-card">
-        <p className="text-h3 text-navy">{dict.catalog.errorTitle}</p>
-        <button
-          type="button"
-          onClick={() => void query.refetch()}
-          className="mt-4 rounded-control bg-navy px-4 py-2 text-sm text-surface hover:bg-navy-deep"
-        >
+      <div className="card empty">
+        <h3>{dict.catalog.errorTitle}</h3>
+        <button type="button" onClick={() => void query.refetch()} className="btn btn-red btn-sm">
           {dict.catalog.retry}
         </button>
       </div>
@@ -177,52 +169,35 @@ function CatalogResults({
     // Пустая выдача поиска — это лид, а не тупик: предлагаем оставить заявку (F-2.3).
     if (searchQuery) {
       return (
-        <div className="rounded-card border border-line bg-surface p-12 text-center shadow-card">
-          <p className="text-h3 text-navy">{dict.emptyLead.searchTitle.replace("{q}", searchQuery)}</p>
-          <p className="mx-auto mt-2 max-w-md text-ink-soft">{dict.emptyLead.searchBody}</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <a
-              href="tel:+972000000000"
-              className="rounded-control bg-brass px-5 py-2 text-sm font-medium text-surface hover:bg-brass-light"
-            >
-              {dict.emptyLead.cta}
-            </a>
-            <button
-              type="button"
-              onClick={onReset}
-              className="rounded-control border border-line-strong px-4 py-2 text-sm text-ink-soft hover:bg-paper-warm"
-            >
-              {dict.catalog.reset}
-            </button>
+        <div className="card empty">
+          <h3>{dict.emptyLead.searchTitle.replace("{q}", searchQuery)}</h3>
+          <p>{dict.emptyLead.searchBody}</p>
+          <div className="row">
+            <Link href={`/${locale}#contact`} className="btn btn-red btn-sm">{dict.emptyLead.cta}</Link>
+            <button type="button" onClick={onReset} className="btn btn-sm">{dict.catalog.reset}</button>
           </div>
         </div>
       );
     }
     return (
-      <div className="rounded-card border border-line bg-surface p-12 text-center shadow-card">
-        <p className="text-h3 text-navy">{dict.catalog.emptyTitle}</p>
-        <p className="mt-2 text-ink-soft">{dict.catalog.emptyBody}</p>
-        <button
-          type="button"
-          onClick={onReset}
-          className="mt-4 rounded-control border border-brass px-4 py-2 text-sm text-brass hover:bg-brass hover:text-surface"
-        >
-          {dict.catalog.reset}
-        </button>
+      <div className="card empty">
+        <h3>{dict.catalog.emptyTitle}</h3>
+        <p>{dict.catalog.emptyBody}</p>
+        <button type="button" onClick={onReset} className="btn btn-yellow btn-sm">{dict.catalog.reset}</button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div>
       <ProductGrid products={products} locale={locale} dict={dict} />
       {query.hasNextPage && (
-        <div className="flex justify-center">
+        <div className="more-row">
           <button
             type="button"
             onClick={() => void query.fetchNextPage()}
             disabled={query.isFetchingNextPage}
-            className="rounded-control bg-navy px-6 py-3 text-sm font-medium text-surface transition-colors hover:bg-navy-deep disabled:opacity-50"
+            className="btn btn-yellow"
           >
             {query.isFetchingNextPage ? dict.catalog.loading ?? "…" : dict.catalog.showMore}
           </button>

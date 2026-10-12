@@ -392,7 +392,11 @@
     "errorTitle": "Не удалось загрузить товары",
     "retry": "Повторить",
     "details": "Подробнее",
-    "titleEn": "Paint Catalog — Premium Collection"
+    "titleEn": "Paint Catalog — Premium Collection",
+    "heading": {
+      "a": "Каталог",
+      "hl": "красок"
+    }
   },
   "product": {
     "breadcrumbHome": "Главная",
@@ -423,7 +427,11 @@
     "calcResult": "Нужно {cans} банок по {volume} л",
     "calcLeftover": "Остаток: {liters} л",
     "calcNotAvailable": "Расчёт для этого товара недоступен",
-    "calcEstimate": "Расчёт ориентировочный и зависит от типа поверхности и числа слоёв."
+    "calcEstimate": "Расчёт ориентировочный и зависит от типа поверхности и числа слоёв.",
+    "breadcrumbLabel": "Навигационная цепочка",
+    "addedToast": "Добавлено в заявку: «{name}»",
+    "toRequest": "Перейти к заявке",
+    "description": "Описание"
   },
   "services": {
     "title": "Услуги покраски",

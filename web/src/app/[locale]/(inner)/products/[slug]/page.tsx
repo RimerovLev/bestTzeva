@@ -11,6 +11,10 @@ import {
 import { ApiError } from "@/lib/api/problem";
 import { ProductDetail } from "@/components/product/ProductDetail";
 import { Breadcrumbs, type Crumb } from "@/components/product/Breadcrumbs";
+import { PageBand, type BandTone } from "@/components/motion/PageBand";
+
+/** Цвет плашки товара — по id, чтобы соседние товары отличались, а у одного товара не менялся. */
+const BAND_TONES: BandTone[] = ["blue", "violet", "mint", "yellow"];
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
@@ -70,16 +74,24 @@ export default async function ProductPage({
 
   const trail = buildTrail(categories, card.category_id ?? null, locale, dict.product);
   const jsonLd = productJsonLd(card, trail);
+  const paintKey = card.paint_type?.toUpperCase() as keyof typeof dict.enums.paint_type | undefined;
+  const paintType = paintKey ? dict.enums.paint_type[paintKey] : null;
 
   return (
     <article>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <Breadcrumbs
-        items={[
-          ...trail,
-          { label: card.name ?? card.sku ?? "" },
-        ]}
-      />
+      <PageBand
+        tone={BAND_TONES[(card.id ?? 0) % BAND_TONES.length] ?? "blue"}
+        title={card.name ?? card.sku ?? ""}
+        body={card.short_description}
+        product
+        crumbs={<Breadcrumbs label={dict.product.breadcrumbLabel} items={[...trail, { label: card.name ?? card.sku ?? "" }]} />}
+      >
+        <div className="band-meta">
+          {card.sku && <span className="pill"><bdi>{card.sku}</bdi></span>}
+          {paintType && <span className="pill y">{paintType}</span>}
+        </div>
+      </PageBand>
       <ProductDetail card={card} locale={locale} dict={dict} />
     </article>
   );

@@ -5,22 +5,18 @@ export interface Crumb {
   href?: string;
 }
 
-/** Хлебные крошки. Последний элемент — текущая страница (без ссылки). Разделитель зеркалится в RTL. */
-export function Breadcrumbs({ items }: { items: Crumb[] }) {
+/** Хлебные крошки над заголовком плашки. Последний элемент — текущая страница (без ссылки). */
+export function Breadcrumbs({ items, label }: { items: Crumb[]; label: string }) {
   return (
-    <nav aria-label="breadcrumb" className="mb-4 text-sm text-ink-soft">
-      <ol className="flex flex-wrap items-center gap-1">
+    <nav aria-label={label} className="crumbs">
+      <ol>
         {items.map((item, i) => (
-          <li key={i} className="flex items-center gap-1">
-            {i > 0 && <span aria-hidden className="text-line-strong">/</span>}
+          <li key={i} style={{ display: "contents" }}>
+            {i > 0 && <span aria-hidden>/</span>}
             {item.href && i < items.length - 1 ? (
-              <Link href={item.href} className="transition-colors hover:text-navy">
-                {item.label}
-              </Link>
+              <Link href={item.href}>{item.label}</Link>
             ) : (
-              <span className={i === items.length - 1 ? "text-ink" : undefined} aria-current={i === items.length - 1 ? "page" : undefined}>
-                {item.label}
-              </span>
+              <span aria-current={i === items.length - 1 ? "page" : undefined}>{item.label}</span>
             )}
           </li>
         ))}

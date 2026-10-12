@@ -391,7 +391,11 @@
     "errorTitle": "אירעה שגיאה בטעינת המוצרים",
     "retry": "נסו שוב",
     "details": "לפרטים",
-    "titleEn": "Paint Catalog — Premium Collection"
+    "titleEn": "Paint Catalog — Premium Collection",
+    "heading": {
+      "a": "קטלוג",
+      "hl": "צבעים"
+    }
   },
   "product": {
     "breadcrumbHome": "בית",
@@ -422,7 +426,11 @@
     "calcResult": "צריך {cans} פחים של {volume} ליטר",
     "calcLeftover": "עודף: {liters} ליטר",
     "calcNotAvailable": "החישוב אינו זמין לצבע זה",
-    "calcEstimate": "החישוב מקורב ותלוי בסוג המשטח ובמספר השכבות."
+    "calcEstimate": "החישוב מקורב ותלוי בסוג המשטח ובמספר השכבות.",
+    "breadcrumbLabel": "מיקום בעמוד",
+    "addedToast": "נוסף לפנייה: {name}",
+    "toRequest": "לפנייה שלי",
+    "description": "תיאור"
   },
   "services": {
     "title": "שירותי צביעה",
