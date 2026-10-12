@@ -109,6 +109,15 @@ app:
     default-locale: he
     # Публичная регистрация закрыта: аккаунты заводит администратор. Обратимо флагом.
     public-registration-enabled: ${AUTH_PUBLIC_REGISTRATION:false}
+    # Refresh-токен в httpOnly-куке (B-01). Secure выключается только в local/test (там http).
+    refresh-cookie:
+      enabled: ${AUTH_REFRESH_COOKIE_ENABLED:true}
+      name: refresh_token
+      path: /api/v1/auth
+      same-site: Lax
+      secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+    # Запасной путь для клиентов без кук (мобильное приложение): приём и выдача refresh в теле.
+    refresh-token-in-body: ${AUTH_REFRESH_TOKEN_IN_BODY:false}
   bootstrap:
     # Первый администратор создаётся один раз на пустой таблице users, если заданы обе переменные.
     admin-email: ${BOOTSTRAP_ADMIN_EMAIL:}

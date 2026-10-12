@@ -8,6 +8,12 @@ spring:
       hibernate:
         format_sql: true
 
+app:
+  auth:
+    # local работает по http — Secure-кука иначе не долетит до фронта.
+    refresh-cookie:
+      secure: false
+
 logging:
   level:
     com.tzevabest: DEBUG

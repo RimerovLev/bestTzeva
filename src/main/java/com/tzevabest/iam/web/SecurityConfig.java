@@ -71,10 +71,12 @@ public class SecurityConfig {
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setExposedHeaders(List.of("X-Request-Id"));
-        // Аутентификация — только через Authorization: Bearer, cookies не используются, поэтому
-        // передавать учётные данные кросс-доменно не нужно. Если появится httpOnly-кука с refresh —
-        // это отдельное архитектурное решение (тогда включить и записать в docs/). R-32.
-        cors.setAllowCredentials(false);
+        // Refresh-токен переносится в httpOnly-куке (B-01), поэтому браузеру нужно разрешить
+        // отправлять учётные данные кросс-доменно. allowCredentials=true работает только с
+        // КОНКРЕТНЫМ списком origin'ов (allowed-origins задаётся доменами витрины и админки, без
+        // звёздочки — со звёздочкой браузер куку не отправит). Это отменяет прежнее R-32, где
+        // кук ещё не было.
+        cors.setAllowCredentials(true);
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
@@ -94,6 +96,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                         // Публичная витрина товаров — только чтение.
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        // Публичный расчёт расхода краски на карточке (B-04).
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/*/coverage-calc").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         // Публичное портфолио — только чтение.
                         .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/**").permitAll()
@@ -130,6 +134,7 @@ public class SecurityConfig {
                         .requestMatchers(AUTH_PUBLIC).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products/*/coverage-calc").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/colors/**").permitAll()
                         // Публичное портфолио — только чтение.
                         .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/**").permitAll()

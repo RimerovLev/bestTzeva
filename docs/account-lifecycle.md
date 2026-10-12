@@ -19,6 +19,28 @@
 - **Вход, обновление токена, выход, смена и восстановление пароля** работают без изменений — они
   нужны персоналу.
 
+## Транспорт токенов (B-01)
+
+Access-токен возвращается в теле ответа (`access_token`, `token_type`, `expires_in`) и живёт только
+в памяти вкладки фронта. **Refresh-токен переносится в httpOnly-куке**, а не в теле: любой XSS в
+админке иначе отдал бы злоумышленнику 30-дневную сессию сотрудника, а httpOnly-куку скрипт не читает.
+
+- `POST /auth/login`, `/register`, `/refresh` ставят куку `refresh_token`: `HttpOnly`, `Secure`
+  (кроме профилей `local`/`test`, где http), `SameSite=Lax`, `Path=/api/v1/auth`, `Max-Age` = сроку
+  жизни refresh (`app.jwt.refresh-ttl`).
+- `POST /auth/refresh` и `/auth/logout` читают refresh **из куки**. Тело с `refresh_token` —
+  необязательный запасной путь для клиентов без кук (мобильное приложение) за флагом
+  `app.auth.refresh-token-in-body` (по умолчанию `false`).
+- `POST /auth/logout` и `/auth/logout-all` гасят куку (`Max-Age=0`).
+- **CORS**: `allowCredentials=true` (иначе браузер не пошлёт куку) работает только с конкретным
+  `app.cors.allowed-origins` — доменами витрины и админки, без звёздочки.
+- **CSRF**: `SameSite=Lax` защищает, только пока фронт и API на разных доменах. На случай общего
+  домена `/auth/refresh` и `/auth/logout` дополнительно проверяют заголовок `Origin` против того же
+  allow-list (`AuthOriginGuard`) — чужой Origin получает `403 common.auth.origin_not_allowed`.
+
+Конфигурация: `app.auth.refresh-cookie.{enabled,name,path,same-site,secure}` и
+`app.auth.refresh-token-in-body`.
+
 ## Подтверждение контакта и статусы
 
 Аккаунт заводится в статусе `ACTIVE`. Механизм подтверждения email и OTP по телефону (T-3.3) и

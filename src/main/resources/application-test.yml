@@ -33,6 +33,15 @@ management:
     s3:
       enabled: false
 
+app:
+  auth:
+    refresh-cookie:
+      # Тесты ходят по http (TestRestTemplate) — Secure-куку иначе было бы не прочитать.
+      secure: false
+    # Существующие auth-тесты читают refresh_token из тела: держим запасной body-путь включённым.
+    # Тесты именно куки (AuthCookieIntegrationTest) выключают его через @TestPropertySource.
+    refresh-token-in-body: true
+
 logging:
   level:
     com.tzevabest: DEBUG
