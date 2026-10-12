@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
-export type BandTone = "yellow" | "blue" | "red" | "mint" | "violet" | "paper";
+export type BandTone = "yellow" | "blue" | "red" | "mint" | "violet" | "pink" | "paper";
 export type BandTitle = { a: string; hl?: string; b?: string };
 
 /**
@@ -29,7 +29,7 @@ export function PageBand({
   dx?: string;
 }) {
   const t = typeof title === "string" ? { a: title } : title;
-  const hlc = tone === "red" ? "var(--ink)" : tone === "yellow" || tone === "mint" ? "var(--paper)" : "var(--yellow)";
+  const hlc = tone === "red" ? "var(--ink)" : tone === "yellow" || tone === "mint" || tone === "pink" ? "var(--paper)" : "var(--yellow)";
   return (
     <section className={`sec s-${tone} drip in band full-bleed`} style={{ "--dx": dx } as CSSProperties}>
       <div className="wrap">

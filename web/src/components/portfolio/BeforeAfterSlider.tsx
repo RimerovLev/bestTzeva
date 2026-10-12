@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type SyntheticEvent } from "react";
+
+const hideBroken = (e: SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.visibility = "hidden"; };
 
 /**
- * Сравнение «до/после» с перетаскиваемым разделителем. Работает мышью, пальцем (pointer events) и с
- * клавиатуры (role=slider, стрелки). Контейнер с фиксированным соотношением сторон — картинки не
- * дёргают вёрстку (CLS). Направление физическое (не зависит от RTL) — это сравнение изображений.
+ * Сравнение «до/после» с перетаскиваемым разделителем: мышь, палец (pointer events, вертикальная
+ * прокрутка страницы не блокируется) и клавиатура (role=slider, стрелки, Home/End). Картинка не имеет
+ * направления письма — контейнер всегда LTR: «до» слева, «после» справа и в иврите тоже, иначе
+ * подписи разъезжаются с фото. Пропорции фиксированы — без CLS.
  */
 export function BeforeAfterSlider({
   beforeUrl,
@@ -29,7 +32,6 @@ export function BeforeAfterSlider({
     if (!rect) return;
     setPos(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
   }
-
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     dragging.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -47,12 +49,16 @@ export function BeforeAfterSlider({
     else if (e.key === "ArrowRight") setPos((p) => Math.min(100, p + 2));
     else if (e.key === "Home") setPos(0);
     else if (e.key === "End") setPos(100);
+    else return;
+    e.preventDefault();
   }
 
   return (
     <div
       ref={ref}
-      className="relative aspect-[16/10] w-full cursor-ew-resize touch-none select-none overflow-hidden rounded-card border border-line bg-paper-warm"
+      dir="ltr"
+      className="cmp"
+      style={{ "--pos": `${pos}%` } as CSSProperties}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -60,32 +66,29 @@ export function BeforeAfterSlider({
     >
       {/* «после» — база */}
       {/* eslint-disable-next-line @next/next/no-img-element -- внешние фото портфолио; next/image требует whitelisting CDN */}
-      <img src={afterUrl} alt={alt} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-      <span className="absolute bottom-2 inset-inline-end-2 rounded-pill bg-navy-deep/70 px-2 py-0.5 text-xs text-surface">{afterLabel}</span>
-
+      <img src={afterUrl} alt={alt} loading="lazy" onError={hideBroken} />
       {/* «до» — поверх, обрезано до pos% слева */}
-      <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
+      <div className="cmp-before">
         {/* eslint-disable-next-line @next/next/no-img-element -- внешние фото портфолио */}
-        <img src={beforeUrl} alt={alt} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-        <span className="absolute bottom-2 inset-inline-start-2 rounded-pill bg-navy-deep/70 px-2 py-0.5 text-xs text-surface">{beforeLabel}</span>
+        <img src={beforeUrl} alt="" loading="lazy" onError={hideBroken} />
       </div>
-
-      {/* разделитель + ручка */}
-      <div className="absolute inset-y-0" style={{ left: `${pos}%` }}>
-        <div className="absolute inset-y-0 -ms-px w-0.5 bg-surface" />
-        <button
-          type="button"
-          role="slider"
-          aria-label={`${beforeLabel} / ${afterLabel}`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(pos)}
-          onKeyDown={onKeyDown}
-          className="absolute top-1/2 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize place-items-center rounded-pill border-2 border-brass bg-surface text-brass shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
-        >
-          ↔
-        </button>
-      </div>
+      <span className="tag tag-before">{beforeLabel}</span>
+      <span className="tag tag-after">{afterLabel}</span>
+      <div className="handle" />
+      <button
+        type="button"
+        role="slider"
+        className="cmp-knob"
+        aria-label={`${beforeLabel} / ${afterLabel}`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pos)}
+        onKeyDown={onKeyDown}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#121212" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M9 6l-6 6 6 6M15 6l6 6-6 6" />
+        </svg>
+      </button>
     </div>
   );
 }

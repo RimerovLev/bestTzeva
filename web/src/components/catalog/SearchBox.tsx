@@ -13,14 +13,25 @@ const DEBOUNCE_MS = 300;
 const MAX_SUGGESTIONS = 6;
 
 /**
- * Поиск в шапке с подсказками. Запрос уходит с задержкой 300 мс, минимум 2 символа, каждый новый
+ * Поиск в каталоге с подсказками. Запрос уходит с задержкой 300 мс, минимум 2 символа, каждый новый
  * ввод отменяет предыдущий (AbortController). Устаревшие ответы не перетирают свежие: применяем
  * только результат последнего по счётчику запроса. Строку не нормализуем и пробелы внутри не режем —
  * это делает бэкенд (иврит с огласовками и без, англ., рус.).
  */
-export function SearchBox({ locale, dict }: { locale: Locale; dict: Dictionary }) {
+export function SearchBox({
+  locale,
+  dict,
+  initial = "",
+  onSearch,
+}: {
+  locale: Locale;
+  dict: Dictionary;
+  initial?: string;
+  /** Есть — поиск применяется к текущей выборке (каталог), нет — переход в каталог с ?q. */
+  onSearch?: (q: string | undefined) => void;
+}) {
   const router = useRouter();
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initial);
   const [suggestions, setSuggestions] = useState<ProductSummary[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -61,50 +72,48 @@ export function SearchBox({ locale, dict }: { locale: Locale; dict: Dictionary }
   function submit(e: FormEvent) {
     e.preventDefault();
     const query = value.trim();
-    if (query.length < MIN_CHARS) return;
     setOpen(false);
+    if (onSearch) {
+      // пустая строка — снять поиск, остальные фильтры остаются
+      onSearch(query ? value : undefined);
+      return;
+    }
+    if (query.length < MIN_CHARS) return;
     router.push(`/${locale}/products?q=${encodeURIComponent(value)}`);
   }
 
   return (
-    <form onSubmit={submit} className="relative w-full max-w-xs" role="search">
+    <form onSubmit={submit} className="srch" role="search">
+      <svg className="srch-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
+        <circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" />
+      </svg>
       <input
         type="search"
+        className="inp"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={dict.search.placeholder}
         aria-label={dict.search.label}
-        className="w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-brass focus-visible:ring-2 focus-visible:ring-terracotta"
       />
 
       {open && (
-        <div className="absolute inset-inline-start-0 top-full z-40 mt-1 w-full overflow-hidden rounded-card border border-line bg-surface shadow-card">
+        <div className="card srch-pop">
           {suggestions.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-ink-faint">{dict.search.noSuggestions}</p>
+            <p className="none">{dict.search.noSuggestions}</p>
           ) : (
             <ul>
               {suggestions.map((s) => (
                 <li key={s.id}>
-                  <Link
-                    href={`/${locale}/products/${s.slug ?? s.id}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-paper-warm"
-                  >
-                    <span className="truncate text-ink">{s.name}</span>
-                    <span className="numeric shrink-0 text-xs text-ink-soft">
-                      <bdi>{formatPrice(locale, s.min_price ?? 0)}</bdi>
-                    </span>
+                  <Link href={`/${locale}/products/${s.slug ?? s.id}`} onMouseDown={(e) => e.preventDefault()}>
+                    <span>{s.name}</span>
+                    {s.min_price != null && <span className="p"><bdi>{formatPrice(locale, s.min_price)}</bdi></span>}
                   </Link>
                 </li>
               ))}
-              <li className="border-t border-line">
-                <button
-                  type="submit"
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="w-full px-3 py-2 text-start text-sm font-medium text-brass hover:bg-paper-warm"
-                >
+              <li>
+                <button type="submit" className="all" onMouseDown={(e) => e.preventDefault()}>
                   {dict.search.viewAll.replace("{q}", value.trim())}
                 </button>
               </li>

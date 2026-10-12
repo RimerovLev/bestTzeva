@@ -20,6 +20,7 @@ import {
 } from "@/lib/catalog/params";
 import { ProductGrid, ProductGridSkeleton } from "./ProductGrid";
 import { FilterSidebar } from "./FilterSidebar";
+import { SearchBox } from "./SearchBox";
 
 interface CatalogViewProps {
   locale: Locale;
@@ -96,6 +97,7 @@ export function CatalogView({
 
       <div className="min-w-0">
         <div className="cat-bar">
+          <SearchBox key={filters.q ?? ""} locale={locale} dict={dict} initial={filters.q ?? ""} onSearch={(q) => applyFilters({ q })} />
           <span className="pill">
             {dict.catalog.resultsCount.replace("{count}", String(total))}
           </span>

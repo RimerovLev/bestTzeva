@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -69,101 +69,75 @@ export function ColorsView({
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end gap-4">
+      <div className="card pf-bar">
         <div>
-          <p className="mb-1 text-sm font-medium text-ink-soft">{c.system}</p>
-          <div className="flex gap-1">
-            <SystemButton active={system === ""} onClick={() => setSystem("")} label={c.allSystems} />
+          <p className="lbl">{c.system}</p>
+          <div className="opt-list" role="group" aria-label={c.system}>
+            <button type="button" className="opt" aria-pressed={system === ""} onClick={() => setSystem("")}>{c.allSystems}</button>
             {availableSystems.map((s) => (
-              <SystemButton
+              <button
                 key={s}
-                active={system === s}
+                type="button"
+                className="opt"
+                aria-pressed={system === s}
                 onClick={() => {
                   setSystem(s);
                   setCollection("");
                 }}
-                label={c.systems[s]}
-              />
+              >
+                {c.systems[s]}
+              </button>
             ))}
           </div>
         </div>
 
         {collections.length > 0 && (
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-ink-soft">{c.collection}</span>
-            <select
-              value={collection}
-              onChange={(e) => setCollection(e.target.value)}
-              className="rounded-control border border-line-strong bg-surface px-2 py-1.5 text-sm focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
-            >
+          <label className="field">
+            <span className="field-l">{c.collection}</span>
+            <select value={collection} onChange={(e) => setCollection(e.target.value)}>
               <option value="">{c.allCollections}</option>
-              {collections.map((col) => (
-                <option key={col} value={col}>{col}</option>
-              ))}
+              {collections.map((col) => <option key={col} value={col}>{col}</option>)}
             </select>
           </label>
         )}
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-ink-soft">{c.searchCode}</span>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="RAL…"
-            className="rounded-control border border-line-strong bg-surface px-3 py-1.5 text-sm focus:border-brass focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
-          />
+        <label className="field">
+          <span className="field-l">{c.searchCode}</span>
+          <input type="search" dir="ltr" value={q} onChange={(e) => setQ(e.target.value)} placeholder="RAL…" />
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-ink-soft">
-          <input type="checkbox" checked={popularOnly} onChange={(e) => setPopularOnly(e.target.checked)} className="accent-brass" />
+        <label className="chk">
+          <input type="checkbox" checked={popularOnly} onChange={(e) => setPopularOnly(e.target.checked)} />
           {c.popularOnly}
         </label>
 
-        {hasFilters && (
-          <button type="button" onClick={reset} className="text-sm text-brass hover:underline">
-            {c.reset}
-          </button>
-        )}
+        {hasFilters && <button type="button" onClick={reset} className="link-btn">{c.reset}</button>}
       </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-card border border-line bg-surface p-12 text-center text-ink-faint shadow-card">
-          {c.empty}
-        </p>
+        <div className="card empty">
+          <h3>{c.empty}</h3>
+          {hasFilters && <button type="button" onClick={reset} className="btn btn-yellow btn-sm">{c.reset}</button>}
+        </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className="chips">
           {filtered.map((col) => (
             <Link
               key={col.id}
               href={`/${locale}/products?q=${encodeURIComponent(col.code ?? "")}`}
               title={c.toCatalog}
-              className="group overflow-hidden rounded-card border border-line bg-surface shadow-card transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta"
+              className="card lift chip-tile"
             >
-              <div className="aspect-[4/3]" style={{ backgroundColor: col.hex ?? "var(--line)" }} />
-              <div className="p-2">
-                <p className="numeric text-sm font-medium text-navy">{col.code}</p>
-                <p className="truncate text-xs text-ink-faint">{col.collection}</p>
+              <div className="swatch" style={{ "--c": col.hex ?? "var(--paper-warm)" } as CSSProperties} />
+              <div className="cap">
+                <b><bdi>{col.code}</bdi></b>
+                {col.name && <span>{col.name}</span>}
+                {col.collection && <span>{col.collection}</span>}
               </div>
             </Link>
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function SystemButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`rounded-control border px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta ${
-        active ? "border-brass bg-brass/10 font-medium text-navy" : "border-line-strong text-ink-soft hover:bg-paper-warm"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

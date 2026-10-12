@@ -4,6 +4,7 @@ import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getPortfolioList, type PortfolioPage } from "@/lib/portfolio/api";
 import { PortfolioView } from "@/components/portfolio/PortfolioView";
+import { PageBand } from "@/components/motion/PageBand";
 
 export async function generateMetadata({
   params,
@@ -35,10 +36,7 @@ export default async function PortfolioPage({
 
   return (
     <section>
-      <header className="mb-6">
-        <h1 className="display text-h1 font-bold text-navy-deep">{dict.portfolio.title}</h1>
-        <p className="mt-2 text-ink-soft">{dict.portfolio.subtitle}</p>
-      </header>
+      <PageBand tone="blue" eyebrow={dict.nav.works} title={dict.portfolio.heading} body={dict.portfolio.subtitle} dx="-120px" />
       <PortfolioView initial={initial} cities={cities} locale={locale} dict={dict} />
     </section>
   );

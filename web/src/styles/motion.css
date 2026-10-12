@@ -182,6 +182,7 @@
 .s-paper { --sbg: var(--paper); }
 .s-red { --sbg: var(--red); --sfg: #fff; --sfg-soft: rgba(255, 255, 255, .86); --hlc: var(--ink); }
 .s-mint { --sbg: var(--mint); }
+.s-pink { --sbg: var(--pink); }
 .s-violet { --sbg: var(--violet); --sfg: #fff; --sfg-soft: rgba(255, 255, 255, .86); }
 .s-ink { --sbg: var(--ink); --sfg: var(--paper); --sfg-soft: rgba(251, 248, 243, .72); --shc: var(--yellow); }
 .s-red .hl { color: #fff; }

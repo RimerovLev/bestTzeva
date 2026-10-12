@@ -32,7 +32,7 @@ export function ToMeasureLink({
     <button
       type="button"
       onClick={go}
-      className="inline-flex items-center gap-2 rounded-pill bg-terracotta px-6 py-3 font-semibold text-surface shadow-card transition hover:bg-terracotta-deep"
+      className="btn btn-red"
     >
       {label}
     </button>

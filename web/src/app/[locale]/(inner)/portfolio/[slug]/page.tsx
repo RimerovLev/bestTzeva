@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import Link from "next/link";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getPortfolioProject, type PortfolioProject } from "@/lib/portfolio/api";
 import { ApiError } from "@/lib/api/problem";
 import { BeforeAfterSlider } from "@/components/portfolio/BeforeAfterSlider";
 import { ToMeasureLink } from "@/components/portfolio/ToMeasureLink";
+import { PageBand } from "@/components/motion/PageBand";
+import { Breadcrumbs } from "@/components/product/Breadcrumbs";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
@@ -64,40 +65,37 @@ export default async function PortfolioProjectPage({
   const type = (project.property_type ?? "").toUpperCase() as keyof typeof dict.enums.property_type;
 
   return (
-    <article className="mx-auto max-w-4xl">
+    <article>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(projectJsonLd(project, locale)) }} />
 
-      <nav className="mb-4 text-sm text-ink-soft">
-        <Link href={`/${locale}/portfolio`} className="hover:text-ink">
-          ← {t.backToList}
-        </Link>
-      </nav>
-
-      <header className="mb-6">
-        <h1 className="display text-h1 font-bold text-navy-deep">{project.title}</h1>
-        <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          {dict.enums.property_type[type] ? (
-            <span className="rounded-pill bg-navy-deep/8 px-3 py-1 text-navy">{dict.enums.property_type[type]}</span>
-          ) : null}
-          {project.city ? <span className="rounded-pill bg-navy-deep/8 px-3 py-1 text-navy">{project.city}</span> : null}
-          {project.area_sqm != null ? (
-            <span className="rounded-pill bg-navy-deep/8 px-3 py-1 text-navy">
-              {t.area}: {project.area_sqm} {t.areaUnit}
-            </span>
-          ) : null}
-          {project.duration_days != null ? (
-            <span className="rounded-pill bg-navy-deep/8 px-3 py-1 text-navy">
-              {t.duration.replace("{days}", String(project.duration_days))}
-            </span>
-          ) : null}
+      <PageBand
+        tone="violet"
+        title={project.title ?? ""}
+        body={project.description}
+        product
+        dx="-170px"
+        crumbs={
+          <Breadcrumbs
+            label={dict.product.breadcrumbLabel}
+            items={[
+              { label: dict.product.breadcrumbHome, href: `/${locale}` },
+              { label: t.title, href: `/${locale}/portfolio` },
+              { label: project.title ?? "" },
+            ]}
+          />
+        }
+      >
+        <div className="band-meta">
+          {dict.enums.property_type[type] ? <span className="pill y">{dict.enums.property_type[type]}</span> : null}
+          {project.city ? <span className="pill">{project.city}</span> : null}
+          {project.area_sqm != null ? <span className="pill">{t.area}: <bdi>{project.area_sqm} {t.areaUnit}</bdi></span> : null}
+          {project.duration_days != null ? <span className="pill">{t.duration.replace("{days}", String(project.duration_days))}</span> : null}
         </div>
-      </header>
-
-      {project.description ? <p className="mb-8 text-ink-soft">{project.description}</p> : null}
+      </PageBand>
 
       {project.pairs && project.pairs.length > 0 ? (
-        <section className="mb-8 space-y-6">
-          <p className="text-sm text-ink-soft">{t.dragHint}</p>
+        <section className="pf-section">
+          <p className="small">{t.dragHint}</p>
           {project.pairs.map((pair, i) =>
             pair.before_url && pair.after_url ? (
               <BeforeAfterSlider
@@ -114,39 +112,30 @@ export default async function PortfolioProjectPage({
       ) : null}
 
       {project.standalone && project.standalone.length > 0 ? (
-        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <section className="pf-section pf-photos">
           {project.standalone.map((m, i) =>
             m.url ? (
               // eslint-disable-next-line @next/next/no-img-element -- внешние фото портфолио (CDN не в whitelist next/image)
-              <img
-                key={i}
-                src={m.url}
-                alt={project.title ?? ""}
-                loading="lazy"
-                className="aspect-[4/3] w-full rounded-card border border-line object-cover"
-              />
+              <img key={i} src={m.url} alt={project.title ?? ""} loading="lazy" />
             ) : null,
           )}
         </section>
       ) : null}
 
       {project.work_types && project.work_types.length > 0 ? (
-        <section className="mb-8">
-          <h2 className="mb-2 text-h3 font-semibold text-navy">{t.workTypesLabel}</h2>
-          <div className="flex flex-wrap gap-2">
+        <section className="pf-section">
+          <h2>{t.workTypesLabel}</h2>
+          <div className="pf-chips">
             {project.work_types.map((w) => {
               const key = (w ?? "").toUpperCase() as keyof typeof dict.enums.work_type;
-              return (
-                <span key={w} className="rounded-pill border border-line px-3 py-1 text-sm text-ink">
-                  {dict.enums.work_type[key] ?? w}
-                </span>
-              );
+              return <span key={w} className="pill">{dict.enums.work_type[key] ?? w}</span>;
             })}
           </div>
         </section>
       ) : null}
 
-      <div className="mt-10 rounded-card bg-paper-warm p-6 text-center">
+      <div className="card cta-card">
+        <h2>{t.ctaTitle}</h2>
         <ToMeasureLink locale={locale} propertyType={project.property_type ?? undefined} label={t.toMeasure} />
       </div>
     </article>

@@ -15,7 +15,7 @@
   body {
     background: var(--paper);
     font-family: var(--f-body);
-    font-size: var(--fs-body);
+    font-size: 16px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
@@ -50,11 +50,6 @@
 }
 
 @layer utilities {
-  .focus-ring {
-    outline: 3px solid var(--blue);
-    outline-offset: 3px;
-  }
-
   /*
    * Выход за пределы центрированного контейнера на всю ширину вьюпорта. margin-inline —
    * логическое свойство, поэтому корректно и в RTL. Горизонтальный скролл от 100vw гасит
@@ -63,12 +58,5 @@
   .full-bleed {
     width: 100vw;
     margin-inline: calc(50% - 50vw);
-  }
-
-  /* Панель внутренних страниц: бумага, чернильный контур, жёсткая тень. */
-  .panel {
-    border: 2px solid var(--ink);
-    background: var(--surface);
-    box-shadow: var(--sh-sm);
   }
 }
