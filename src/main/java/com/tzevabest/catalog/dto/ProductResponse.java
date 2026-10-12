@@ -15,6 +15,7 @@ import java.util.Map;
  */
 public record ProductResponse(
         long id,
+        String slug,
         String sku,
         long categoryId,
         long brandId,

@@ -57,6 +57,14 @@ public class GlobalExceptionHandler {
         return build(ex.getStatus(), ex.getCode(), responder.resolve(ex.getCode(), ex.getArgs()), null, req, ex);
     }
 
+    // ── Устаревший slug → 301 на актуальный адрес (не ошибка, тела нет) ──────────
+    @ExceptionHandler(SlugMovedException.class)
+    public ResponseEntity<Void> handleSlugMoved(SlugMovedException ex) {
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+                .location(java.net.URI.create(ex.getLocation()))
+                .build();
+    }
+
     // ── Превышение частоты (429) — то же тело + заголовок Retry-After ────────────
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<ProblemDetail> handleTooManyRequests(TooManyRequestsException ex, HttpServletRequest req) {

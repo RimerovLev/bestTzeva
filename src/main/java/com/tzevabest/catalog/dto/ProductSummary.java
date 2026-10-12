@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 /** Строка публичного листинга каталога (лёгкая). */
 public record ProductSummary(
         long id,
+        String slug,
         String sku,
         long categoryId,
         long brandId,

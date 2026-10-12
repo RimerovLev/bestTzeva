@@ -16,6 +16,8 @@ public record ProductSaveRequest(
         @NotNull Long categoryId,
         @NotNull Long brandId,
         @NotBlank String sku,
+        /** Необязателен: на создании генерируется из английского названия, при смене даёт 301 (B-02). */
+        String slug,
         @NotNull PaintType paintType,
         @NotNull UsageArea usageArea,
         @NotNull Finish finish,

@@ -8,6 +8,8 @@ import com.tzevabest.catalog.dto.ProductCard;
 import com.tzevabest.catalog.dto.ProductFacets;
 import com.tzevabest.catalog.dto.ProductSearchResult;
 import com.tzevabest.catalog.dto.ProductSummary;
+import com.tzevabest.catalog.dto.CoverageCalcResult;
+import com.tzevabest.common.web.error.SlugMovedException;
 import com.tzevabest.catalog.dto.ProductMediaView;
 import com.tzevabest.catalog.dto.VariantCard;
 import com.tzevabest.catalog.domain.MediaType;
@@ -93,7 +95,7 @@ public class ProductCatalogService {
         // инъекция не должна зависеть от удалённой проверки. Параметр в SELECT идёт до WHERE-аргументов.
         String nameExpr = "(select name from product_translations t where t.product_id = p.id "
                 + "order by case t.locale when ? then 0 when 'he' then 1 else 2 end limit 1)";
-        String sql = "select p.id, p.sku, p.category_id, p.brand_id, p.paint_type, p.min_price, p.max_price, "
+        String sql = "select p.id, p.slug, p.sku, p.category_id, p.brand_id, p.paint_type, p.min_price, p.max_price, "
                 + "p.has_stock, " + nameExpr + " as name from products p" + all.sql()
                 + orderBy(page.sort()) + " limit ? offset ?";
         List<Object> pageArgs = new ArrayList<>();
@@ -102,7 +104,8 @@ public class ProductCatalogService {
         pageArgs.add(page.size());
         pageArgs.add((long) page.page() * page.size());
         List<ProductSummary> items = jdbc.query(sql, (rs, n) -> new ProductSummary(
-                rs.getLong("id"), rs.getString("sku"), rs.getLong("category_id"), rs.getLong("brand_id"),
+                rs.getLong("id"), rs.getString("slug"), rs.getString("sku"),
+                rs.getLong("category_id"), rs.getLong("brand_id"),
                 PaintType.valueOf(rs.getString("paint_type")), rs.getString("name"),
                 rs.getBigDecimal("min_price"), rs.getBigDecimal("max_price"), rs.getBoolean("has_stock")),
                 pageArgs.toArray());
@@ -214,10 +217,11 @@ public class ProductCatalogService {
 
         try {
             return jdbc.queryForObject("""
-                    select sku, category_id, brand_id, paint_type, usage_area, finish, base_type,
+                    select slug, sku, category_id, brand_id, paint_type, usage_area, finish, base_type,
                            coverage_sqm_per_liter, drying_time_hours, min_price, max_price, has_stock
                     from products where id = ? and is_active
-                    """, (rs, n) -> new ProductCard(id, rs.getString("sku"), rs.getLong("category_id"),
+                    """, (rs, n) -> new ProductCard(id, rs.getString("slug"), rs.getString("sku"),
+                            rs.getLong("category_id"),
                             rs.getLong("brand_id"), PaintType.valueOf(rs.getString("paint_type")),
                             UsageArea.valueOf(rs.getString("usage_area")), Finish.valueOf(rs.getString("finish")),
                             BaseType.valueOf(rs.getString("base_type")), rs.getBigDecimal("coverage_sqm_per_liter"),
@@ -231,6 +235,51 @@ public class ProductCatalogService {
         } catch (EmptyResultDataAccessException e) {
             throw new NotFoundException("catalog.product.not_found");
         }
+    }
+
+    /** Карточка активного товара по slug. Устаревший slug из истории отдаёт 301 (B-02). */
+    public ProductCard cardBySlug(String slug, String localeParam) {
+        Long id = idBySlug(slug);
+        if (id != null) {
+            return card(id, localeParam);
+        }
+        String current = currentSlugForHistorical(slug);
+        if (current != null) {
+            throw new SlugMovedException("/api/v1/products/" + current);
+        }
+        throw new NotFoundException("catalog.product.not_found");
+    }
+
+    /** Расчёт расхода краски по активному товару (B-04). 404, если товара нет/он неактивен. */
+    public CoverageCalcResult coverageCalc(String slug, java.math.BigDecimal area, int coats) {
+        Long id = idBySlug(slug);
+        if (id == null) {
+            throw new NotFoundException("catalog.product.not_found");
+        }
+        java.math.BigDecimal coverage = jdbc.query(
+                "select coverage_sqm_per_liter from products where id = ? and is_active",
+                rs -> rs.next() ? rs.getBigDecimal(1) : null, id);
+        List<CoverageCalculator.Variant> variants = jdbc.query(
+                "select id, sku, color_code, color_hex, volume_liters, price "
+                        + "from product_variants where product_id = ? and is_active order by id",
+                (rs, n) -> new CoverageCalculator.Variant(rs.getLong("id"), rs.getString("sku"),
+                        rs.getString("color_code"), rs.getString("color_hex"),
+                        rs.getBigDecimal("volume_liters"), rs.getBigDecimal("price")), id);
+        return CoverageCalculator.calculate(coverage, area, coats, variants);
+    }
+
+    private Long idBySlug(String slug) {
+        List<Long> ids = jdbc.query("select id from products where slug = ? and is_active",
+                (rs, n) -> rs.getLong("id"), slug);
+        return ids.isEmpty() ? null : ids.get(0);
+    }
+
+    private String currentSlugForHistorical(String oldSlug) {
+        List<String> slugs = jdbc.query(
+                "select p.slug from product_slug_history h join products p on p.id = h.product_id "
+                        + "where h.slug = ? and p.is_active",
+                (rs, n) -> rs.getString("slug"), oldSlug);
+        return slugs.isEmpty() ? null : slugs.get(0);
     }
 
     private static final String MEDIA_SELECT =

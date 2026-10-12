@@ -425,11 +425,7 @@ public class CategoryService {
     }
 
     private static String slugify(String value) {
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        return normalized.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("(^-+|-+$)", "");
+        return com.tzevabest.common.util.Slugs.slugify(value);
     }
 
     // ── Переводы / вспомогательное ───────────────────────────────────────────────

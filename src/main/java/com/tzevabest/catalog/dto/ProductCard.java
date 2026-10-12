@@ -14,6 +14,7 @@ import java.util.List;
  */
 public record ProductCard(
         long id,
+        String slug,
         String sku,
         long categoryId,
         long brandId,

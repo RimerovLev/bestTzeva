@@ -29,6 +29,10 @@ public class Product extends BaseEntity {
     @Column(name = "sku", nullable = false)
     private String sku;
 
+    /** Индексируемый адрес витрины (B-02). Генерируется из английского названия, правится вручную. */
+    @Column(name = "slug", nullable = false, length = 160)
+    private String slug;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "paint_type", nullable = false, length = 16)
     private PaintType paintType;

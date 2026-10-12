@@ -61,6 +61,13 @@ public class PortfolioAdminService {
     public void update(long id, PortfolioCreate req) {
         requireExists(id);
         requireHebrew(req);
+        // При смене slug старый адрес уходит в историю — для 301-редиректа (B-02).
+        String oldSlug = jdbc.queryForObject("select slug from portfolio_projects where id = ?", String.class, id);
+        if (oldSlug != null && !oldSlug.equals(req.slug())) {
+            jdbc.update("insert into portfolio_slug_history (slug, project_id) values (?, ?) "
+                            + "on conflict (slug) do update set project_id = excluded.project_id, created_at = now()",
+                    oldSlug, id);
+        }
         jdbc.update("""
                 update portfolio_projects set slug = ?, property_type = ?, city = ?, area_sqm = ?,
                         duration_days = ?, completed_at = ?, updated_at = now() where id = ?""",

@@ -4,15 +4,20 @@ import com.tzevabest.catalog.domain.BaseType;
 import com.tzevabest.catalog.domain.Finish;
 import com.tzevabest.catalog.domain.PaintType;
 import com.tzevabest.catalog.domain.UsageArea;
+import com.tzevabest.catalog.dto.CoverageCalcRequest;
+import com.tzevabest.catalog.dto.CoverageCalcResult;
 import com.tzevabest.catalog.dto.ProductCard;
 import com.tzevabest.catalog.dto.ProductSearchResult;
 import com.tzevabest.catalog.service.ProductCatalogService;
 import com.tzevabest.common.web.ApiPage;
 import com.tzevabest.common.web.PageQuery;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,8 +55,23 @@ public class ProductCatalogController {
                 locale != null ? locale : LocaleContextHolder.getLocale().getLanguage(), page);
     }
 
-    @GetMapping("/{id}")
-    public ProductCard card(@PathVariable long id, @RequestParam(required = false) String locale) {
-        return catalog.card(id, locale != null ? locale : LocaleContextHolder.getLocale().getLanguage());
+    /**
+     * Карточка товара. Основной публичный адрес — по slug (индексируемый, устаревший даёт 301, B-02);
+     * чисто числовой ключ трактуется как id и оставлен для админки/внутренних вызовов. Один маршрут
+     * вместо двух — чтобы не полагаться на разрешение неоднозначности {id} против {slug}.
+     */
+    @GetMapping("/{key}")
+    public ProductCard card(@PathVariable String key, @RequestParam(required = false) String locale) {
+        String resolved = locale != null ? locale : LocaleContextHolder.getLocale().getLanguage();
+        return key.matches("\\d+")
+                ? catalog.card(Long.parseLong(key), resolved)
+                : catalog.cardBySlug(key, resolved);
+    }
+
+    /** Расчёт расхода краски по товару (B-04): площадь + число слоёв → банки и остаток по вариантам. */
+    @PostMapping("/{slug}/coverage-calc")
+    public CoverageCalcResult coverageCalc(@PathVariable String slug,
+                                           @Valid @RequestBody CoverageCalcRequest request) {
+        return catalog.coverageCalc(slug, request.area(), request.coatsOrDefault());
     }
 }

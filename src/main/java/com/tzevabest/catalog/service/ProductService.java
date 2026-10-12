@@ -28,6 +28,7 @@ import com.tzevabest.common.dto.PageResponse;
 import com.tzevabest.common.dto.SortRequest;
 import com.tzevabest.common.web.PageQuery;
 import com.tzevabest.common.web.security.CurrentUser;
+import com.tzevabest.common.util.Slugs;
 import com.tzevabest.catalog.domain.BaseType;
 import com.tzevabest.catalog.domain.Finish;
 import com.tzevabest.catalog.domain.PaintType;
@@ -85,6 +86,7 @@ public class ProductService {
         }
         Product product = new Product();
         applyProductFields(product, request);
+        product.setSlug(resolveProductSlug(request, null));
         products.save(product);
         saveTranslations(product, request);
         saveAttributes(product, request.attributes());
@@ -107,6 +109,7 @@ public class ProductService {
 
         Map<String, Object> before = productSnapshot(product);
         applyProductFields(product, request);
+        applySlugOnUpdate(product, request);
         products.save(product);
 
         translations.deleteByProduct_Id(id);
@@ -345,10 +348,10 @@ public class ProductService {
                         rs.getBoolean("is_active")), id);
 
         return jdbc.queryForObject(
-                "select sku, category_id, brand_id, paint_type, usage_area, finish, base_type, "
+                "select slug, sku, category_id, brand_id, paint_type, usage_area, finish, base_type, "
                         + "coverage_sqm_per_liter, drying_time_hours, is_active, is_featured, "
                         + "min_price, max_price, has_stock from products where id = ?",
-                (rs, i) -> new ProductResponse(id, rs.getString("sku"), rs.getLong("category_id"),
+                (rs, i) -> new ProductResponse(id, rs.getString("slug"), rs.getString("sku"), rs.getLong("category_id"),
                         rs.getLong("brand_id"), PaintType.valueOf(rs.getString("paint_type")),
                         UsageArea.valueOf(rs.getString("usage_area")), Finish.valueOf(rs.getString("finish")),
                         BaseType.valueOf(rs.getString("base_type")), rs.getBigDecimal("coverage_sqm_per_liter"),
@@ -399,6 +402,49 @@ public class ProductService {
     }
 
     // ── Применение полей ─────────────────────────────────────────────────────────
+
+    // ── slug (B-02) ──────────────────────────────────────────────────────────────
+
+    /** slug на создании: из явного поля или английского названия (иначе HE), с суффиксом при коллизии. */
+    private String resolveProductSlug(ProductSaveRequest request, Long excludeId) {
+        String explicit = request.slug();
+        String source = (explicit != null && !explicit.isBlank()) ? explicit : slugSourceName(request);
+        String base = Slugs.slugify(source);
+        return Slugs.unique(base, "product", candidate -> slugTaken(candidate, excludeId));
+    }
+
+    private static String slugSourceName(ProductSaveRequest request) {
+        ProductTranslationInput en = request.translations().en();
+        if (en != null && en.name() != null && !en.name().isBlank()) {
+            return en.name();
+        }
+        return request.translations().he().name();
+    }
+
+    /** При ручной смене slug: старый адрес уходит в историю (для 301), ставится новый уникальный. */
+    private void applySlugOnUpdate(Product product, ProductSaveRequest request) {
+        if (request.slug() == null || request.slug().isBlank()) {
+            return; // slug не прислали — оставляем как есть
+        }
+        String desired = Slugs.slugify(request.slug());
+        if (desired.isBlank() || desired.equals(product.getSlug())) {
+            return; // без изменений
+        }
+        String unique = Slugs.unique(desired, "product", c -> slugTaken(c, product.getId()));
+        jdbc.update("insert into product_slug_history (slug, product_id) values (?, ?) "
+                        + "on conflict (slug) do update set product_id = excluded.product_id, created_at = now()",
+                product.getSlug(), product.getId());
+        product.setSlug(unique);
+    }
+
+    /** slug занят другим товаром? (уникальность по всей таблице products, исключая текущий на апдейте.) */
+    private boolean slugTaken(String slug, Long excludeId) {
+        List<Long> ids = jdbc.query("select id from products where slug = ?", (rs, n) -> rs.getLong("id"), slug);
+        if (ids.isEmpty()) {
+            return false;
+        }
+        return excludeId == null || !ids.get(0).equals(excludeId);
+    }
 
     private void applyProductFields(Product product, ProductSaveRequest request) {
         product.setCategory(categories.getReferenceById(request.categoryId()));

@@ -3,6 +3,7 @@ package com.tzevabest.service.service;
 import com.tzevabest.common.dto.PageResponse;
 import com.tzevabest.common.web.PageQuery;
 import com.tzevabest.common.web.error.NotFoundException;
+import com.tzevabest.common.web.error.SlugMovedException;
 import com.tzevabest.service.domain.PropertyType;
 import com.tzevabest.service.domain.WorkType;
 import com.tzevabest.service.dto.MediaItem;
@@ -85,6 +86,14 @@ public class PortfolioService {
             id = jdbc.queryForObject("select id from portfolio_projects where slug = ? and is_published",
                     Long.class, slug);
         } catch (EmptyResultDataAccessException e) {
+            // Устаревший slug из истории → 301 на актуальный адрес (B-02).
+            List<String> current = jdbc.query(
+                    "select p.slug from portfolio_slug_history h join portfolio_projects p on p.id = h.project_id "
+                            + "where h.slug = ? and p.is_published",
+                    (rs, n) -> rs.getString("slug"), slug);
+            if (!current.isEmpty()) {
+                throw new SlugMovedException("/api/v1/portfolio/" + current.get(0));
+            }
             throw new NotFoundException("portfolio.not_found");
         }
 
