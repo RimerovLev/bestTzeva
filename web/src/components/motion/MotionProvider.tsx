@@ -63,7 +63,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
       ty = e.clientY;
       cur.classList.add("on");
       const t = e.target as Element | null;
-      cur.classList.toggle("big", !!t?.closest?.("a, button, label, input[type=range], .stripe, .lift, .mega span"));
+      cur.classList.toggle("big", !!t?.closest?.("a, button, label, input[type=range], .stripe, .lift, .mega-logo"));
       cur.classList.toggle("hide", !!t?.closest?.(".vz-canvas"));
     };
     const onLeave = () => cur.classList.remove("on");

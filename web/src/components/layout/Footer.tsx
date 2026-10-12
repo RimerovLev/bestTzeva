@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
@@ -11,9 +12,8 @@ const ANCHORS: { key: keyof Dictionary["nav"]; anchor: string }[] = [
 ];
 
 /**
- * Подвал: огромное название, буквы которого подпрыгивают и красятся при наведении (чистый CSS,
- * цвет по кругу палитры — без JS), меню и реквизиты. Реквизиты — плейсхолдеры до данных клиента.
- * Буквы режутся по символам: иврит не соединяет буквы, поэтому разбивка его не портит.
+ * Подвал: крупный логотип с валиком на бумажной табличке (на чёрном фоне синее «צבע» иначе
+ * теряется), меню и реквизиты. Реквизиты — плейсхолдеры до данных клиента.
  */
 export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   const year = new Date().getFullYear();
@@ -22,11 +22,9 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
   return (
     <footer className="mega-foot">
       <div className="wrap">
-        <p className="mega" aria-label={name}>
-          {[...name].map((ch, i) =>
-            ch === " " ? <span key={i} className="sp" aria-hidden>&nbsp;</span> : <span key={i} aria-hidden>{ch}</span>,
-          )}
-        </p>
+        <Link href={`/${locale}`} className="mega-logo" aria-label={name}>
+          <Image src="/assets/motion/logo.webp" alt="" width={649} height={153} sizes="(max-width: 1100px) 90vw, 1000px" />
+        </Link>
         <div className="foot">
           <nav aria-label={dict.footer.navLabel}>
             {ANCHORS.map(({ key, anchor }) => (

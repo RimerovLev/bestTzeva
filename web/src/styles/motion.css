@@ -442,9 +442,13 @@
 
 /* ---------- подвал ---------- */
 .mega-foot { position: relative; background: var(--ink); color: var(--paper); padding-block: 10px 44px; overflow: hidden; }
-.mega { display: flex; justify-content: center; flex-wrap: nowrap; font-family: var(--f-display); font-size: clamp(46px, 12.5vw, 196px); line-height: .95; margin: 0; text-transform: uppercase; user-select: none; }
-.mega span { display: inline-block; transition: transform .5s var(--spring), color .3s; cursor: default; }
-.mega span.sp { width: .3em; }
+.mega-logo {
+  display: block; width: min(100%, 1000px); margin: clamp(26px, 4vw, 48px) auto 0; padding: clamp(14px, 3vw, 34px) clamp(18px, 4vw, 52px);
+  background: var(--paper); border-radius: clamp(18px, 3vw, 32px); box-shadow: clamp(6px, 1vw, 12px) clamp(6px, 1vw, 12px) 0 var(--yellow);
+  rotate: -1.5deg; transition: rotate .6s var(--spring), transform .6s var(--spring);
+}
+.mega-logo img { display: block; width: 100%; height: auto; }
+.mega-logo:hover { rotate: 1deg; transform: scale(1.02); }
 .foot { display: flex; flex-wrap: wrap; gap: 16px 36px; align-items: center; justify-content: space-between; margin-top: 26px; padding-top: 22px; border-top: 2px solid rgba(251, 248, 243, .2); }
 .foot nav { display: flex; flex-wrap: wrap; gap: 6px 20px; }
 .foot nav a { text-decoration: none; font-weight: 600; color: rgba(251, 248, 243, .8); }
@@ -464,14 +468,6 @@
   .badge-ring svg { animation: spin 16s linear infinite; }
   .drip:not(.in)::after { transform: scaleY(.35); }
   .spin { animation: spin 1s linear infinite; }
-  /* буквы подвала подпрыгивают при наведении; цвет — по кругу палитры */
-  .mega span:not(.sp):hover { transform: translateY(-18%) rotate(-6deg); transition-duration: .2s; }
-  .mega span:nth-child(6n+1):hover { color: var(--red); }
-  .mega span:nth-child(6n+2):hover { color: var(--yellow); transform: translateY(-18%) rotate(7deg); }
-  .mega span:nth-child(6n+3):hover { color: var(--mint); }
-  .mega span:nth-child(6n+4):hover { color: var(--blue); transform: translateY(-18%) rotate(5deg); }
-  .mega span:nth-child(6n+5):hover { color: var(--pink); }
-  .mega span:nth-child(6n):hover { color: var(--violet); transform: translateY(-18%) rotate(8deg); }
   @supports (animation-timeline: view()) {
     .reveal { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
   }
