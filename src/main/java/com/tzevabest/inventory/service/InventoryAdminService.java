@@ -49,15 +49,24 @@ public class InventoryAdminService {
     private static final String NAME_SUBSELECT =
             "(select name from product_translations t where t.product_id = p.id "
                     + "order by case t.locale when 'he' then 0 when 'en' then 1 else 2 end limit 1)";
+    /*
+     * Строка списка — пара «вариант × склад». Остатки берутся левым соединением: вариант, который ни
+     * разу не приходовали, складской записи не имеет, но для склада это «нет в наличии» и должно
+     * попадать в список (и в фильтр «Нет»). Пары без записи показываем только для активных
+     * варианта, товара и склада; пары с записью — всегда (остаток на скрытом товаре тоже остаток).
+     */
     private static final String BASE_FROM =
-            " from inventory i "
-                    + "join product_variants v on v.id = i.variant_id "
+            " from product_variants v "
                     + "join products p on p.id = v.product_id "
-                    + "join warehouses w on w.id = i.warehouse_id";
-    private static final String AVAILABLE = "(i.qty - i.reserved_qty)";
+                    + "cross join warehouses w "
+                    + "left join inventory i on i.variant_id = v.id and i.warehouse_id = w.id";
+    private static final String PRESENT = "(i.id is not null or (v.is_active and p.is_active and w.is_active))";
+    private static final String QTY = "coalesce(i.qty, 0)";
+    private static final String RESERVED = "coalesce(i.reserved_qty, 0)";
+    private static final String AVAILABLE = "(" + QTY + " - " + RESERVED + ")";
 
     private static final Map<String, String> SORT_COLUMNS = Map.of(
-            "sku", "v.sku", "qty", "i.qty", "reserved", "i.reserved_qty", "available", AVAILABLE);
+            "sku", "v.sku", "qty", QTY, "reserved", RESERVED, "available", AVAILABLE);
 
     // ── Список остатков ───────────────────────────────────────────────────────────
 
@@ -70,7 +79,7 @@ public class InventoryAdminService {
 
         String sql = "select v.id variant_id, v.sku, " + NAME_SUBSELECT + " product_name, "
                 + "w.id warehouse_id, w.code warehouse_code, p.category_id, p.brand_id, "
-                + "i.qty, i.reserved_qty, " + AVAILABLE + " available, i.low_stock_threshold"
+                + QTY + " qty, " + RESERVED + " reserved_qty, " + AVAILABLE + " available, i.low_stock_threshold"
                 + BASE_FROM + f.where + orderBy(page.sort(), "v.sku") + " limit ? offset ?";
         List<Object> args = new ArrayList<>(f.args);
         args.add(page.size());
@@ -202,7 +211,7 @@ public class InventoryAdminService {
         Filter f = buildFilter(warehouseId, categoryId, brandId, status, q);
         String sql = "select v.id variant_id, v.sku, " + NAME_SUBSELECT + " product_name, "
                 + "w.id warehouse_id, w.code warehouse_code, p.category_id, p.brand_id, "
-                + "i.qty, i.reserved_qty, " + AVAILABLE + " available, i.low_stock_threshold"
+                + QTY + " qty, " + RESERVED + " reserved_qty, " + AVAILABLE + " available, i.low_stock_threshold"
                 + BASE_FROM + f.where + " order by v.sku";
         return jdbc.query(sql, (rs, n) -> {
             int available = rs.getInt("available");
@@ -222,10 +231,10 @@ public class InventoryAdminService {
 
     private Filter buildFilter(Long warehouseId, Long categoryId, Long brandId,
                                InventoryStatus status, String q) {
-        StringBuilder where = new StringBuilder(" where 1=1");
+        StringBuilder where = new StringBuilder(" where " + PRESENT);
         List<Object> args = new ArrayList<>();
         if (warehouseId != null) {
-            where.append(" and i.warehouse_id = ?");
+            where.append(" and w.id = ?");
             args.add(warehouseId);
         }
         if (categoryId != null) {

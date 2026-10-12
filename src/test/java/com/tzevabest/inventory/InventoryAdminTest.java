@@ -133,6 +133,27 @@ class InventoryAdminTest extends IntegrationTest {
     }
 
     @Test
+    void never_received_variant_is_listed_as_out_of_stock() throws Exception {
+        long w = seedWarehouse();
+        String received = seedVariantSku();
+        inventory.receive(variantId(received), w, 5);
+        String never = seedVariantSku();            // ни одного прихода — складской записи нет
+        String hidden = seedVariantSku();           // неактивный и без записи — в список не попадает
+        jdbcTemplate.update("update product_variants set is_active = false where sku = ?", hidden);
+
+        JsonNode all = json.readTree(get("/api/v1/admin/inventory?warehouse_id=" + w, "WAREHOUSE").getBody());
+        assertThat(all.get("total_elements").asInt()).isEqualTo(2);
+
+        JsonNode out = json.readTree(get("/api/v1/admin/inventory?status=OUT&warehouse_id=" + w, "WAREHOUSE").getBody());
+        assertThat(out.get("total_elements").asInt()).isEqualTo(1);
+        JsonNode row = out.get("items").get(0);
+        assertThat(row.get("sku").asText()).isEqualTo(never);
+        assertThat(row.get("qty").asInt()).isZero();
+        assertThat(row.get("available").asInt()).isZero();
+        assertThat(row.get("status").asText()).isEqualTo("out");
+    }
+
+    @Test
     void movements_endpoint_lists_journal_and_active_reservations() throws Exception {
         long w = seedWarehouse();
         String sku = seedVariantSku();
