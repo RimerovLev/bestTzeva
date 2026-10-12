@@ -1,0 +1,6 @@
+allowBuilds:
+  unrs-resolver: false
+# unrs-resolver — нативный ускоритель eslint-резолвера, работает и без сборки.
+# Явно помечаем его сборку как пропущенную, чтобы pnpm не падал на ERR_PNPM_IGNORED_BUILDS.
+ignoredBuiltDependencies:
+  - unrs-resolver

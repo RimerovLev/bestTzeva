@@ -1,0 +1,62 @@
+/*
+ * Дизайн-токены Tzeva Best, редакция «Ярко» (2026-10): бумага, чернила, яркие краски из
+ * логотипа. Источник — анимированный прототип (web/design/prototype/src3.html), согласованный
+ * с клиентом. Одна светлая тема, намеренно без тёмной: сайт — это краска на бумаге.
+ */
+:root {
+  color-scheme: light;
+
+  /* основа */
+  --paper: #fbf8f3;
+  --ink: #121212;
+  --ink-soft: #4b4b4b;
+
+  /* краски: красный и синий — из логотипа, остальные — яркие акценты */
+  --red: #e8322b;
+  --blue: #2b59f0;
+  --yellow: #ffc933;
+  --mint: #2ed1a0;
+  --pink: #ff7ab6;
+  --violet: #7b61ff;
+
+  /* гарнитуры: латиница/кириллица, затем иврит (см. src/lib/fonts.ts) */
+  --f-display: var(--font-dela), var(--font-rubik), system-ui, sans-serif;
+  --f-body: var(--font-onest), var(--font-heebo), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: var(--font-mono), ui-monospace, Menlo, Consolas, monospace;
+
+  /* форма: толстый контур и жёсткая тень без размытия */
+  --r: 22px;
+  --shc: var(--ink);
+  --sh: 6px 6px 0 var(--shc);
+  --sh-sm: 4px 4px 0 var(--shc);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+  --gut: clamp(16px, 4vw, 40px);
+
+  /* ── Совместимость: имена первой редакции, перенаправленные на новую палитру ──
+     Внутренние страницы (каталог, товар, заявка, услуги, портфолио) ещё свёрстаны на них.
+     По мере переделки страниц эти алиасы уходят. */
+  --navy: var(--ink);        --navy-deep: var(--ink);
+  --brass: var(--red);       --brass-light: #ff6a5f;
+  --terracotta: var(--blue); --sage: var(--mint);  --sage-pale: #d5f6ea;
+  --paper-warm: #f3eee5;     --surface: #ffffff;
+  --ink-faint: #8a8a8a;
+  --line: rgb(18 18 18 / .16); --line-strong: rgb(18 18 18 / .4);
+
+  /* статусы заявки */
+  --ok-fg: #0f7a57;   --ok-bg: #d5f6ea;    /* COMPLETED */
+  --info-fg: #1f45c4; --info-bg: #dfe6fd;  /* CONTACTED */
+  --warn-fg: #8a6200; --warn-bg: #fff1c7;  /* RESERVED  */
+  --crit-fg: #b81f19; --crit-bg: #fde0de;  /* CANCELLED */
+
+  --radius-control: 14px;  --radius-card: var(--r);  --radius-pill: 999px;
+  --shadow-card: var(--sh-sm);
+
+  /* шаг сетки: всё кратно 4 */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-6: 24px; --sp-8: 32px; --sp-12: 48px; --sp-16: 64px;
+
+  /* шкала размеров шрифта для внутренних страниц */
+  --fs-display: 44px; --fs-h1: 32px; --fs-h2: 24px; --fs-h3: 18px;
+  --fs-body: 16px; --fs-sm: 14px; --fs-xs: 12px;
+}

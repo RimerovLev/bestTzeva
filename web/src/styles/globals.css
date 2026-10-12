@@ -1,0 +1,73 @@
+@import "./tokens.css";
+@import "./motion.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: var(--paper);
+    color: var(--ink);
+  }
+
+  body {
+    background: var(--paper);
+    font-family: var(--f-body);
+    font-size: var(--fs-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [hidden] { display: none !important; }
+
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+  /* цифры, цены и артикулы внутри RTL-строки остаются LTR */
+  bdi { unicode-bidi: isolate; }
+}
+
+@layer components {
+  /* Дисплейная гарнитура — заголовки. */
+  .display {
+    font-family: var(--f-display);
+  }
+
+  /* Данные: артикулы, номера заявок, цены, количества. */
+  .numeric {
+    font-family: var(--f-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Зеркалятся стрелки, не буквы. Иконки направления переворачиваются только в RTL.
+   * Логотип, аватар и логотипы брендов класс .icon-chevron не получают.
+   */
+  [dir="rtl"] .icon-chevron {
+    transform: scaleX(-1);
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    outline: 3px solid var(--blue);
+    outline-offset: 3px;
+  }
+
+  /*
+   * Выход за пределы центрированного контейнера на всю ширину вьюпорта. margin-inline —
+   * логическое свойство, поэтому корректно и в RTL. Горизонтальный скролл от 100vw гасит
+   * overflow-x: clip на body.
+   */
+  .full-bleed {
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+  }
+
+  /* Панель внутренних страниц: бумага, чернильный контур, жёсткая тень. */
+  .panel {
+    border: 2px solid var(--ink);
+    background: var(--surface);
+    box-shadow: var(--sh-sm);
+  }
+}

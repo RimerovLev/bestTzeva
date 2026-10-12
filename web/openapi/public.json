@@ -1,0 +1,2445 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Tzeva Best API",
+    "description": "REST API интернет-магазина красок и услуг покраски Tzeva Best. Формат ошибок — RFC 9457 (application/problem+json). Аутентификация: access-токен в теле ответа (Bearer), refresh-токен — в httpOnly-куке (B-01); /auth/refresh и /auth/logout читают его из куки, тело с refresh_token — запасной путь за флагом app.auth.refresh-token-in-body.",
+    "contact": {
+      "name": "Tzeva Best Dev",
+      "url": "https://tzevabest.co.il",
+      "email": "dev@tzevabest.co.il"
+    },
+    "license": {
+      "name": "Proprietary"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "local"
+    },
+    {
+      "url": "https://api.tzevabest.co.il",
+      "description": "prod"
+    }
+  ],
+  "paths": {
+    "/api/v1/webhooks/notifications/{provider}": {
+      "post": {
+        "tags": [
+          "notification-webhook-controller"
+        ],
+        "operationId": "receive",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/service-requests": {
+      "post": {
+        "tags": [
+          "service-request-controller"
+        ],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-requests/photos/presign": {
+      "post": {
+        "tags": [
+          "service-request-controller"
+        ],
+        "operationId": "presignPhotos",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresignRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-requests/calculate": {
+      "post": {
+        "tags": [
+          "service-request-controller"
+        ],
+        "operationId": "calculate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{slug}/coverage-calc": {
+      "post": {
+        "tags": [
+          "product-catalog-controller"
+        ],
+        "operationId": "coverageCalc",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverageCalcRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageCalcResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/product-requests": {
+      "post": {
+        "tags": [
+          "product-request-controller"
+        ],
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/unsubscribe": {
+      "get": {
+        "tags": [
+          "unsubscribe-controller"
+        ],
+        "operationId": "confirm",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "unsubscribe-controller"
+        ],
+        "operationId": "unsubscribe",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Регистрация",
+        "description": "Ставит refresh в httpOnly-куку; в теле — только access.",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Обновление токена",
+        "description": "Читает refresh из httpOnly-куки (или из тела за флагом). Проверяет Origin.",
+        "operationId": "refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/phone/verify-otp": {
+      "post": {
+        "tags": [
+          "phone-verification-controller"
+        ],
+        "operationId": "verifyOtp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/phone/send-otp": {
+      "post": {
+        "tags": [
+          "phone-verification-controller"
+        ],
+        "operationId": "sendOtp",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "tags": [
+          "password-controller"
+        ],
+        "operationId": "reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password/forgot": {
+      "post": {
+        "tags": [
+          "password-controller"
+        ],
+        "operationId": "forgot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password/change": {
+      "post": {
+        "tags": [
+          "password-controller"
+        ],
+        "operationId": "change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Выход из одной сессии",
+        "description": "Отзывает предъявленный refresh и гасит куку.",
+        "operationId": "logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Выход на всех устройствах",
+        "description": "Гасит все сессии пользователя и куку.",
+        "operationId": "logoutAll",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Вход по email или телефону",
+        "description": "Ставит refresh в httpOnly-куку; в теле — только access.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "get": {
+        "tags": [
+          "email-verification-controller"
+        ],
+        "operationId": "verifyByLink",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "email-verification-controller"
+        ],
+        "operationId": "verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/send-verification": {
+      "post": {
+        "tags": [
+          "email-verification-controller"
+        ],
+        "operationId": "send",
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/v1/service-requests/form-token": {
+      "get": {
+        "tags": [
+          "service-request-controller"
+        ],
+        "operationId": "formToken",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": [
+          "product-catalog-controller"
+        ],
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "brand_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "paint_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INTERIOR",
+                "EXTERIOR",
+                "WOOD",
+                "METAL",
+                "PRIMER",
+                "ENAMEL",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "usage_area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INDOOR",
+                "OUTDOOR",
+                "BOTH"
+              ]
+            }
+          },
+          {
+            "name": "finish",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MATTE",
+                "SATIN",
+                "GLOSS",
+                "SEMI_GLOSS",
+                "TEXTURED"
+              ]
+            }
+          },
+          {
+            "name": "base_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WATER",
+                "SOLVENT",
+                "EPOXY"
+              ]
+            }
+          },
+          {
+            "name": "price_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "price_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "in_stock",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PageQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductSearchResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{key}": {
+      "get": {
+        "tags": [
+          "product-catalog-controller"
+        ],
+        "operationId": "card",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/product-requests/form-token": {
+      "get": {
+        "tags": [
+          "product-request-controller"
+        ],
+        "operationId": "formToken_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portfolio": {
+      "get": {
+        "tags": [
+          "portfolio-controller"
+        ],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "property_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "APARTMENT",
+                "HOUSE",
+                "OFFICE",
+                "COMMERCIAL",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "work_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WALLS",
+                "CEILING",
+                "FACADE",
+                "WOOD",
+                "METAL",
+                "DECORATIVE"
+              ]
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PageQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponsePortfolioCard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portfolio/{slug}": {
+      "get": {
+        "tags": [
+          "portfolio-controller"
+        ],
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioProjectView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/addresses/{id}": {
+      "get": {
+        "tags": [
+          "address-controller"
+        ],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/colors": {
+      "get": {
+        "tags": [
+          "color-controller"
+        ],
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RAL",
+                "NCS",
+                "INTERNAL"
+              ]
+            }
+          },
+          {
+            "name": "popular",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ColorSwatchResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "category-controller"
+        ],
+        "operationId": "list_2",
+        "parameters": [
+          {
+            "name": "tree",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{slug}": {
+      "get": {
+        "tags": [
+          "category-controller"
+        ],
+        "operationId": "getBySlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ServiceRequestCreate": {
+        "required": [
+          "customer_name",
+          "customer_phone",
+          "property_type"
+        ],
+        "type": "object",
+        "properties": {
+          "customer_name": {
+            "maxLength": 200,
+            "minLength": 0,
+            "type": "string"
+          },
+          "customer_phone": {
+            "maxLength": 32,
+            "minLength": 0,
+            "type": "string"
+          },
+          "customer_email": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "APARTMENT",
+              "HOUSE",
+              "OFFICE",
+              "COMMERCIAL",
+              "OTHER"
+            ]
+          },
+          "area_sqm": {
+            "maximum": 100000,
+            "exclusiveMaximum": false,
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "type": "number"
+          },
+          "rooms_count": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "ceiling_height_m": {
+            "maximum": 20,
+            "exclusiveMaximum": false,
+            "minimum": 1.5,
+            "exclusiveMinimum": false,
+            "type": "number"
+          },
+          "work_types": {
+            "maxItems": 6,
+            "minItems": 0,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "WALLS",
+                "CEILING",
+                "FACADE",
+                "WOOD",
+                "METAL",
+                "DECORATIVE"
+              ]
+            }
+          },
+          "city": {
+            "maxLength": 120,
+            "minLength": 0,
+            "type": "string"
+          },
+          "address": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "preferred_date_from": {
+            "type": "string",
+            "format": "date"
+          },
+          "preferred_date_to": {
+            "type": "string",
+            "format": "date"
+          },
+          "comment": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "consent": {
+            "type": "boolean"
+          },
+          "website": {
+            "type": "string"
+          },
+          "form_token": {
+            "type": "string"
+          },
+          "photo_keys": {
+            "maxItems": 10,
+            "minItems": 0,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ServiceRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "request_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "MEASUREMENT_SCHEDULED",
+              "MEASURED",
+              "QUOTED",
+              "ACCEPTED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "REJECTED",
+              "LOST"
+            ]
+          },
+          "estimated_price_min": {
+            "type": "number"
+          },
+          "estimated_price_max": {
+            "type": "number"
+          },
+          "work_types": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "WALLS",
+                "CEILING",
+                "FACADE",
+                "WOOD",
+                "METAL",
+                "DECORATIVE"
+              ]
+            }
+          },
+          "photo_count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PresignItem": {
+        "required": [
+          "content_type",
+          "filename"
+        ],
+        "type": "object",
+        "properties": {
+          "filename": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "content_type": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
+          }
+        }
+      },
+      "PresignRequest": {
+        "required": [
+          "files"
+        ],
+        "type": "object",
+        "properties": {
+          "files": {
+            "maxItems": 10,
+            "minItems": 0,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresignItem"
+            }
+          }
+        }
+      },
+      "PresignResponse": {
+        "type": "object",
+        "properties": {
+          "uploads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresignedUploadView"
+            }
+          }
+        }
+      },
+      "PresignedUploadView": {
+        "type": "object",
+        "properties": {
+          "object_key": {
+            "type": "string"
+          },
+          "upload_url": {
+            "type": "string"
+          }
+        }
+      },
+      "CalculateRequest": {
+        "required": [
+          "area_sqm",
+          "property_type",
+          "work_types"
+        ],
+        "type": "object",
+        "properties": {
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "APARTMENT",
+              "HOUSE",
+              "OFFICE",
+              "COMMERCIAL",
+              "OTHER"
+            ]
+          },
+          "area_sqm": {
+            "maximum": 100000,
+            "exclusiveMaximum": false,
+            "minimum": 1,
+            "exclusiveMinimum": false,
+            "type": "number"
+          },
+          "ceiling_height_m": {
+            "maximum": 20,
+            "exclusiveMaximum": false,
+            "minimum": 1.5,
+            "exclusiveMinimum": false,
+            "type": "number"
+          },
+          "rooms_count": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "work_types": {
+            "maxItems": 6,
+            "minItems": 0,
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "WALLS",
+                "CEILING",
+                "FACADE",
+                "WOOD",
+                "METAL",
+                "DECORATIVE"
+              ]
+            }
+          },
+          "options": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "FURNITURE_REMOVAL",
+                "SURFACE_PREP",
+                "PRIMING",
+                "HEIGHT_WORK"
+              ]
+            }
+          },
+          "urgent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CalculateResponse": {
+        "type": "object",
+        "properties": {
+          "price_min": {
+            "type": "number"
+          },
+          "price_max": {
+            "type": "number"
+          },
+          "breakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkTypeCostView"
+            }
+          },
+          "is_estimate": {
+            "type": "boolean"
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        }
+      },
+      "WorkTypeCostView": {
+        "type": "object",
+        "properties": {
+          "work_type": {
+            "type": "string",
+            "enum": [
+              "WALLS",
+              "CEILING",
+              "FACADE",
+              "WOOD",
+              "METAL",
+              "DECORATIVE"
+            ]
+          },
+          "area_sqm": {
+            "type": "number"
+          },
+          "price_min": {
+            "type": "number"
+          },
+          "price_max": {
+            "type": "number"
+          }
+        }
+      },
+      "CoverageCalcRequest": {
+        "required": [
+          "area"
+        ],
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "number"
+          },
+          "coats": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CoverageCalcResult": {
+        "type": "object",
+        "properties": {
+          "calculable": {
+            "type": "boolean"
+          },
+          "area": {
+            "type": "number"
+          },
+          "coats": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "coverage_sqm_per_liter": {
+            "type": "number"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VariantCoverage"
+            }
+          }
+        }
+      },
+      "VariantCoverage": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "color_code": {
+            "type": "string"
+          },
+          "color_hex": {
+            "type": "string"
+          },
+          "volume_liters": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "cans": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leftover_liters": {
+            "type": "number"
+          }
+        }
+      },
+      "ProductRequestCreate": {
+        "required": [
+          "customer_name",
+          "customer_phone",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "customer_name": {
+            "type": "string"
+          },
+          "customer_phone": {
+            "type": "string"
+          },
+          "customer_email": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "preferred_contact_time": {
+            "type": "string"
+          },
+          "consent": {
+            "type": "boolean"
+          },
+          "website": {
+            "type": "string"
+          },
+          "items": {
+            "maxItems": 50,
+            "minItems": 0,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductRequestItemInput"
+            }
+          }
+        }
+      },
+      "ProductRequestItemInput": {
+        "required": [
+          "qty",
+          "variant_id"
+        ],
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "qty": {
+            "maximum": 999,
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ProductRequestItemView": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "qty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "volume_liters": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          }
+        }
+      },
+      "ProductRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "request_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "RESERVED",
+              "COMPLETED",
+              "CANCELLED",
+              "LOST"
+            ]
+          },
+          "indicative_total": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductRequestItemView"
+            }
+          }
+        }
+      },
+      "RegisterRequest": {
+        "required": [
+          "first_name",
+          "last_name"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyOtpRequest": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "required": [
+          "login"
+        ],
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "required": [
+          "current_password"
+        ],
+        "type": "object",
+        "properties": {
+          "current_password": {
+            "type": "string"
+          },
+          "new_password": {
+            "type": "string"
+          }
+        }
+      },
+      "LogoutRequest": {
+        "type": "object",
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginRequest": {
+        "required": [
+          "login",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyEmailRequest": {
+        "required": [
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "property": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          }
+        }
+      },
+      "PageQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortRequest"
+          }
+        }
+      },
+      "SortRequest": {
+        "type": "object",
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          }
+        }
+      },
+      "PageResponseProductSummary": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Элементы текущей страницы",
+            "items": {
+              "$ref": "#/components/schemas/ProductSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Номер страницы (с нуля)",
+            "format": "int32",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "description": "Размер страницы",
+            "format": "int32",
+            "example": 20
+          },
+          "total_elements": {
+            "type": "integer",
+            "description": "Всего элементов",
+            "format": "int64",
+            "example": 137
+          },
+          "total_pages": {
+            "type": "integer",
+            "description": "Всего страниц",
+            "format": "int32",
+            "example": 7
+          }
+        }
+      },
+      "ProductFacets": {
+        "type": "object",
+        "properties": {
+          "paint_type": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "brand": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "price_min": {
+            "type": "number"
+          },
+          "price_max": {
+            "type": "number"
+          }
+        }
+      },
+      "ProductSearchResult": {
+        "type": "object",
+        "properties": {
+          "products": {
+            "$ref": "#/components/schemas/PageResponseProductSummary"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/ProductFacets"
+          }
+        }
+      },
+      "ProductSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "brand_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paint_type": {
+            "type": "string",
+            "enum": [
+              "INTERIOR",
+              "EXTERIOR",
+              "WOOD",
+              "METAL",
+              "PRIMER",
+              "ENAMEL",
+              "OTHER"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          },
+          "has_stock": {
+            "type": "boolean"
+          }
+        },
+        "description": "Элементы текущей страницы"
+      },
+      "ProductCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "category_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "brand_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paint_type": {
+            "type": "string",
+            "enum": [
+              "INTERIOR",
+              "EXTERIOR",
+              "WOOD",
+              "METAL",
+              "PRIMER",
+              "ENAMEL",
+              "OTHER"
+            ]
+          },
+          "usage_area": {
+            "type": "string",
+            "enum": [
+              "INDOOR",
+              "OUTDOOR",
+              "BOTH"
+            ]
+          },
+          "finish": {
+            "type": "string",
+            "enum": [
+              "MATTE",
+              "SATIN",
+              "GLOSS",
+              "SEMI_GLOSS",
+              "TEXTURED"
+            ]
+          },
+          "base_type": {
+            "type": "string",
+            "enum": [
+              "WATER",
+              "SOLVENT",
+              "EPOXY"
+            ]
+          },
+          "coverage_sqm_per_liter": {
+            "type": "number"
+          },
+          "drying_time_hours": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "usage_instructions": {
+            "type": "string"
+          },
+          "min_price": {
+            "type": "number"
+          },
+          "max_price": {
+            "type": "number"
+          },
+          "has_stock": {
+            "type": "boolean"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductMediaView"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VariantCard"
+            }
+          }
+        }
+      },
+      "ProductMediaView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "IMAGE",
+              "VIDEO",
+              "DOC"
+            ]
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "primary": {
+            "type": "boolean"
+          },
+          "alt": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "VariantCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "color_code": {
+            "type": "string"
+          },
+          "color_hex": {
+            "type": "string"
+          },
+          "volume_liters": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "old_price": {
+            "type": "number"
+          },
+          "availability": {
+            "type": "string"
+          },
+          "can_add_to_request": {
+            "type": "boolean"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductMediaView"
+            }
+          }
+        }
+      },
+      "PageResponsePortfolioCard": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Элементы текущей страницы",
+            "items": {
+              "$ref": "#/components/schemas/PortfolioCard"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "description": "Номер страницы (с нуля)",
+            "format": "int32",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "description": "Размер страницы",
+            "format": "int32",
+            "example": 20
+          },
+          "total_elements": {
+            "type": "integer",
+            "description": "Всего элементов",
+            "format": "int64",
+            "example": 137
+          },
+          "total_pages": {
+            "type": "integer",
+            "description": "Всего страниц",
+            "format": "int32",
+            "example": 7
+          }
+        }
+      },
+      "PortfolioCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "APARTMENT",
+              "HOUSE",
+              "OFFICE",
+              "COMMERCIAL",
+              "OTHER"
+            ]
+          },
+          "city": {
+            "type": "string"
+          },
+          "area_sqm": {
+            "type": "number"
+          },
+          "duration_days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "main_after_url": {
+            "type": "string"
+          }
+        },
+        "description": "Элементы текущей страницы"
+      },
+      "MediaItem": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MediaPair": {
+        "type": "object",
+        "properties": {
+          "pair_group": {
+            "type": "string"
+          },
+          "before_url": {
+            "type": "string"
+          },
+          "after_url": {
+            "type": "string"
+          }
+        }
+      },
+      "PortfolioProjectView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "meta_title": {
+            "type": "string"
+          },
+          "meta_description": {
+            "type": "string"
+          },
+          "property_type": {
+            "type": "string",
+            "enum": [
+              "APARTMENT",
+              "HOUSE",
+              "OFFICE",
+              "COMMERCIAL",
+              "OTHER"
+            ]
+          },
+          "city": {
+            "type": "string"
+          },
+          "area_sqm": {
+            "type": "number"
+          },
+          "duration_days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "work_types": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "WALLS",
+                "CEILING",
+                "FACADE",
+                "WOOD",
+                "METAL",
+                "DECORATIVE"
+              ]
+            }
+          },
+          "pairs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaPair"
+            }
+          },
+          "standalone": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            }
+          }
+        }
+      },
+      "AddressResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "city": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "house": {
+            "type": "string"
+          },
+          "is_default": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ColorSwatchResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "code": {
+            "type": "string"
+          },
+          "system": {
+            "type": "string",
+            "enum": [
+              "RAL",
+              "NCS",
+              "INTERNAL"
+            ]
+          },
+          "hex": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "string"
+          },
+          "popular": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "parent_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort_order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "product_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryResponse"
+            }
+          }
+        }
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "SUPPORT",
+              "WAREHOUSE",
+              "MANAGER",
+              "ADMIN"
+            ]
+          },
+          "locale": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "JWT access token",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

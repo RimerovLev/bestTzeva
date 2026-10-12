@@ -1,0 +1,39 @@
+{
+  "name": "tzeva-best-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "spec:pull": "curl -fsS \"${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}/api-docs/public\" -o openapi/public.json && node -e \"const f='openapi/public.json';require('fs').writeFileSync(f,JSON.stringify(JSON.parse(require('fs').readFileSync(f,'utf8')),null,2)+'\\n')\"",
+    "gen:api": "openapi-typescript openapi/public.json -o src/lib/api/schema.ts",
+    "gen:api:check": "pnpm gen:api && git diff --exit-code -- src/lib/api/schema.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@tanstack/react-query": "^5.62.11",
+    "next": "^15.5.0",
+    "openapi-fetch": "^0.13.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.54.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.5.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@11.25.0"
+}
