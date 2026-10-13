@@ -7,7 +7,8 @@ import {
   Tags,
   FolderTree,
   Palette,
-  BarChart3,
+  ShieldBan,
+  ShieldCheck,
   ScrollText,
   Users,
   type LucideIcon,
@@ -23,8 +24,9 @@ const ICONS: Record<SectionKey, LucideIcon> = {
   catalog: Tags,
   categories: FolderTree,
   colors: Palette,
-  reports: BarChart3,
+  spam: ShieldBan,
   audit: ScrollText,
+  privacy: ShieldCheck,
   users: Users,
 };
 

@@ -8,6 +8,9 @@ import { ColorsAdminPage } from "@/features/catalog/ColorsAdminPage";
 import { InventoryPage } from "@/features/inventory/InventoryPage";
 import { ProductRequestsPage } from "@/features/requests/ProductRequestsPage";
 import { ServiceRequestsPage } from "@/features/service-requests/ServiceRequestsPage";
+import { AuditPage } from "@/features/audit/AuditPage";
+import { PrivacyPage } from "@/features/privacy/PrivacyPage";
+import { BlockListPage } from "@/features/spam/BlockListPage";
 import { SECTIONS, type SectionKey } from "@/lib/auth/roles";
 
 /** Реализованные разделы: путь → компонент. Остальные пока показывают заглушку SectionPage. */
@@ -18,6 +21,9 @@ const IMPLEMENTED: Partial<Record<SectionKey, () => React.ReactNode>> = {
   categories: CategoriesPage,
   colors: ColorsAdminPage,
   warehouse: InventoryPage,
+  spam: BlockListPage,
+  audit: AuditPage,
+  privacy: PrivacyPage,
 };
 
 const rootRoute = createRootRoute({

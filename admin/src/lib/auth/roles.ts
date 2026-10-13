@@ -22,7 +22,7 @@ export interface Section {
 /**
  * Разделы админки и роли, которым они видны. Скрытие — удобство, НЕ защита: права проверяет
  * сервер (403 — штатный ответ). Основано на docs/roles.md и объёме задач F-7…F-10:
- * склад — WAREHOUSE+; каталог/цвета/отчёты — MANAGER+; аудит и пользователи — только ADMIN.
+ * склад — WAREHOUSE+; каталог/цвета/антиспам — MANAGER+; аудит, приватность и пользователи — только ADMIN.
  */
 export const SECTIONS: Section[] = [
   { key: "dashboard", path: "/", roles: [...STAFF_ROLES] },
@@ -32,8 +32,9 @@ export const SECTIONS: Section[] = [
   { key: "catalog", path: "/catalog", roles: ["MANAGER", "ADMIN"] },
   { key: "categories", path: "/categories", roles: ["MANAGER", "ADMIN"] },
   { key: "colors", path: "/colors", roles: ["MANAGER", "ADMIN"] },
-  { key: "reports", path: "/reports", roles: ["MANAGER", "ADMIN"] },
+  { key: "spam", path: "/spam", roles: ["MANAGER", "ADMIN"] },
   { key: "audit", path: "/audit", roles: ["ADMIN"] },
+  { key: "privacy", path: "/privacy", roles: ["ADMIN"] },
   { key: "users", path: "/users", roles: ["ADMIN"] },
 ];
 

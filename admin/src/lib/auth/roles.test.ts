@@ -14,7 +14,7 @@ const EXPECTED: Record<Role, SectionKey[]> = {
     "catalog",
     "categories",
     "colors",
-    "reports",
+    "spam",
   ],
   ADMIN: [
     "dashboard",
@@ -24,8 +24,9 @@ const EXPECTED: Record<Role, SectionKey[]> = {
     "catalog",
     "categories",
     "colors",
-    "reports",
+    "spam",
     "audit",
+    "privacy",
     "users",
   ],
 };
@@ -48,6 +49,10 @@ describe("canAccessPath", () => {
   it("only ADMIN opens the audit log", () => {
     expect(canAccessPath("ADMIN", "/audit")).toBe(true);
     expect(canAccessPath("MANAGER", "/audit")).toBe(false);
+  });
+  it("only ADMIN handles personal data requests", () => {
+    expect(canAccessPath("ADMIN", "/privacy")).toBe(true);
+    expect(canAccessPath("MANAGER", "/privacy")).toBe(false);
   });
   it("CUSTOMER has no admin dashboard", () => {
     expect(canAccessPath("CUSTOMER", "/")).toBe(false);

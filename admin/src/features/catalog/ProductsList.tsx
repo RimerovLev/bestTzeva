@@ -6,6 +6,9 @@ import { DataTable, type Column, type SortState } from "@/components/ui/DataTabl
 import { FilterPanel } from "@/components/ui/FilterPanel";
 import { Modal } from "@/components/ui/Modal";
 import { resolveErrorMessage } from "@/lib/api/messages";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { canAccessPath } from "@/lib/auth/roles";
+import { HistoryList } from "@/features/audit/EntityHistory";
 import {
   listProducts,
   listCategories,
@@ -28,6 +31,10 @@ export function ProductsList({ onNew, onBulk, onImport }: { onNew: () => void; o
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<SortState>({ field: "created_at", dir: "desc" });
   const [toDelete, setToDelete] = useState<ProductListItem | null>(null);
+  const [historyOf, setHistoryOf] = useState<ProductListItem | null>(null);
+  const { user } = useAuth();
+  // История — из журнала аудита, он доступен только ADMIN
+  const canSeeHistory = !!user && canAccessPath(user.role, "/audit");
 
   const categoriesQuery = useQuery({ queryKey: ["categories", locale], queryFn: listCategories });
   const categoryName = useMemo(() => {
@@ -101,6 +108,11 @@ export function ProductsList({ onNew, onBulk, onImport }: { onNew: () => void; o
           >
             {p.active ? c.deactivate : c.activate}
           </button>
+          {canSeeHistory && (
+            <button type="button" onClick={() => setHistoryOf(p)} className="text-xs text-navy hover:underline">
+              {dict.audit.historyShort}
+            </button>
+          )}
           <button type="button" onClick={() => setToDelete(p)} className="text-xs text-crit-fg hover:underline">
             {c.delete}
           </button>
@@ -195,6 +207,19 @@ export function ProductsList({ onNew, onBulk, onImport }: { onNew: () => void; o
         <p>{c.deleteBody}</p>
         {deleteMutation.isError && (
           <p className="mt-2 text-sm text-crit-fg">{resolveErrorMessage(dict.errors, deleteMutation.error).text}</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={historyOf != null}
+        onClose={() => setHistoryOf(null)}
+        title={`${dict.audit.historyTitle}: ${historyOf?.name ?? historyOf?.sku ?? ""}`}
+        footer={<Button variant="muted" onClick={() => setHistoryOf(null)}>{dict.common.close}</Button>}
+      >
+        {historyOf?.id != null && (
+          <div className="max-h-[60vh] overflow-y-auto">
+            <HistoryList type="product" id={historyOf.id} />
+          </div>
         )}
       </Modal>
     </section>
