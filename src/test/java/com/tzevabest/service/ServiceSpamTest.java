@@ -107,6 +107,34 @@ class ServiceSpamTest extends IntegrationTest {
         assertThat(count("block_list")).isEqualTo(1);
     }
 
+    @Test
+    void block_list_phone_is_stored_normalized_and_blocks_any_format() throws Exception {
+        long managerId = jdbcTemplate.queryForObject("""
+                insert into users (email, password_hash, first_name, last_name, role, status)
+                values ('mgr-spam2@x.test', 'x', 'M', 'G', 'MANAGER', 'ACTIVE') returning id""", Long.class);
+        HttpHeaders h = new HttpHeaders();
+        h.setContentType(MediaType.APPLICATION_JSON);
+        h.setBearerAuth(jwt.generateAccess(managerId, "MANAGER", "mgr2@x.test", "he"));
+        String url = "http://localhost:" + port + "/api/v1/admin/spam/block-list";
+
+        ResponseEntity<String> added = rest.exchange(url, HttpMethod.POST,
+                new HttpEntity<>("{\"kind\":\"PHONE\",\"value\":\"050-222-0004\"}", h), String.class);
+        assertThat(added.getStatusCode().value()).isEqualTo(201);
+        assertThat(json.readTree(added.getBody()).get("value").asText()).isEqualTo("+972502220004");
+
+        // тот же номер в другой записи — дубликат, мусор вместо номера — 422 (common.phone.invalid)
+        assertThat(rest.exchange(url, HttpMethod.POST, new HttpEntity<>(
+                "{\"kind\":\"PHONE\",\"value\":\"+972 50 222 0004\"}", h), String.class).getStatusCode().value())
+                .isEqualTo(409);
+        assertThat(rest.exchange(url, HttpMethod.POST, new HttpEntity<>(
+                "{\"kind\":\"PHONE\",\"value\":\"12345\"}", h), String.class).getStatusCode().value())
+                .isEqualTo(422);
+
+        assertThat(post(base("0502220004", true), null).getStatusCode().value()).isEqualTo(201);
+        assertThat(count("service_requests")).isZero();
+        assertThat(drops("blocked")).isEqualTo(1);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
 
     /** Внутренние поля JSON (без фигурных скобок). */

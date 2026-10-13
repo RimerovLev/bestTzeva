@@ -3806,6 +3806,7 @@
       },
       "BlockListCreate": {
         "required": [
+          "kind",
           "value"
         ],
         "type": "object",
@@ -5320,6 +5321,9 @@
           "actor_user_id": {
             "type": "integer",
             "format": "int64"
+          },
+          "actor_name": {
+            "type": "string"
           },
           "actor_ip": {
             "type": "string"

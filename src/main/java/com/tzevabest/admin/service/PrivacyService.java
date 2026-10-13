@@ -1,6 +1,7 @@
 package com.tzevabest.admin.service;
 
 import com.tzevabest.common.lock.DistributedLock;
+import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.security.CurrentUser;
 import com.tzevabest.media.service.MediaStorage;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -44,23 +46,24 @@ public class PrivacyService {
 
     /** Сборка всех данных по телефону или email в один объект. Факт доступа пишется в audit_log. */
     @Transactional
-    public Map<String, Object> exportSubject(String contact) {
+    public Map<String, Object> exportSubject(String typed) {
+        String contact = canonical(typed);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("contact", contact);
         data.put("product_requests", jdbc.queryForList(
-                "select * from product_requests where customer_phone = ? or customer_email = ?", contact, contact));
+                "select * from product_requests where customer_phone = ? or lower(customer_email) = ?", contact, contact));
         data.put("product_request_items", jdbc.queryForList(
                 "select i.* from product_request_items i join product_requests r on r.id = i.request_id "
-                        + "where r.customer_phone = ? or r.customer_email = ?", contact, contact));
+                        + "where r.customer_phone = ? or lower(r.customer_email) = ?", contact, contact));
         data.put("service_requests", jdbc.queryForList(
-                "select * from service_requests where customer_phone = ? or customer_email = ?", contact, contact));
+                "select * from service_requests where customer_phone = ? or lower(customer_email) = ?", contact, contact));
         data.put("service_request_media", jdbc.queryForList(
                 "select m.id, m.request_id, m.object_key, m.type from service_request_media m "
                         + "join service_requests s on s.id = m.request_id "
-                        + "where s.customer_phone = ? or s.customer_email = ?", contact, contact));
-        data.put("consents", jdbc.queryForList("select * from consents where contact = ?", contact));
+                        + "where s.customer_phone = ? or lower(s.customer_email) = ?", contact, contact));
+        data.put("consents", jdbc.queryForList("select * from consents where lower(contact) = ?", contact));
         data.put("notifications", jdbc.queryForList(
-                "select id, channel, template_code, status, created_at from notifications_log where recipient = ?",
+                "select id, channel, template_code, status, created_at from notifications_log where lower(recipient) = ?",
                 contact));
         auditAccess("privacy.export", contact);
         return data;
@@ -80,21 +83,32 @@ public class PrivacyService {
      * телефон/email пишутся только маскированными (R-59).
      */
     @Transactional
-    public int anonymize(String contact) {
+    public int anonymize(String typed) {
+        String contact = canonical(typed);
         int product = jdbc.update("update product_requests set customer_name = ?, customer_phone = ?, "
-                + "customer_email = null, comment = null where customer_phone = ? or customer_email = ?",
+                + "customer_email = null, comment = null where customer_phone = ? or lower(customer_email) = ?",
                 MARKER, MARKER, contact, contact);
         int service = jdbc.update("update service_requests set customer_name = ?, customer_phone = ?, "
                 + "customer_email = null, address = null, comment = null "
-                + "where customer_phone = ? or customer_email = ?", MARKER, MARKER, contact, contact);
+                + "where customer_phone = ? or lower(customer_email) = ?", MARKER, MARKER, contact, contact);
         // Журнал уведомлений: контакт и снимок сообщения — персональные данные; факт отправки остаётся.
         jdbc.update("update notifications_log set recipient = ?, subject = null, body_snapshot = null, "
-                + "error_message = null, updated_at = now() where recipient = ?", MARKER, contact);
+                + "error_message = null, updated_at = now() where lower(recipient) = ?", MARKER, contact);
         // consents append-only: контакт заменяем псевдонимом санкционированным UPDATE (V48).
         jdbc.execute("set local tzevabest.consent_anonymize = 'on'");
-        jdbc.update("update consents set contact = ? where contact = ?", pseudonym(contact), contact);
+        jdbc.update("update consents set contact = ? where lower(contact) = ?", pseudonym(contact), contact);
         auditAccess("privacy.anonymize", contact);
         return product + service;
+    }
+
+    /**
+     * Контакт в том виде, в каком он лежит в таблицах. Телефоны заявок хранятся в E.164 (+972…), а
+     * сотрудник вводит номер как привык — 050-111-9999; распознанный номер приводим к E.164, иначе
+     * экспорт молча вернул бы пустоту, а анонимизация — 0. Email сравниваем без учёта регистра.
+     */
+    static String canonical(String contact) {
+        String c = contact.trim();
+        return c.contains("@") ? c.toLowerCase(Locale.ROOT) : PhoneNormalizer.normalizeForRateKey(c);
     }
 
     /** Стабильный непрозрачный псевдоним контакта: SHA-256 от соли проекта и контакта, 16 hex. */

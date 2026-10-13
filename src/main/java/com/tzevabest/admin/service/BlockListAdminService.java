@@ -2,6 +2,7 @@ package com.tzevabest.admin.service;
 
 import com.tzevabest.admin.dto.BlockListCreate;
 import com.tzevabest.admin.dto.BlockListEntry;
+import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -31,16 +32,19 @@ public class BlockListAdminService {
     @Transactional
     public BlockListEntry add(BlockListCreate req) {
         Long actor = currentUser.optional().map(p -> p.userId()).orElse(null);
+        // SpamGuard сверяет нормализованный номер заявки (E.164) — так же храним и запись блок-листа,
+        // иначе номер, введённый как 050-…, никого бы не блокировал.
+        String value = "PHONE".equals(req.kind()) ? PhoneNormalizer.normalize(req.value()) : req.value().trim();
         Long id;
         try {
             id = jdbc.queryForObject("""
                     insert into block_list (kind, value, reason, created_by) values (?, ?, ?, ?) returning id""",
-                    Long.class, req.kind(), req.value(), req.reason(), actor);
+                    Long.class, req.kind(), value, req.reason(), actor);
         } catch (DuplicateKeyException e) {
-            throw new com.tzevabest.common.web.error.ConflictException("spam.block_list.duplicate", req.value());
+            throw new com.tzevabest.common.web.error.ConflictException("spam.block_list.duplicate", value);
         }
         audit.record(actor, currentUser.ip(), "block_list.add", "block_list", id,
-                Map.of("kind", req.kind(), "value", req.value()));
+                Map.of("kind", req.kind(), "value", value));
         return list().stream().filter(e -> e.id() == id).findFirst().orElseThrow();
     }
 

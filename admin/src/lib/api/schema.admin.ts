@@ -1287,7 +1287,7 @@ export interface components {
             role: "CUSTOMER" | "SUPPORT" | "WAREHOUSE" | "MANAGER" | "ADMIN";
         };
         BlockListCreate: {
-            kind?: string;
+            kind: string;
             value: string;
             reason?: string;
         };
@@ -1905,6 +1905,7 @@ export interface components {
             id?: number;
             /** Format: int64 */
             actor_user_id?: number;
+            actor_name?: string;
             actor_ip?: string;
             action?: string;
             entity_type?: string;

@@ -127,6 +127,23 @@ class PrivacyTest extends IntegrationTest {
         assertThat(contactFoundAnywhere(PHONE)).as("phone must be gone").isFalse();
     }
 
+    @Test
+    void phone_and_email_are_matched_as_staff_types_them() throws Exception {
+        // В заявках телефон лежит в E.164, а сотрудник вводит «050-111-9999»; email — в любом регистре.
+        long id = seedProductRequest("NEW");
+        jdbcTemplate.update("update product_requests set customer_email = 'Dana@Example.com' where id = ?", id);
+
+        JsonNode byPhone = json.readTree(post("/export", "050-111-9999").getBody());
+        assertThat(byPhone.get("product_requests")).hasSize(1);
+        JsonNode byEmail = json.readTree(post("/export", "dana@example.COM").getBody());
+        assertThat(byEmail.get("product_requests")).hasSize(1);
+
+        JsonNode res = json.readTree(post("/anonymize", " 050 111 9999 ").getBody());
+        assertThat(res.get("anonymized").asInt()).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("select customer_phone from product_requests where id = ?",
+                String.class, id)).isEqualTo("[deleted]");
+    }
+
     /** Ищет подстроку по всем текстовым и jsonb-колонкам public-схемы. */
     private boolean contactFoundAnywhere(String needle) {
         var cols = jdbcTemplate.queryForList(
@@ -191,11 +208,15 @@ class PrivacyTest extends IntegrationTest {
     }
 
     private ResponseEntity<String> post(String path) {
+        return post(path, PHONE);
+    }
+
+    private ResponseEntity<String> post(String path, String contact) {
         HttpHeaders h = new HttpHeaders();
         h.setContentType(MediaType.APPLICATION_JSON);
         h.setBearerAuth(jwt.generateAccess(1L, "ADMIN", "a@x.test", "he"));
         return rest.exchange("/api/v1/admin/privacy" + path, HttpMethod.POST,
-                new HttpEntity<>("{\"contact\":\"" + PHONE + "\"}", h), String.class);
+                new HttpEntity<>("{\"contact\":\"" + contact + "\"}", h), String.class);
     }
 
     private static String uid() {

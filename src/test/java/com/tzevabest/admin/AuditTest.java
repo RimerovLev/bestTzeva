@@ -75,6 +75,27 @@ class AuditTest extends IntegrationTest {
     }
 
     @Test
+    void entries_carry_actor_name() throws Exception {
+        long actor = jdbcTemplate.queryForObject("""
+                insert into users (email, password_hash, first_name, last_name, role, status)
+                values ('dana-audit@x.test', 'x', 'Dana', 'Levi', 'MANAGER', 'ACTIVE') returning id""", Long.class);
+        long nameless = jdbcTemplate.queryForObject("""
+                insert into users (email, password_hash, first_name, last_name, role, status)
+                values ('nameless@x.test', 'x', '', ' ', 'WAREHOUSE', 'ACTIVE') returning id""", Long.class);
+        auditService.record(actor, "1.1.1.1", "test.actor", "thing", 1L, Map.of());
+        auditService.record(nameless, "1.1.1.1", "test.actor", "thing", 1L, Map.of());
+        auditService.record(null, null, "test.actor", "thing", 1L, Map.of());
+
+        JsonNode items = json.readTree(get("/api/v1/admin/audit-log?action=test.actor", "ADMIN").getBody()).get("items");
+        assertThat(items).hasSize(3);
+        assertThat(items.get(0).hasNonNull("actor_name")).isFalse();     // системная запись
+        assertThat(items.get(1).get("actor_name").asText()).isEqualTo("nameless@x.test"); // без имени — email
+        assertThat(items.get(2).get("actor_name").asText()).isEqualTo("Dana Levi");
+        JsonNode history = json.readTree(get("/api/v1/admin/audit-log/entity/thing/1", "ADMIN").getBody());
+        assertThat(history.get(2).get("actor_name").asText()).isEqualTo("Dana Levi");
+    }
+
+    @Test
     void audit_log_endpoint_is_admin_only() {
         assertThat(get("/api/v1/admin/audit-log", "MANAGER").getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(get("/api/v1/admin/audit-log", "ADMIN").getStatusCode()).isEqualTo(HttpStatus.OK);
