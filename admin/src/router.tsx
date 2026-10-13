@@ -1,6 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 import { AdminLayout } from "@/components/layout/AdminLayout";
-import { DashboardPage } from "@/routes/DashboardPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { SectionPage } from "@/routes/SectionPage";
 import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { CategoriesPage } from "@/features/catalog/CategoriesPage";
