@@ -15,7 +15,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: process.env.VITE_API_BASE_URL ?? "http://localhost:8080",
+        // API_PROXY_TARGET — куда проксировать без смены базы клиента (e2e-стек на :18080, см. e2e/).
+        target: process.env.API_PROXY_TARGET ?? process.env.VITE_API_BASE_URL ?? "http://localhost:8080",
         changeOrigin: true,
       },
     },

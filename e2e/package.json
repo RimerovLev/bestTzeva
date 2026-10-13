@@ -1,0 +1,24 @@
+{
+  "name": "tzeva-best-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stack:up": "bash scripts/stack.sh up",
+    "stack:down": "bash scripts/stack.sh down",
+    "test": "bash scripts/stack.sh reset && playwright test",
+    "test:docker": "bash scripts/in-docker.sh",
+    "typecheck": "tsc --noEmit",
+    "lhci": "lhci autorun",
+    "stack:reset": "bash scripts/stack.sh reset",
+    "test:only": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@11.25.0"
+}

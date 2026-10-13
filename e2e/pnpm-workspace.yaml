@@ -1,0 +1,2 @@
+# Браузеры Playwright ставятся отдельно (`playwright install`), postinstall пакетов не нужен.
+ignoredBuiltDependencies: []

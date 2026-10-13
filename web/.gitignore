@@ -28,3 +28,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# e2e-сборка витрины (NEXT_DIST_DIR, см. e2e/)
+/.next-e2e/

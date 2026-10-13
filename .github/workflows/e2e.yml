@@ -1,0 +1,72 @@
+name: E2E, a11y, Lighthouse
+
+# F-11.1: сквозные сценарии против настоящего бэкенда (docker-compose + jar), axe по WCAG 2.1 AA,
+# скриншоты обеих локалей и Lighthouse CI с порогами. Любая просадка валит сборку.
+on:
+  pull_request:
+    branches: [ main ]
+    paths: [ 'web/**', 'admin/**', 'e2e/**', 'src/**', 'build.gradle.kts', 'docker-compose.yml', '.github/workflows/e2e.yml' ]
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Переснять скриншотные эталоны (результат — артефакт screenshots, закоммитить вручную)'
+        type: boolean
+        default: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install web, admin, e2e
+        run: |
+          for d in web admin e2e; do (cd $d && pnpm install --frozen-lockfile); done
+
+      - name: Start isolated stack (backend :18080, web :3100, admin :5174)
+        run: bash e2e/scripts/stack.sh up
+
+      # Тесты — в официальном образе Playwright той же версии, что и эталоны скриншотов.
+      - name: Playwright (flows, a11y, visual)
+        if: ${{ !inputs.update_snapshots }}
+        run: CI=1 E2E_SKIP_RESET=1 bash e2e/scripts/in-docker.sh
+
+      - name: Re-shoot screenshot baselines
+        if: ${{ inputs.update_snapshots }}
+        run: E2E_SKIP_RESET=1 bash e2e/scripts/in-docker.sh --project=visual --update-snapshots
+
+      - name: Lighthouse CI (perf ≥ 85 mobile, a11y ≥ 95, SEO = 100)
+        if: ${{ !inputs.update_snapshots }}
+        working-directory: e2e
+        run: pnpm exec lhci autorun --config=lighthouserc.cjs
+
+      - name: Stack logs
+        if: failure()
+        run: bash e2e/scripts/stack.sh logs || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-reports
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+            e2e/.lighthouseci
+            e2e/.run/*.log
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.update_snapshots }}
+        with:
+          name: screenshots
+          path: e2e/tests/__screenshots__
