@@ -11,7 +11,7 @@ const config: Config = {
       colors: {
         navy: { DEFAULT: "var(--navy)", deep: "var(--navy-deep)" },
         brass: { DEFAULT: "var(--brass)", light: "var(--brass-light)" },
-        terracotta: "var(--terracotta)",
+        terracotta: { DEFAULT: "var(--terracotta)", ink: "var(--terracotta-ink)" },
         sage: { DEFAULT: "var(--sage)", pale: "var(--sage-pale)" },
         paper: { DEFAULT: "var(--paper)", warm: "var(--paper-warm)" },
         surface: "var(--surface)",

@@ -216,7 +216,7 @@ export function ServiceRequestDetailModal({
             </div>
             {detail.quoted_price != null && (
               <div className="mt-1 flex items-center gap-2">
-                {t.quotedPrice}: <span className="font-semibold text-terracotta">{money(detail.quoted_price)}</span>
+                {t.quotedPrice}: <span className="font-semibold text-terracotta-ink">{money(detail.quoted_price)}</span>
                 <Button variant="outline" onClick={openPdf}>
                   {t.quotePdfLink}
                 </Button>

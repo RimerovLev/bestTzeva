@@ -6,7 +6,7 @@ const VARIANTS: Record<Variant, string> = {
   // тёмно-синяя — основное действие, одна на экран
   primary: "bg-navy text-surface hover:bg-navy-deep disabled:opacity-50",
   // латунная — действие в карточке/строке
-  brass: "bg-brass text-surface hover:bg-brass-light disabled:opacity-50",
+  brass: "bg-brass text-surface hover:bg-navy disabled:opacity-50",
   // контурная латунная — второстепенное
   outline: "border border-brass text-brass hover:bg-brass hover:text-surface disabled:opacity-50",
   // приглушённая — сброс/отмена

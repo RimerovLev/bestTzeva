@@ -61,6 +61,9 @@ export function ProductRequestDetailModal({
       afterMutate(d);
       setReserveConfirm(false);
       setReserveFailed(false);
+      // Резерв, продажа и отмена двигают остатки — экран склада не должен показывать старые числа.
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+      qc.invalidateQueries({ queryKey: ["low-stock"] });
     },
     onError: (e, vars) => {
       setActionError(resolveErrorMessage(dict.errors, e).text);
@@ -209,7 +212,7 @@ export function ProductRequestDetailModal({
           {/* Подтверждение резерва (склад, срок 3 суток) */}
           {reserveConfirm && (
             <section className="rounded-control border border-terracotta/40 bg-terracotta/5 p-3">
-              <h3 className="mb-1 text-sm font-semibold text-terracotta">{t.reserveTitle}</h3>
+              <h3 className="mb-1 text-sm font-semibold text-terracotta-ink">{t.reserveTitle}</h3>
               <p className="mb-3 text-sm text-ink">{t.reserveBody}</p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -329,7 +332,7 @@ function ItemRow({
         </div>
         <div>
           <div className="text-xs text-ink-soft">{labels.itemCurrent}</div>
-          <div className={priceChanged ? "font-medium text-terracotta" : "text-ink"}>
+          <div className={priceChanged ? "font-medium text-terracotta-ink" : "text-ink"}>
             {money(item.current_price)}
             {priceChanged && <span className="ms-1 text-xs">({labels.priceChanged})</span>}
           </div>

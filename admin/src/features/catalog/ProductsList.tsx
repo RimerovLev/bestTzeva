@@ -147,9 +147,11 @@ export function ProductsList({ onNew, onBulk, onImport }: { onNew: () => void; o
             value={q}
             onChange={(e) => { setQ(e.target.value); setPage(0); }}
             placeholder={c.searchPlaceholder}
+            aria-label={c.searchPlaceholder}
             className="w-64 rounded-control border border-line-strong bg-surface px-3 py-2 text-sm focus:border-brass focus:outline-none"
           />
           <select
+            aria-label={c.colCategory}
             value={filters.category_id ?? ""}
             onChange={(e) => patchFilter({ category_id: e.target.value ? Number(e.target.value) : undefined })}
             className="rounded-control border border-line-strong bg-surface px-2 py-2 text-sm"
@@ -160,6 +162,7 @@ export function ProductsList({ onNew, onBulk, onImport }: { onNew: () => void; o
             ))}
           </select>
           <select
+            aria-label={c.paintType}
             value={filters.paint_type ?? ""}
             onChange={(e) => patchFilter({ paint_type: (e.target.value || undefined) as ProductFilters["paint_type"] })}
             className="rounded-control border border-line-strong bg-surface px-2 py-2 text-sm"

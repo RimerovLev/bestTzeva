@@ -107,16 +107,16 @@ export function InventoryPage() {
         <>
           <div className="mb-4">
             <FilterPanel title={dict.catalog.filters} onReset={() => { setFilters({}); setQ(""); setPage(0); }} resetLabel={dict.common.reset}>
-              <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={t.search} className="w-56 rounded-control border border-line-strong px-3 py-2 text-sm" />
-              <select value={filters.warehouse_id ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, warehouse_id: e.target.value ? Number(e.target.value) : undefined })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
+              <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={t.search} aria-label={t.search} className="w-56 rounded-control border border-line-strong px-3 py-2 text-sm" />
+              <select aria-label={t.colWarehouse} value={filters.warehouse_id ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, warehouse_id: e.target.value ? Number(e.target.value) : undefined })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
                 <option value="">{t.allWarehouses}</option>
                 {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code}</option>)}
               </select>
-              <select value={filters.category_id ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, category_id: e.target.value ? Number(e.target.value) : undefined })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
+              <select aria-label={dict.catalog.colCategory} value={filters.category_id ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, category_id: e.target.value ? Number(e.target.value) : undefined })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
                 <option value="">{dict.catalog.anyCategory}</option>
                 {(categoriesQuery.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name ?? c.slug}</option>)}
               </select>
-              <select value={filters.status ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, status: (e.target.value || undefined) as InventoryFilters["status"] })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
+              <select aria-label={t.colStatus} value={filters.status ?? ""} onChange={(e) => { setFilters((f) => ({ ...f, status: (e.target.value || undefined) as InventoryFilters["status"] })); setPage(0); }} className="rounded-control border border-line-strong px-2 py-2 text-sm">
                 <option value="">{t.allStatuses}</option>
                 {INVENTORY_STATUSES.map((s) => <option key={s} value={s}>{t.statuses[s]}</option>)}
               </select>

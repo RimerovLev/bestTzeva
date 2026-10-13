@@ -4,7 +4,7 @@ import { normStatus, type RequestStatus } from "./api";
 const TONE: Record<RequestStatus, string> = {
   NEW: "bg-brass/15 text-brass",
   CONTACTED: "bg-navy/10 text-navy",
-  RESERVED: "bg-terracotta/15 text-terracotta",
+  RESERVED: "bg-terracotta/15 text-terracotta-ink",
   COMPLETED: "bg-emerald-100 text-emerald-700",
   CANCELLED: "bg-line text-ink-soft",
   LOST: "bg-red-100 text-red-700",

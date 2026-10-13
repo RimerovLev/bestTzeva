@@ -123,8 +123,14 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
     engine.color = swatchByCode(DEFAULT_SWATCH).hex;
     roller.style.setProperty("--c", engine.color);
     engineRef.current = engine;
-    void engine.load(DEMO_SRC);
-    return () => { engine.dispose(); engineRef.current = null; };
+    // фото примера (≈65 КБ) — когда примерочная подходит к экрану, а не вместе с первым экраном
+    const io = new IntersectionObserver(([en]) => {
+      if (!en?.isIntersecting) return;
+      io.disconnect();
+      void engine.load(DEMO_SRC);
+    }, { rootMargin: "600px 0px" });
+    io.observe(wrap);
+    return () => { io.disconnect(); engine.dispose(); engineRef.current = null; };
   }, [say]);
 
   useEffect(() => { if (engineRef.current) engineRef.current.reduce = reduce; }, [reduce]);

@@ -91,6 +91,7 @@ export function FilterSidebar({
       {/* Внутри/снаружи, гимур, основа — серверные фильтры без счётчиков */}
       <FilterGroup title={c.usageArea}>
         <EnumSelect
+          label={c.usageArea}
           value={filters.usageArea}
           options={USAGE_AREAS}
           labels={dict.enums.usage_area}
@@ -100,6 +101,7 @@ export function FilterSidebar({
       </FilterGroup>
       <FilterGroup title={c.finish}>
         <EnumSelect
+          label={c.finish}
           value={filters.finish}
           options={FINISHES}
           labels={dict.enums.finish}
@@ -109,6 +111,7 @@ export function FilterSidebar({
       </FilterGroup>
       <FilterGroup title={c.baseType}>
         <EnumSelect
+          label={c.baseType}
           value={filters.baseType}
           options={BASE_TYPES}
           labels={dict.enums.base_type}
@@ -177,12 +180,15 @@ function OptionButton({
 }
 
 function EnumSelect<T extends string>({
+  label,
   value,
   options,
   labels,
   anyLabel,
   onChange,
 }: {
+  /** Заголовок группы — он же имя поля для скринридера (видимый h3 с select не связан). */
+  label: string;
   value: T | undefined;
   options: readonly T[];
   labels: Record<string, string>;
@@ -191,6 +197,7 @@ function EnumSelect<T extends string>({
 }) {
   return (
     <select
+      aria-label={label}
       value={value ?? ""}
       onChange={(e) => onChange((e.target.value || undefined) as T | undefined)}
       className="inp"

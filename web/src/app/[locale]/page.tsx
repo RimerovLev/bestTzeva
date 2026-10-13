@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
@@ -97,6 +98,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
+  // Банка в герое — LCP-элемент, но задана фоном в CSS: без подсказки браузер узнаёт о ней поздно.
+  preload("/assets/motion/can.webp", { as: "image", fetchPriority: "high" });
   const dict = await getDictionary(locale);
   const h = dict.home;
   const errors = dict.errors as unknown as Record<string, string>;

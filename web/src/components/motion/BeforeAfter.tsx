@@ -30,7 +30,7 @@ export function BeforeAfter({ before, after, beforeAlt, afterAlt, rangeLabel }: 
   }, []);
 
   return (
-    <div className="ba reveal" ref={box} dir="ltr" style={{ "--pos": `${pos}%` } as CSSProperties}>
+    <div className="ba reveal lazy-bg" ref={box} dir="ltr" style={{ "--pos": `${pos}%` } as CSSProperties}>
       <div className="ba-layer ba-after" role="img" aria-label={afterAlt} />
       <div className="ba-layer ba-before" role="img" aria-label={beforeAlt} />
       <span className="tag tag-before">{before}</span>

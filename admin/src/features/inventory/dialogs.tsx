@@ -49,8 +49,8 @@ export function ReceiptDialog({ warehouses, onClose }: { warehouses: WarehouseRe
           <div className="mb-1 flex items-center justify-between"><span className="text-ink-soft">{t.receiptLines}</span><button type="button" onClick={() => setLines((l) => [...l, { sku: "", qty: "" }])} className="text-xs text-brass hover:underline">{t.addLine}</button></div>
           {lines.map((l, i) => (
             <div key={i} className="mb-1 flex gap-2">
-              <input value={l.sku} onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, sku: e.target.value } : x))} placeholder={t.sku} className="flex-1 rounded-control border border-line-strong px-2 py-1.5" />
-              <input type="number" value={l.qty} onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))} placeholder={t.qty} className="w-24 rounded-control border border-line-strong px-2 py-1.5" />
+              <input value={l.sku} onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, sku: e.target.value } : x))} aria-label={t.sku} placeholder={t.sku} className="flex-1 rounded-control border border-line-strong px-2 py-1.5" />
+              <input type="number" value={l.qty} onChange={(e) => setLines((ls) => ls.map((x, j) => j === i ? { ...x, qty: e.target.value } : x))} aria-label={t.qty} placeholder={t.qty} className="w-24 rounded-control border border-line-strong px-2 py-1.5" />
               {lines.length > 1 && <button type="button" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} className="text-crit-fg">✕</button>}
             </div>
           ))}
@@ -236,9 +236,9 @@ export function WarehousesDialog({ onClose }: { onClose: () => void }) {
       <div className="mt-4 rounded-control bg-paper-warm p-3">
         <p className="mb-2 text-sm font-semibold text-navy">{t.whNew}</p>
         <div className="grid grid-cols-3 gap-2 text-sm">
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t.whCode} className="rounded-control border border-line-strong px-2 py-1.5" />
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.whName} className="rounded-control border border-line-strong px-2 py-1.5" />
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t.whAddress} className="rounded-control border border-line-strong px-2 py-1.5" />
+          <input value={code} onChange={(e) => setCode(e.target.value)} aria-label={t.whCode} placeholder={t.whCode} className="rounded-control border border-line-strong px-2 py-1.5" />
+          <input value={name} onChange={(e) => setName(e.target.value)} aria-label={t.whName} placeholder={t.whName} className="rounded-control border border-line-strong px-2 py-1.5" />
+          <input value={address} onChange={(e) => setAddress(e.target.value)} aria-label={t.whAddress} placeholder={t.whAddress} className="rounded-control border border-line-strong px-2 py-1.5" />
         </div>
         <div className="mt-2 flex justify-end"><Button variant="primary" disabled={createM.isPending || !code.trim()} onClick={() => createM.mutate()}>{t.save}</Button></div>
       </div>

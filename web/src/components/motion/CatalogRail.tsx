@@ -100,7 +100,7 @@ export function CatalogRail({ products, allHref, text, children }: {
         <div className="hs-view" ref={view}>
           <div className="hs-track" ref={track}>
             <div className="banner">
-              <div className="banner-img" role="img" aria-label={text.bannerAlt} />
+              <div className="banner-img lazy-bg" role="img" aria-label={text.bannerAlt} />
               <div className="banner-cap"><b>{text.bannerTitle}</b><span>{text.bannerBody}</span></div>
             </div>
             {products.map((p) => (

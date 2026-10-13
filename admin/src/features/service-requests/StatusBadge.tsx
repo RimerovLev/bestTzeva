@@ -8,7 +8,7 @@ const TONE: Record<ServiceStatus, string> = {
   MEASURED: "bg-sky-100 text-sky-800",
   QUOTED: "bg-amber-100 text-amber-700",
   ACCEPTED: "bg-emerald-100 text-emerald-700",
-  IN_PROGRESS: "bg-terracotta/15 text-terracotta",
+  IN_PROGRESS: "bg-terracotta/15 text-terracotta-ink",
   COMPLETED: "bg-emerald-200 text-emerald-800",
   REJECTED: "bg-red-100 text-red-700",
   LOST: "bg-line text-ink-soft",

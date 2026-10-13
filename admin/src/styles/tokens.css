@@ -1,20 +1,23 @@
 /*
  * Дизайн-токены Tzeva Best (docs/design-system.md). Совпадают с витриной — единственный
  * источник цвета, радиуса и отступа. Общий пакет не заводим, пока не начнёт дублироваться.
+ *
+ * Цвета текста подобраны под WCAG AA (4.5:1 для мелкого текста на белом и бумажном фоне) — это
+ * проверяет axe в e2e (F-11.1). Латунь и «бледный» серый поэтому темнее, чем в первом макете.
  */
 :root {
   --navy: #1b3050;        --navy-deep: #16243d;
-  --brass: #b98d3e;       --brass-light: #d9b878;
-  --terracotta: #d06b4a;  --sage: #9db09a;  --sage-pale: #e4eadf;
+  --brass: #87662a;       --brass-light: #d9b878;
+  --terracotta: #d06b4a;  --terracotta-ink: #a64b2c;  --sage: #9db09a;  --sage-pale: #e4eadf;
 
   --paper: #f8f4ec;  --paper-warm: #f2ebdd;  --surface: #ffffff;
-  --ink: #1e2b3c;    --ink-soft: #5a6675;    --ink-faint: #8b94a0;
+  --ink: #1e2b3c;    --ink-soft: #5a6675;    --ink-faint: #66707c;
   --line: #e2d9c8;   --line-strong: #cabfa8;
 
-  --ok-fg: #2e7d51;   --ok-bg: #dcf0e4;
+  --ok-fg: #23663f;   --ok-bg: #dcf0e4;
   --info-fg: #2563a8; --info-bg: #dce8f5;
-  --warn-fg: #a97918; --warn-bg: #f8eed2;
-  --crit-fg: #b5402f; --crit-bg: #fadfd9;
+  --warn-fg: #7d5a10; --warn-bg: #f8eed2;
+  --crit-fg: #a5382a; --crit-bg: #fadfd9;
 
   --radius-control: 8px;  --radius-card: 12px;  --radius-pill: 999px;
   --shadow-card: 0 1px 2px rgb(30 43 60 / .05), 0 8px 24px rgb(30 43 60 / .06);

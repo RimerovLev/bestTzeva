@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type MouseEvent, type MutableRefObject } from "react";
 import { createFluid, type Fluid } from "@/lib/motion/fluid";
 import { BRIGHT, useMotion } from "./MotionProvider";
 
@@ -34,84 +34,14 @@ export function FluidHero({ text }: { text: FluidHeroText }) {
   useEffect(() => {
     const hero = heroRef.current, canvas = canvasRef.current, hint = hintRef.current;
     if (!hero || !canvas) return;
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let fluid: Fluid | null = null;
-    try { fluid = createFluid(canvas, BRIGHT); } catch { fluid = null; }
-    if (!fluid) return;
-    fluidRef.current = fluid;
-    hero.classList.add("fluid");
-    const F = fluid;
-
-    const pt = { x: 0, y: 0, px: 0, py: 0, moved: false, has: false };
-    let color = F.pigment(F.nextColor(), 1.1), colorAt = 0;
-    let running = true, last = performance.now(), lastInput = 0, nextAuto = 0, interacted = false, raf = 0;
-
-    F.randomSplats(7);
-    for (let i = 0, n = reduced ? 70 : 26; i < n; i++) F.step(0.016);
-    F.render();
-
-    const io = new IntersectionObserver(([en]) => { running = !!en?.isIntersecting; });
-    io.observe(hero);
-
-    const toUv = (e: PointerEvent): [number, number] => {
-      const r = canvas.getBoundingClientRect();
-      return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
-    };
-    const onMove = (e: PointerEvent) => {
-      const [x, y] = toUv(e), now = performance.now();
-      if (!pt.has || now - lastInput > 400) { pt.px = x; pt.py = y; pt.has = true; color = F.pigment(F.nextColor(), 1.1); colorAt = now; }
-      pt.x = x; pt.y = y; pt.moved = true; lastInput = now;
-      if (!interacted) { interacted = true; hint?.classList.add("hide"); }
-    };
-    const onDown = (e: PointerEvent) => {
-      if ((e.target as Element).closest("a, button")) return;
-      const [x, y] = toUv(e);
-      for (let i = 0; i < 3; i++) {
-        const a = Math.random() * Math.PI * 2;
-        F.splat(x, y, Math.cos(a) * 2200, Math.sin(a) * 2200, F.pigment(F.nextColor(), 1.2));
-      }
-      if (reduced) { F.step(0.016); F.render(); }
-    };
-    hero.addEventListener("pointermove", onMove, { passive: true });
-    hero.addEventListener("pointerdown", onDown);
-
-    const resize = () => F.resize();
-    addEventListener("resize", resize);
-
-    if (!reduced) {
-      const frame = (now: number) => {
-        raf = requestAnimationFrame(frame);
-        if (!running || document.hidden) { last = now; return; }
-        const dt = Math.min((now - last) / 1000, 0.0167);
-        last = now;
-        if (pt.moved) {
-          let dx = pt.x - pt.px, dy = pt.y - pt.py;
-          const a = canvas.width / canvas.height;
-          if (a < 1) dx *= a; else dy /= a;
-          if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) F.splat(pt.x, pt.y, dx * F.force, dy * F.force, color);
-          if (now - colorAt > 1600) { color = F.pigment(F.nextColor(), 1.1); colorAt = now; }
-          pt.px = pt.x; pt.py = pt.y; pt.moved = false;
-        }
-        if (now - lastInput > 3200 && now > nextAuto) {
-          F.randomSplats(1 + (Math.random() < 0.4 ? 1 : 0));
-          nextAuto = now + 1800 + Math.random() * 1600;
-        }
-        F.step(dt);
-        F.render();
-      };
-      raf = requestAnimationFrame(frame);
-    }
-
-    return () => {
-      cancelAnimationFrame(raf);
-      io.disconnect();
-      hero.removeEventListener("pointermove", onMove);
-      hero.removeEventListener("pointerdown", onDown);
-      removeEventListener("resize", resize);
-      hero.classList.remove("fluid");
-      fluidRef.current = null;
-      F.dispose();
-    };
+    // Симуляция стартует, когда браузер свободен: компиляция шейдеров и прогрев — сотни мс на
+    // слабом телефоне, и первая отрисовка с гидратацией не должны их ждать (LCP, F-11.1).
+    let teardown: (() => void) | null = null;
+    const run = () => { teardown = startFluid(hero, canvas, hint, fluidRef); };
+    // Safari без requestIdleCallback — короткая пауза после гидратации
+    const ric = "requestIdleCallback" in window;
+    const handle = ric ? window.requestIdleCallback(run, { timeout: 1500 }) : window.setTimeout(run, 200);
+    return () => { if (ric) window.cancelIdleCallback(handle); else window.clearTimeout(handle); teardown?.(); };
   }, []);
 
   function spill(e: MouseEvent<HTMLButtonElement>) {
@@ -174,4 +104,91 @@ export function FluidHero({ text }: { text: FluidHeroText }) {
       <span className="hero-hint" ref={hintRef} aria-hidden><i />{text.hint}</span>
     </section>
   );
+}
+
+/** Запуск жидкости; возвращает функцию остановки или null, если WebGL недоступен или программный. */
+function startFluid(
+  hero: HTMLElement,
+  canvas: HTMLCanvasElement,
+  hint: HTMLSpanElement | null,
+  fluidRef: MutableRefObject<Fluid | null>,
+): (() => void) | null {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let fluid: Fluid | null = null;
+  try { fluid = createFluid(canvas, BRIGHT); } catch { fluid = null; }
+  if (!fluid) return null;
+  fluidRef.current = fluid;
+  hero.classList.add("fluid");
+  const F = fluid;
+
+  const pt = { x: 0, y: 0, px: 0, py: 0, moved: false, has: false };
+  let color = F.pigment(F.nextColor(), 1.1), colorAt = 0;
+  let running = true, last = performance.now(), lastInput = 0, nextAuto = 0, interacted = false, raf = 0;
+
+  F.randomSplats(7);
+  for (let i = 0, n = reduced ? 70 : 26; i < n; i++) F.step(0.016);
+  F.render();
+
+  const io = new IntersectionObserver(([en]) => { running = !!en?.isIntersecting; });
+  io.observe(hero);
+
+  const toUv = (e: PointerEvent): [number, number] => {
+    const r = canvas.getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
+  };
+  const onMove = (e: PointerEvent) => {
+    const [x, y] = toUv(e), now = performance.now();
+    if (!pt.has || now - lastInput > 400) { pt.px = x; pt.py = y; pt.has = true; color = F.pigment(F.nextColor(), 1.1); colorAt = now; }
+    pt.x = x; pt.y = y; pt.moved = true; lastInput = now;
+    if (!interacted) { interacted = true; hint?.classList.add("hide"); }
+  };
+  const onDown = (e: PointerEvent) => {
+    if ((e.target as Element).closest("a, button")) return;
+    const [x, y] = toUv(e);
+    for (let i = 0; i < 3; i++) {
+      const a = Math.random() * Math.PI * 2;
+      F.splat(x, y, Math.cos(a) * 2200, Math.sin(a) * 2200, F.pigment(F.nextColor(), 1.2));
+    }
+    if (reduced) { F.step(0.016); F.render(); }
+  };
+  hero.addEventListener("pointermove", onMove, { passive: true });
+  hero.addEventListener("pointerdown", onDown);
+
+  const resize = () => F.resize();
+  addEventListener("resize", resize);
+
+  if (!reduced) {
+    const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
+      if (!running || document.hidden) { last = now; return; }
+      const dt = Math.min((now - last) / 1000, 0.0167);
+      last = now;
+      if (pt.moved) {
+        let dx = pt.x - pt.px, dy = pt.y - pt.py;
+        const a = canvas.width / canvas.height;
+        if (a < 1) dx *= a; else dy /= a;
+        if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) F.splat(pt.x, pt.y, dx * F.force, dy * F.force, color);
+        if (now - colorAt > 1600) { color = F.pigment(F.nextColor(), 1.1); colorAt = now; }
+        pt.px = pt.x; pt.py = pt.y; pt.moved = false;
+      }
+      if (now - lastInput > 3200 && now > nextAuto) {
+        F.randomSplats(1 + (Math.random() < 0.4 ? 1 : 0));
+        nextAuto = now + 1800 + Math.random() * 1600;
+      }
+      F.step(dt);
+      F.render();
+    };
+    raf = requestAnimationFrame(frame);
+  }
+
+  return () => {
+    cancelAnimationFrame(raf);
+    io.disconnect();
+    hero.removeEventListener("pointermove", onMove);
+    hero.removeEventListener("pointerdown", onDown);
+    removeEventListener("resize", resize);
+    hero.classList.remove("fluid");
+    fluidRef.current = null;
+    F.dispose();
+  };
 }

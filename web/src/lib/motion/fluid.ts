@@ -65,6 +65,11 @@ export function createFluid(canvas: HTMLCanvasElement, palette: readonly string[
   const gl2 = canvas.getContext("webgl2", opts);
   const gl = (gl2 ?? canvas.getContext("webgl", opts)) as WebGLRenderingContext | null;
   if (!gl) return null;
+  // Программный WebGL (нет GPU или он в чёрном списке): симуляция там идёт рывками и съедает
+  // процессор — лучше статичная подложка героя.
+  const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+  const renderer = String(gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
+  if (/swiftshader|llvmpipe|softpipe|software/i.test(renderer)) return null;
 
   let halfType: number | undefined;
   let linear: unknown;
