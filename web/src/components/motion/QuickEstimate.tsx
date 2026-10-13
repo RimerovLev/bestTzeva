@@ -7,6 +7,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { formatPrice } from "@/lib/format";
 import { resolveErrorMessage, type ErrorMessages } from "@/lib/api/messages";
 import { calculateService, MEASURE_PREFILL_KEY, type CalculateRequest } from "@/lib/services/api";
+import { track } from "@/lib/analytics";
 
 export interface QuickEstimateText {
   title: string;
@@ -68,6 +69,7 @@ export function QuickEstimate({ locale, text, errors }: { locale: Locale; text: 
       setRange(next);
       setNote(res.disclaimer ?? null);
       animateTo(next);
+      track("Service Calculator Used", { source: "home", property_type: kind, locale });
     } catch (err) {
       setError(resolveErrorMessage(errors, err).text);
     } finally {

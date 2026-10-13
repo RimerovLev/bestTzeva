@@ -17,6 +17,9 @@ import { ScrubText } from "@/components/motion/ScrubText";
 import { LeadForm, type LeadFormText } from "@/components/motion/LeadForm";
 import { CopyPhone } from "@/components/motion/CopyPhone";
 import { RevealEffects } from "@/components/motion/RevealEffects";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { businessLd, pageMeta } from "@/lib/seo";
+import type { Metadata } from "next";
 
 type PaintTypeKey = keyof Dictionary["enums"]["paint_type"];
 type DirectionKey = keyof Dictionary["services"]["directions"];
@@ -82,6 +85,15 @@ async function railProducts(locale: Locale, dict: Dictionary): Promise<RailProdu
   });
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isLocale(locale)) return {};
+  const dict = await getDictionary(locale);
+  // title главной — «по умолчанию» из layout (без шаблона «· сайт»), здесь только canonical/hreflang/OG
+  const meta = pageMeta({ locale, path: "", siteName: dict.meta.siteName, description: dict.home.hero.body });
+  return { ...meta, openGraph: { ...meta.openGraph, title: `${dict.meta.siteName} — ${dict.meta.tagline}` } };
+}
+
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
@@ -98,6 +110,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <>
       <RevealEffects />
+      <JsonLd data={businessLd(locale, dict.meta.siteName, h.hero.body)} />
 
       <FluidHero text={h.hero} />
 

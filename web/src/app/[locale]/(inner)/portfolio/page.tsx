@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { pageMeta } from "@/lib/seo";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -37,6 +38,7 @@ export default async function PortfolioPage({
 
   return (
     <section>
+      <JsonLd data={breadcrumbLd([{ label: dict.product.breadcrumbHome, href: `/${locale}` }, { label: dict.portfolio.title }])} />
       <PageBand tone="blue" eyebrow={dict.nav.works} title={dict.portfolio.heading} body={dict.portfolio.subtitle} dx="-120px" />
       <PortfolioView initial={initial} cities={cities} locale={locale} dict={dict} />
     </section>

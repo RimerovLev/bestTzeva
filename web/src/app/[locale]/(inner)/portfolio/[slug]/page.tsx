@@ -8,7 +8,7 @@ import { BeforeAfterSlider } from "@/components/portfolio/BeforeAfterSlider";
 import { ToMeasureLink } from "@/components/portfolio/ToMeasureLink";
 import { PageBand } from "@/components/motion/PageBand";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { abs, pageMeta } from "@/lib/seo";
+import { abs, breadcrumbLd, pageMeta } from "@/lib/seo";
 import { Breadcrumbs } from "@/components/product/Breadcrumbs";
 
 
@@ -62,7 +62,14 @@ export default async function PortfolioProjectPage({
 
   return (
     <article>
-      <JsonLd data={projectJsonLd(project, locale)} />
+      <JsonLd data={[
+        projectJsonLd(project, locale),
+        breadcrumbLd([
+          { label: dict.product.breadcrumbHome, href: `/${locale}` },
+          { label: t.title, href: `/${locale}/portfolio` },
+          { label: project.title ?? "" },
+        ]),
+      ]} />
 
       <PageBand
         tone="violet"

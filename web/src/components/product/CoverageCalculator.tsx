@@ -5,6 +5,7 @@ import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { calcCoverage, type CoverageCalcResult } from "@/lib/catalog/api";
 import { resolveErrorMessage } from "@/lib/api/messages";
+import { track } from "@/lib/analytics";
 
 const COATS = [1, 2, 3];
 
@@ -38,6 +39,7 @@ export function CoverageCalculator({
     setError(null);
     try {
       setResult(await calcCoverage(slug, areaNum, coats, { locale }));
+      track("Coverage Calculated", { coats, locale });
     } catch (err) {
       setError(resolveErrorMessage(dict.errors, err).text);
       setResult(null);

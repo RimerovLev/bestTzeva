@@ -448,7 +448,7 @@
     "calcArea": "שטח (מ\"ר)",
     "calcCoats": "מספר שכבות",
     "calcButton": "חשב",
-    "calcResult": "צריך {cans} פחים של {volume} ליטר",
+    "calcResult": "פחים של {volume} ליטר: {cans}",
     "calcLeftover": "עודף: {liters} ליטר",
     "calcNotAvailable": "החישוב אינו זמין לצבע זה",
     "calcEstimate": "החישוב מקורב ותלוי בסוג המשטח ובמספר השכבות.",

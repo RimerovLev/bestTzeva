@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/seo";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MotionProvider } from "@/components/motion/MotionProvider";
+import { Analytics } from "@/components/seo/Analytics";
 import { Providers } from "@/app/providers";
 
 export function generateStaticParams() {
@@ -56,6 +57,7 @@ export default async function LocaleLayout({
               {children}
             </main>
             <Footer locale={typedLocale} dict={dict} />
+            <Analytics />
           </MotionProvider>
         </Providers>
       </body>

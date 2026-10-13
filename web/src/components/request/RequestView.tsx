@@ -8,6 +8,7 @@ import { useRequest } from "@/lib/request/RequestProvider";
 import type { ProductRequestResponse } from "@/lib/catalog/api";
 import { RequestItemsPanel } from "./RequestItemsPanel";
 import { RequestForm } from "./RequestForm";
+import { track } from "@/lib/analytics";
 import { BRIGHT, useMotion } from "@/components/motion/MotionProvider";
 
 export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary }) {
@@ -70,7 +71,7 @@ export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary
         dict={dict}
         onUnavailable={(ids) => setUnavailableIds(new Set(ids))}
         onSuccess={(res, at) => {
-          trackSubmitted(res.request_number);
+          track("Product Request Submitted", { items: request.items.length, locale });
           if (at) burst(at.x, at.y, 80, BRIGHT, 1.35);
           request.clear();
           setSuccess(res);
@@ -78,15 +79,4 @@ export function RequestView({ locale, dict }: { locale: Locale; dict: Dictionary
       />
     </div>
   );
-}
-
-/** Событие в аналитику. Реальная интеграция (GA4/Plausible) — в F-5.2; здесь безопасный dataLayer-push. */
-function trackSubmitted(requestNumber?: string): void {
-  try {
-    const w = window as unknown as { dataLayer?: unknown[] };
-    w.dataLayer = w.dataLayer ?? [];
-    w.dataLayer.push({ event: "product_request_submitted", request_number: requestNumber });
-  } catch {
-    // аналитика не должна ломать поток
-  }
 }

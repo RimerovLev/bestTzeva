@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { locales, defaultLocale, type Locale } from "@/lib/i18n/config";
+import { BUSINESS } from "@/lib/business";
 
 /**
  * Публичный адрес витрины — для canonical, hreflang, sitemap и JSON-LD. На проде задаётся
@@ -83,4 +84,54 @@ export function pageMeta({
       images: [image || DEFAULT_OG_IMAGE],
     },
   };
+}
+
+/**
+ * Organization + LocalBusiness для главной. Компания и продаёт краску, и красит, поэтому тип —
+ * HousePainter (подвид LocalBusiness для услуг покраски) вместе со Store. Контакты, адрес и часы —
+ * только если заданы (src/lib/business.ts); для локальной выдачи Google они главное, поэтому их
+ * надо заполнить до запуска.
+ */
+export function businessLd(locale: Locale, name: string, description: string) {
+  const url = abs(`/${locale}`);
+  const org = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": abs("/#organization"),
+    name,
+    url,
+    logo: abs("/assets/logo.png"),
+    ...(BUSINESS.phone ? { telephone: BUSINESS.phone } : {}),
+    ...(BUSINESS.email ? { email: BUSINESS.email } : {}),
+  };
+  const address = BUSINESS.street || BUSINESS.city
+    ? {
+        address: {
+          "@type": "PostalAddress",
+          ...(BUSINESS.street ? { streetAddress: BUSINESS.street } : {}),
+          ...(BUSINESS.city ? { addressLocality: BUSINESS.city } : {}),
+          ...(BUSINESS.postalCode ? { postalCode: BUSINESS.postalCode } : {}),
+          addressCountry: "IL",
+        },
+      }
+    : {};
+  const local = {
+    "@context": "https://schema.org",
+    "@type": ["HousePainter", "Store"],
+    "@id": abs("/#business"),
+    name,
+    description,
+    url,
+    image: abs(DEFAULT_OG_IMAGE),
+    logo: abs("/assets/logo.png"),
+    parentOrganization: { "@id": abs("/#organization") },
+    areaServed: BUSINESS.areaServed?.length
+      ? BUSINESS.areaServed.map((c) => ({ "@type": "City", name: c }))
+      : { "@type": "Country", name: "Israel" },
+    currenciesAccepted: "ILS",
+    ...(BUSINESS.phone ? { telephone: BUSINESS.phone } : {}),
+    ...(BUSINESS.hours ? { openingHours: BUSINESS.hours } : {}),
+    ...address,
+  };
+  return [org, local];
 }

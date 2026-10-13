@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { pageMeta } from "@/lib/seo";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -9,7 +10,7 @@ import {
   type CategoryResponse,
   type ProductSearchResult,
 } from "@/lib/catalog/api";
-import { parseFilters } from "@/lib/catalog/params";
+import { hasActiveFilters, parseFilters } from "@/lib/catalog/params";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { PageBand } from "@/components/motion/PageBand";
 
@@ -45,12 +46,13 @@ export default async function ProductsPage({
   let categories: CategoryResponse[] = [];
   try {
     [initialData, categories] = await Promise.all([
-      getProducts(filters, 0, { locale, revalidate: 300 }),
-      getCategories({ locale, revalidate: 3600 }),
+      // каталог без фильтров — ISR 300 с; отфильтрованная выборка не кэшируется (их слишком много)
+      getProducts(filters, 0, { locale, revalidate: hasActiveFilters(filters) ? undefined : 300 }),
+      getCategories({ locale, revalidate: 300 }),
     ]);
   } catch {
     try {
-      categories = await getCategories({ locale, revalidate: 3600 });
+      categories = await getCategories({ locale, revalidate: 300 });
     } catch {
       categories = [];
     }
@@ -58,6 +60,7 @@ export default async function ProductsPage({
 
   return (
     <section>
+      <JsonLd data={breadcrumbLd([{ label: dict.product.breadcrumbHome, href: `/${locale}` }, { label: dict.catalog.title }])} />
       <PageBand tone="yellow" eyebrow={dict.nav.prices} title={dict.catalog.heading} body={dict.catalog.subtitle} />
       <CatalogView
         locale={locale}

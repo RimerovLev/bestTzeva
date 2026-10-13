@@ -6,6 +6,7 @@ import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
 import { formatPrice } from "@/lib/format";
 import { resolveErrorMessage } from "@/lib/api/messages";
+import { track } from "@/lib/analytics";
 import {
   calculateService,
   MEASURE_PREFILL_KEY,
@@ -62,6 +63,7 @@ export function ServiceCalculator({ locale, dict }: { locale: Locale; dict: Dict
     setError(null);
     try {
       setResult(await calculateService(buildBody(), { locale }));
+      track("Service Calculator Used", { source: "services", property_type: propertyType, locale });
     } catch (err) {
       setError(resolveErrorMessage(dict.errors, err).text);
       setResult(null);

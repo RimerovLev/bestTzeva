@@ -449,7 +449,7 @@
     "calcArea": "Площадь (м²)",
     "calcCoats": "Число слоёв",
     "calcButton": "Рассчитать",
-    "calcResult": "Нужно {cans} банок по {volume} л",
+    "calcResult": "Понадобится банок по {volume} л: {cans}",
     "calcLeftover": "Остаток: {liters} л",
     "calcNotAvailable": "Расчёт для этого товара недоступен",
     "calcEstimate": "Расчёт ориентировочный и зависит от типа поверхности и числа слоёв.",

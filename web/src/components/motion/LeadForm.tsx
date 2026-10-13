@@ -6,6 +6,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { resolveErrorMessage, type ErrorMessages } from "@/lib/api/messages";
 import { getFormToken, submitServiceRequest, type ServiceRequestCreate } from "@/lib/services/api";
 import { BRIGHT, useMotion } from "./MotionProvider";
+import { track } from "@/lib/analytics";
 
 type PropertyType = ServiceRequestCreate["property_type"];
 
@@ -85,6 +86,7 @@ export function LeadForm({ locale, text, errors }: { locale: Locale; text: LeadF
         form_token: token || undefined,
       };
       const res = await submitServiceRequest(body, locale);
+      track("Callback Request Submitted", { property_type: body.property_type, locale });
       setDone(res.request_number ?? "");
       const r = submitRef.current?.getBoundingClientRect();
       if (r) burst(r.left + r.width / 2, r.top + r.height / 2, 80, BRIGHT, 1.35);

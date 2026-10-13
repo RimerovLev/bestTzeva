@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { pageMeta } from "@/lib/seo";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -34,6 +35,7 @@ export default async function ColorsPage({
 
   return (
     <section>
+      <JsonLd data={breadcrumbLd([{ label: dict.product.breadcrumbHome, href: `/${locale}` }, { label: dict.colors.title }])} />
       <PageBand tone="pink" eyebrow={dict.nav.colors} title={dict.colors.heading} body={dict.colors.subtitle} dx="-260px">
         <div className="band-meta">
           <Link href={`/${locale}#colors`} className="btn btn-sm">{dict.colors.tryOn}</Link>

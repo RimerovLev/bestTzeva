@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { pageMeta } from "@/lib/seo";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
 import { isLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
@@ -33,6 +34,7 @@ export default async function ServicesPage({
 
   return (
     <div>
+      <JsonLd data={breadcrumbLd([{ label: dict.product.breadcrumbHome, href: `/${locale}` }, { label: dict.services.title }])} />
       <PageBand tone="red" eyebrow={dict.nav.services} title={dict.home.services.title} body={s.subtitle} dx="-40px" />
 
       <div className="stack">

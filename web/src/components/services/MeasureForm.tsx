@@ -12,6 +12,7 @@ import {
   type CalculateRequest, type ServiceRequestCreate, type ServiceRequestResponse,
 } from "@/lib/services/api";
 import { compressImage } from "@/lib/services/image";
+import { track } from "@/lib/analytics";
 
 type PropertyType = (typeof PROPERTY_TYPES)[number];
 type WorkType = (typeof WORK_TYPES)[number];
@@ -141,6 +142,7 @@ export function MeasureForm({ locale, dict }: { locale: Locale; dict: Dictionary
       };
       const res = await submitServiceRequest(body, locale);
       try { sessionStorage.removeItem(PROGRESS_KEY); sessionStorage.removeItem(MEASURE_PREFILL_KEY); } catch { /* ignore */ }
+      track("Measure Request Submitted", { property_type: form.property_type, photos: body.photo_keys?.length ?? 0, locale });
       setSuccess(res);
     } catch (err) {
       setError(resolveErrorMessage(dict.errors, err).text);
