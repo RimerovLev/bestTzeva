@@ -10,11 +10,13 @@ import com.tzevabest.iam.repository.UserRepository;
 import com.tzevabest.notification.service.NotificationSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -34,19 +36,25 @@ public class PasswordService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenStore refreshStore;
     private final NotificationSender notifications;
+    private final MessageSource messages;
 
-    @Value("${app.web.base-url}")
-    private String baseUrl;
+    // Ссылка сброса ведёт на экран админки (аккаунты — у персонала), а НЕ на базовый URL API (аудит п.2).
+    @Value("${app.web.admin-url}")
+    private String adminUrl;
 
     /** Ответ одинаков независимо от существования аккаунта. */
     public void forgot(String login) {
         findByLogin(login).ifPresent(user -> {
             String token = tokens.issue(NAMESPACE, user.getId(), TTL);
-            String link = baseUrl + "/reset-password?token=" + token;
+            String link = adminUrl + "/reset-password?token=" + token;
+            Locale locale = Locale.forLanguageTag(user.getLocale());
+            String subject = messages.getMessage("email.password_reset.subject", null, locale);
             if (user.getEmail() != null) {
-                notifications.sendEmail(user.getEmail(), "Tzeva Best — password reset", "Reset your password: " + link);
+                notifications.sendEmail(user.getEmail(), subject,
+                        messages.getMessage("email.password_reset.body", new Object[]{link}, locale));
             } else if (user.getPhone() != null) {
-                notifications.sendSms(user.getPhone(), "Tzeva Best password reset: " + link);
+                notifications.sendSms(user.getPhone(),
+                        messages.getMessage("email.password_reset.sms", new Object[]{link}, locale));
             }
         });
     }
