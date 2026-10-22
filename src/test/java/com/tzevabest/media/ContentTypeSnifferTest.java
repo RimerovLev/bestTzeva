@@ -26,6 +26,18 @@ class ContentTypeSnifferTest {
     }
 
     @Test
+    void detects_heic_and_avif_as_images() {
+        // ISO-BMFF ftyp с брендом heic/avif — фото с телефонов, не должны отклоняться как «не картинка».
+        assertThat(ContentTypeSniffer.detect(new byte[]{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c'}))
+                .isEqualTo("image/heic");
+        assertThat(ContentTypeSniffer.detect(new byte[]{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'a', 'v', 'i', 'f'}))
+                .isEqualTo("image/avif");
+        // mp4-бренд по-прежнему видео
+        assertThat(ContentTypeSniffer.detect(new byte[]{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'}))
+                .isEqualTo("video/mp4");
+    }
+
+    @Test
     void rejects_svg_html_and_garbage() {
         assertThat(ContentTypeSniffer.detect("<svg xmlns=\"...\"><script/></svg>".getBytes())).isNull();
         assertThat(ContentTypeSniffer.detect("<!DOCTYPE html><html></html>".getBytes())).isNull();

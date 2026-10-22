@@ -31,6 +31,14 @@ public final class ContentTypeSniffer {
             return "image/webp";
         }
         if (match(data, 4, "ftyp")) {
+            // ISO-BMFF: бренд в offset 8 различает фото (HEIC/AVIF — камеры телефонов) и видео (mp4).
+            if (match(data, 8, "heic") || match(data, 8, "heix") || match(data, 8, "heif")
+                    || match(data, 8, "mif1") || match(data, 8, "hevc")) {
+                return "image/heic";
+            }
+            if (match(data, 8, "avif") || match(data, 8, "avis")) {
+                return "image/avif";
+            }
             return "video/mp4";
         }
         if (startsWith(data, 0x1A, 0x45, 0xDF, 0xA3)) {

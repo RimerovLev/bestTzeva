@@ -106,7 +106,9 @@ public class AdminUserService {
         if (role == UserRole.CUSTOMER) {
             throw new ValidationException("user.role_not_staff");
         }
-        String normalizedEmail = email.trim();
+        // Нормализуем как AuthService.register (нижний регистр), иначе один адрес в разном регистре
+        // создаст дубли и рассинхронит поиск по email.
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         if (users.findByEmailIgnoreCase(normalizedEmail).isPresent()) {
             throw new ConflictException("user.email_exists");
         }
@@ -144,14 +146,14 @@ public class AdminUserService {
         refreshTokenStore.revokeAllForUser(userId);
     }
 
-    /** Разблокировать сотрудника. */
+    /** Разблокировать сотрудника. Только из BLOCKED: приглашённого (PENDING) активирует установка пароля. */
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public void unblock(long userId) {
         User user = users.findById(userId)
                 .orElseThrow(() -> new NotFoundException("common.resource.not_found"));
-        if (user.getStatus() == UserStatus.ACTIVE) {
-            return;
+        if (user.getStatus() != UserStatus.BLOCKED) {
+            return; // PENDING не трогаем — он станет ACTIVE, когда сотрудник задаст пароль по приглашению
         }
         user.setStatus(UserStatus.ACTIVE);
         auditService.record(currentUser.id(), currentUser.ip(), "user.unblocked", "user", userId, Map.of());

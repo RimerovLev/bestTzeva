@@ -27,6 +27,8 @@ public class PasswordController {
     @PostMapping("/forgot")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RateLimit(key = "field:login", limit = 3, windowSeconds = 3600)
+    // Лимит и по IP, чтобы с одного адреса нельзя было перебирать логины/спамить письмами (аудит п.15).
+    @RateLimit(key = "ip", limit = 10, windowSeconds = 3600)
     public void forgot(@Valid @RequestBody ForgotPasswordRequest request) {
         passwordService.forgot(request.login());
     }
