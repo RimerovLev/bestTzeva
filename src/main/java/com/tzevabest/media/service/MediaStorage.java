@@ -30,4 +30,7 @@ public interface MediaStorage {
 
     /** Удаляет объект из приватного бакета (ретеншен ПДн, T-14.2). Идемпотентно. */
     void deletePrivate(String objectKey);
+
+    /** Метаданные приватного объекта (размер/тип), либо пусто, если объекта нет (аудит п.8). */
+    java.util.Optional<StoredObjectInfo> headPrivate(String objectKey);
 }

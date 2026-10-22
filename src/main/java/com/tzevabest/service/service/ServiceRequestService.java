@@ -5,6 +5,8 @@ import com.tzevabest.common.util.PhoneNormalizer;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.service.ConsentService;
 import com.tzevabest.media.service.MediaPresigner;
+import com.tzevabest.media.service.MediaStorage;
+import com.tzevabest.media.service.StoredObjectInfo;
 import com.tzevabest.service.domain.RequestSource;
 import com.tzevabest.service.domain.ServiceMediaType;
 import com.tzevabest.service.domain.ServiceRequest;
@@ -51,11 +53,15 @@ public class ServiceRequestService {
     private static final Set<String> LOCALES = Set.of("he", "ru", "en");
     private static final String DEFAULT_LOCALE = "he";
     private static final String PHOTO_PREFIX = "service-requests";
+    /** Разрешённые типы фото помещения (аудит п.8): никаких SVG/произвольных типов. */
+    private static final Set<String> ALLOWED_PHOTO_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/heic");
+    private static final long MAX_PHOTO_BYTES = 10L * 1024 * 1024; // 10 МБ на фото
 
     private final ServiceRequestRepository requests;
     private final ServiceRequestMediaRepository media;
     private final ConsentService consents;
     private final MediaPresigner presigner;
+    private final MediaStorage mediaStorage;
     private final SpamGuard spamGuard;
     private final PricingService pricing;
     private final ApplicationEventPublisher events;
@@ -70,7 +76,8 @@ public class ServiceRequestService {
     public PresignResponse presignPhotos(PresignRequest req, String ip) {
         List<PresignedUploadView> uploads = new ArrayList<>();
         for (PresignItem file : req.files()) {
-            if (file.contentType() == null || !file.contentType().startsWith("image/")) {
+            // Whitelist конкретных типов (аудит п.8): image/svg+xml и прочее не выдаём presigned-ссылку.
+            if (file.contentType() == null || !ALLOWED_PHOTO_TYPES.contains(file.contentType().toLowerCase(Locale.ROOT))) {
                 throw new ValidationException("service_request.photo_type");
             }
             var presigned = presigner.presignUpload(PHOTO_PREFIX, file.filename(), file.contentType());
@@ -160,6 +167,15 @@ public class ServiceRequestService {
             if (claimed == 0 || !presigner.hasPrefix(key, PHOTO_PREFIX)) {
                 throw new ValidationException("service_request.photo_key_invalid");
             }
+            // Если объект уже загружен — проверяем фактический размер и тип (аудит п.8). presigned PUT не
+            // ограничивает Content-Length, поэтому великана/не-картинку отбраковываем и удаляем из бакета.
+            mediaStorage.headPrivate(key).ifPresent(info -> {
+                if (info.contentLength() > MAX_PHOTO_BYTES || info.contentType() == null
+                        || !ALLOWED_PHOTO_TYPES.contains(info.contentType().toLowerCase(Locale.ROOT))) {
+                    mediaStorage.deletePrivate(key);
+                    throw new ValidationException("service_request.photo_rejected");
+                }
+            });
             ServiceRequestMedia m = new ServiceRequestMedia();
             m.setRequest(request);
             m.setObjectKey(key);

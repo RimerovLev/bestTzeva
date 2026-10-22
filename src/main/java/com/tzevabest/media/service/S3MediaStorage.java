@@ -7,9 +7,13 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Реализация {@link MediaStorage} поверх S3-совместимого хранилища (MinIO/S3) в публичном бакете. */
@@ -59,6 +63,20 @@ public class S3MediaStorage implements MediaStorage {
                 .bucket(props.privateBucket())
                 .key(objectKey)
                 .build());
+    }
+
+    @Override
+    public Optional<StoredObjectInfo> headPrivate(String objectKey) {
+        try {
+            HeadObjectResponse head = s3.headObject(HeadObjectRequest.builder()
+                    .bucket(props.privateBucket())
+                    .key(objectKey)
+                    .build());
+            long length = head.contentLength() == null ? 0 : head.contentLength();
+            return Optional.of(new StoredObjectInfo(length, head.contentType()));
+        } catch (S3Exception e) {
+            return Optional.empty(); // объекта нет (404/NoSuchKey) — нечего проверять
+        }
     }
 
     @Override
