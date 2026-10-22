@@ -1,6 +1,7 @@
 package com.tzevabest.iam;
 
 import com.tzevabest.iam.service.JwtService;
+import com.tzevabest.iam.service.RefreshTokenStore;
 import com.tzevabest.support.IntegrationTest;
 import com.tzevabest.support.TestDataFactory;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,9 @@ class RoleMatrixTest extends IntegrationTest {
 
     @Autowired
     private JwtService jwt;
+
+    @Autowired
+    private RefreshTokenStore refreshStore;
 
     /** Один пользователь на роль (id синтетический — проверяются только права из claim role). */
     private static long userId(String role) {
@@ -97,6 +101,29 @@ class RoleMatrixTest extends IntegrationTest {
                 "select count(*) from audit_log where action='user.role.changed' and entity_id=?",
                 Integer.class, target.id());
         assertThat(audit).isEqualTo(1);
+    }
+
+    @Test
+    void change_role_revokes_target_sessions() {
+        // Аудит п.12: понижение прав должно действовать сразу — refresh-сессии отзываются.
+        TestDataFactory.TestUser target = factory.createUser(s -> s.role = "SUPPORT");
+        refreshStore.issue(target.id(), "t1", "r1", "ua", "1.1.1.1", java.time.Duration.ofMinutes(30));
+
+        assertThat(post("/api/v1/admin/users/" + target.id() + "/role", "{\"role\":\"warehouse\"}", "ADMIN"))
+                .isEqualTo(200);
+
+        // сессия больше не валидна
+        assertThat(refreshStore.validateAndRotate(target.id(), "t1", "r1", 1_800_000L)).isFalse();
+    }
+
+    @Test
+    void cannot_demote_last_active_admin() {
+        // Единственный активный ADMIN в БД — попытка понизить даёт 409, роль не меняется (аудит п.12).
+        TestDataFactory.TestUser admin = factory.createUser(s -> s.role = "ADMIN");
+        assertThat(post("/api/v1/admin/users/" + admin.id() + "/role", "{\"role\":\"manager\"}", "ADMIN"))
+                .isEqualTo(409);
+        String role = jdbcTemplate.queryForObject("select role from users where id = ?", String.class, admin.id());
+        assertThat(role).isEqualTo("ADMIN");
     }
 
     @Test

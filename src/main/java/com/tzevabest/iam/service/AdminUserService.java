@@ -1,6 +1,7 @@
 package com.tzevabest.iam.service;
 
 import com.tzevabest.admin.service.AuditService;
+import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.security.CurrentUser;
 import com.tzevabest.iam.domain.User;
@@ -28,6 +29,7 @@ public class AdminUserService {
     private final UserRepository users;
     private final AuditService auditService;
     private final CurrentUser currentUser;
+    private final RefreshTokenStore refreshTokenStore;
 
     /** Роли, у которых есть экраны заявок: на них и назначают. */
     private static final Set<UserRole> ASSIGNEE_ROLES = EnumSet.of(UserRole.SUPPORT, UserRole.MANAGER, UserRole.ADMIN);
@@ -57,9 +59,20 @@ public class AdminUserService {
         User user = users.findById(userId)
                 .orElseThrow(() -> new NotFoundException("common.resource.not_found"));
         UserRole oldRole = user.getRole();
+        if (oldRole == newRole) {
+            return; // нечего менять, лишних отзывов сессий не делаем
+        }
+        // Нельзя снять последнего активного ADMIN — иначе управлять ролями будет некому (аудит п.12).
+        if (oldRole == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE
+                && users.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+            throw new ConflictException("user.last_admin");
+        }
         user.setRole(newRole);
 
         auditService.record(currentUser.id(), currentUser.ip(), "user.role.changed",
                 "user", userId, Map.of("from", oldRole.name(), "to", newRole.name()));
+        // Понижение прав должно действовать сразу: отзываем сессии, иначе старый access-токен (до 15 мин)
+        // работает со старой ролью (роль берётся из JWT). Аудит п.12.
+        refreshTokenStore.revokeAllForUser(userId);
     }
 }

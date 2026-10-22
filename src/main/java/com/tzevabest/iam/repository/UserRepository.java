@@ -21,4 +21,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Активные сотрудники заданных ролей — кандидаты в исполнители заявок. */
     List<User> findByStatusAndRoleInOrderByFirstNameAscLastNameAscIdAsc(UserStatus status, Collection<UserRole> roles);
+
+    long countByRoleAndStatus(UserRole role, UserStatus status);
 }
