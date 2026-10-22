@@ -88,10 +88,14 @@ class PortfolioTest extends IntegrationTest {
         h.setBearerAuth(managerToken());
         h.setContentType(MediaType.MULTIPART_FORM_DATA);
         MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
-        parts.add("file", new ByteArrayResource("img".getBytes()) {
+        parts.add("file", new ByteArrayResource(PNG_1x1) {
             @Override
             public String getFilename() {
                 return "after.png";
+            }
+            @Override
+            public long contentLength() {
+                return PNG_1x1.length;
             }
         });
         ResponseEntity<String> resp = rest.exchange(
@@ -174,4 +178,29 @@ class PortfolioTest extends IntegrationTest {
     private static String uid() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
+
+    @Test
+    void svg_disguised_as_image_is_rejected() throws Exception {
+        // Аудит п.9: SVG со скриптом не должен попасть в публичный бакет под видом картинки.
+        long id = json.readTree(createProject("proj-" + uid()).getBody()).get("id").asLong();
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(managerToken());
+        h.setContentType(MediaType.MULTIPART_FORM_DATA);
+        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        byte[] svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>".getBytes();
+        parts.add("file", new ByteArrayResource(svg) {
+            @Override
+            public String getFilename() {
+                return "evil.svg"; // content-type image/svg+xml навесит конвертер
+            }
+        });
+        ResponseEntity<String> resp = rest.exchange(
+                "/api/v1/admin/portfolio/" + id + "/media?kind=AFTER",
+                HttpMethod.POST, new HttpEntity<>(parts, h), String.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    // Минимальный валидный PNG 1×1.
+    private static final byte[] PNG_1x1 = java.util.Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 }

@@ -5,6 +5,7 @@ import com.tzevabest.common.web.error.ConflictException;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.common.web.security.CurrentUser;
+import com.tzevabest.media.service.ContentTypeSniffer;
 import com.tzevabest.media.service.MediaStorage;
 import com.tzevabest.media.service.StoredObject;
 import com.tzevabest.service.dto.PortfolioCreate;
@@ -98,9 +99,14 @@ public class PortfolioAdminService {
             throw new ValidationException("portfolio.media_kind");
         }
         byte[] data = validate(file);
+        // Тип — из содержимого (magic bytes), не со слов клиента: публичный бакет раздаёт inline,
+        // поэтому SVG/HTML под видом картинки = stored XSS. Портфолио — только изображения. Аудит п.9.
+        String safeType = ContentTypeSniffer.detect(data);
+        if (safeType == null || !safeType.startsWith("image/")) {
+            throw new ValidationException("portfolio.media_type");
+        }
         // Медиа портфолио — маркетинговые, кладутся в ПУБЛИЧНЫЙ бакет.
-        StoredObject obj = mediaStorage.put("portfolio/" + id, file.getOriginalFilename(),
-                file.getContentType(), data);
+        StoredObject obj = mediaStorage.put("portfolio/" + id, file.getOriginalFilename(), safeType, data);
         int order = sortOrder == null ? 0 : sortOrder;
         Long mediaId = jdbc.queryForObject("""
                 insert into portfolio_media (project_id, url, kind, sort_order, pair_group)

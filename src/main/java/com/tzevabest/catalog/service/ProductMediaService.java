@@ -6,6 +6,7 @@ import com.tzevabest.catalog.dto.ProductMediaView;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.common.web.security.CurrentUser;
+import com.tzevabest.media.service.ContentTypeSniffer;
 import com.tzevabest.media.service.MediaStorage;
 import com.tzevabest.media.service.StoredObject;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +74,13 @@ public class ProductMediaService {
     private ProductMediaView store(String prefix, String ownerColumn, long ownerId, MultipartFile file,
                                    MediaType type, int sortOrder, boolean primary) {
         byte[] data = validate(file, type);
-        StoredObject obj = storage.put(prefix, file.getOriginalFilename(), file.getContentType(), data);
+        // Тип берём из СОДЕРЖИМОГО (magic bytes), а не со слов клиента: в публичный бакет не должен
+        // попасть SVG/HTML под видом картинки и раздаваться inline (stored XSS). Аудит п.9.
+        String safeType = ContentTypeSniffer.detect(data);
+        if (safeType == null || !matchesType(type, safeType)) {
+            throw new ValidationException("catalog.media.invalid_type");
+        }
+        StoredObject obj = storage.put(prefix, file.getOriginalFilename(), safeType, data);
 
         if (primary) {
             // Снимаем прежнее главное у этого владельца — иначе уникальный индекс даст конфликт.
@@ -89,17 +96,13 @@ public class ProductMediaService {
         return new ProductMediaView(id, obj.url(), type, sortOrder, primary, null);
     }
 
-    /** Проверяет размер и соответствие MIME-типа заявленному {@link MediaType}, возвращает содержимое. */
+    /** Проверяет размер и читает содержимое; тип проверяется по сигнатуре в {@code store} (аудит п.9). */
     private byte[] validate(MultipartFile file, MediaType type) {
         if (file == null || file.isEmpty()) {
             throw new ValidationException("catalog.media.empty");
         }
         if (file.getSize() > MAX_BYTES) {
             throw new ValidationException("catalog.media.too_large");
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !matchesType(type, contentType)) {
-            throw new ValidationException("catalog.media.invalid_type");
         }
         try {
             return file.getBytes();
@@ -108,11 +111,12 @@ public class ProductMediaService {
         }
     }
 
+    /** Разрешённые реальные типы по заявленному {@link MediaType} (DOC — только PDF, не произвольный application/*). */
     private static boolean matchesType(MediaType type, String contentType) {
         return switch (type) {
             case IMAGE -> contentType.startsWith("image/");
             case VIDEO -> contentType.startsWith("video/");
-            case DOC -> contentType.startsWith("application/") || contentType.equals("text/plain");
+            case DOC -> contentType.equals("application/pdf");
         };
     }
 
