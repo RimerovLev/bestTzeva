@@ -58,6 +58,20 @@ public class AdminUserService {
     /** Роли, у которых есть экраны заявок: на них и назначают. */
     private static final Set<UserRole> ASSIGNEE_ROLES = EnumSet.of(UserRole.SUPPORT, UserRole.MANAGER, UserRole.ADMIN);
 
+    /** Служебные роли (не клиент) — состав, которым управляет экран «Сотрудники». */
+    private static final Set<UserRole> STAFF_ROLES =
+            EnumSet.of(UserRole.SUPPORT, UserRole.WAREHOUSE, UserRole.MANAGER, UserRole.ADMIN);
+
+    /** Список сотрудников (любого статуса) для управления. Только ADMIN. */
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<com.tzevabest.iam.dto.EmployeeView> listEmployees() {
+        return users.findByRoleInOrderByFirstNameAscLastNameAscIdAsc(STAFF_ROLES).stream()
+                .map(u -> new com.tzevabest.iam.dto.EmployeeView(
+                        u.getId(), u.getEmail(), u.getFirstName(), u.getLastName(), u.getRole(), u.getStatus()))
+                .toList();
+    }
+
     /**
      * Кого можно назначить исполнителем заявки: активные сотрудники с доступом к заявкам. Имя — как
      * в учётке; пустое имя заменяется на email, чтобы строку в списке было с чем сопоставить.

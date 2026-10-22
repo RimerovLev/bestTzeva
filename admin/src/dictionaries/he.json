@@ -42,6 +42,28 @@
     "forgotDone": "אם קיים חשבון — נשלח קישור לאיפוס.",
     "back": "חזרה לכניסה"
   },
+  "users": {
+    "title": "עובדים",
+    "subtitle": "ניהול צוות: הזמנה, חסימה ושחרור",
+    "inviteTitle": "הזמנת עובד",
+    "email": "אימייל",
+    "role": "תפקיד",
+    "firstName": "שם פרטי",
+    "lastName": "שם משפחה",
+    "invite": "שליחת הזמנה",
+    "inviteDone": "ההזמנה נשלחה:",
+    "listTitle": "צוות",
+    "colName": "שם",
+    "colEmail": "אימייל",
+    "colRole": "תפקיד",
+    "colStatus": "סטטוס",
+    "colActions": "פעולות",
+    "block": "חסימה",
+    "unblock": "שחרור",
+    "empty": "אין עובדים",
+    "roles": { "SUPPORT": "תמיכה", "WAREHOUSE": "מחסן", "MANAGER": "מנהל", "ADMIN": "מנהל מערכת" },
+    "statuses": { "ACTIVE": "פעיל", "PENDING": "ממתין", "BLOCKED": "חסום" }
+  },
   "header": {
     "logout": "יציאה",
     "openMenu": "פתיחת תפריט",

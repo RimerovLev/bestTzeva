@@ -30,6 +30,12 @@ public class AdminUserController {
         return adminUserService.assignees();
     }
 
+    /** Список сотрудников для управления (ADMIN). */
+    @GetMapping
+    public List<com.tzevabest.iam.dto.EmployeeView> list() {
+        return adminUserService.listEmployees();
+    }
+
     @PostMapping("/{id}/role")
     public void changeRole(@PathVariable long id, @Valid @RequestBody ChangeRoleRequest request) {
         adminUserService.changeUserRole(id, request.role());

@@ -11,6 +11,7 @@ import { ServiceRequestsPage } from "@/features/service-requests/ServiceRequests
 import { AuditPage } from "@/features/audit/AuditPage";
 import { PrivacyPage } from "@/features/privacy/PrivacyPage";
 import { BlockListPage } from "@/features/spam/BlockListPage";
+import { UsersPage } from "@/features/users/UsersPage";
 import { SECTIONS, type SectionKey } from "@/lib/auth/roles";
 
 /** Реализованные разделы: путь → компонент. Остальные пока показывают заглушку SectionPage. */
@@ -24,6 +25,7 @@ const IMPLEMENTED: Partial<Record<SectionKey, () => React.ReactNode>> = {
   spam: BlockListPage,
   audit: AuditPage,
   privacy: PrivacyPage,
+  users: UsersPage,
 };
 
 const rootRoute = createRootRoute({

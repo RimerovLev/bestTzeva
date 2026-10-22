@@ -70,6 +70,30 @@ class AdminUserManagementTest extends IntegrationTest {
     }
 
     @Test
+    void lists_staff_for_admin_only() throws Exception {
+        String email = "list-" + System.nanoTime() + "@x.test";
+        post("/api/v1/admin/users",
+                "{\"email\":\"" + email + "\",\"first_name\":\"E\",\"last_name\":\"M\",\"role\":\"support\"}", admin());
+
+        ResponseEntity<String> list = rest.exchange("/api/v1/admin/users", HttpMethod.GET,
+                new HttpEntity<>(bearer(admin())), String.class);
+        assertThat(list.getStatusCode().value()).isEqualTo(200);
+        var arr = json.readTree(list.getBody());
+        boolean found = false;
+        for (var row : arr) {
+            if (email.equals(row.path("email").asText())) {
+                found = true;
+                assertThat(row.path("status").asText()).isEqualToIgnoringCase("PENDING");
+            }
+        }
+        assertThat(found).isTrue();
+
+        // не-ADMIN — 403
+        assertThat(rest.exchange("/api/v1/admin/users", HttpMethod.GET,
+                new HttpEntity<>(bearer(role("MANAGER"))), String.class).getStatusCode().value()).isEqualTo(403);
+    }
+
+    @Test
     void non_admin_cannot_create_employee() {
         String body = "{\"email\":\"x-" + System.nanoTime()
                 + "@x.test\",\"first_name\":\"E\",\"last_name\":\"M\",\"role\":\"support\"}";
@@ -143,6 +167,12 @@ class AdminUserManagementTest extends IntegrationTest {
             h.setContentType(MediaType.APPLICATION_JSON);
         }
         return rest.exchange(path, HttpMethod.POST, new HttpEntity<>(body, h), String.class);
+    }
+
+    private HttpHeaders bearer(String token) {
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(token);
+        return h;
     }
 
     private String role(String r) {
