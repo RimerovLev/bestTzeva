@@ -83,7 +83,8 @@ management:
         enabled: true
   info:
     env:
-      enabled: true
+      # /actuator/info публичен — не раскрываем даже info.*-свойства наружу (аудит п.19).
+      enabled: false
 
 springdoc:
   api-docs:

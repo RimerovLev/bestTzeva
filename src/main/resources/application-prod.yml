@@ -11,6 +11,11 @@ spring:
       minimum-idle: ${DB_POOL_MIN_IDLE:5}
   jpa:
     show-sql: false
+  flyway:
+    # В prod миграции гоняет отдельный CI-шаг (flyway migrate), а не приложение при старте —
+    # иначе на нескольких инстансах возможна гонка миграций (аудит п.13). Включить при необходимости
+    # переменной SPRING_FLYWAY_ENABLED=true.
+    enabled: ${SPRING_FLYWAY_ENABLED:false}
   data:
     redis:
       host: ${REDIS_HOST}

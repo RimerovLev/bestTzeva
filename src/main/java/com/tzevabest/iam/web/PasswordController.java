@@ -39,6 +39,8 @@ public class PasswordController {
 
     @PostMapping("/change")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    // Текущий пароль проверяется подбором — ограничиваем частоту по пользователю (аудит п.16).
+    @RateLimit(key = "user", limit = 5, windowSeconds = 900)
     public void change(@AuthenticationPrincipal AuthPrincipal principal,
                        @Valid @RequestBody ChangePasswordRequest request) {
         passwordService.change(principal.userId(), request.currentPassword(), request.newPassword());
