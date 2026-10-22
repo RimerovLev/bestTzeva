@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tzevabest.notification.service.HmacSigner;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
@@ -27,13 +25,10 @@ public class MailgunWebhookVerifier implements WebhookVerifier {
 
     private final String secret;
     private final ObjectMapper json;
-    private final StringRedisTemplate redis;
 
-    public MailgunWebhookVerifier(@Value("${app.notification.webhook-secret}") String secret,
-                                  ObjectMapper json, StringRedisTemplate redis) {
+    public MailgunWebhookVerifier(@Value("${app.notification.webhook-secret}") String secret, ObjectMapper json) {
         this.secret = secret;
         this.json = json;
-        this.redis = redis;
     }
 
     @Override
@@ -51,7 +46,7 @@ public class MailgunWebhookVerifier implements WebhookVerifier {
             if (timestamp == null || token == null || signature == null) {
                 return false;
             }
-            // 1) Узкое временное окно: старую подсмотренную тройку нельзя переигрывать спустя время (R-?? / аудит п.10).
+            // Узкое временное окно: старую подсмотренную тройку нельзя переигрывать спустя время (аудит п.10).
             long ts;
             try {
                 ts = Long.parseLong(timestamp);
@@ -61,14 +56,9 @@ public class MailgunWebhookVerifier implements WebhookVerifier {
             if (Math.abs(Instant.now().getEpochSecond() - ts) > TOLERANCE_SECONDS) {
                 return false;
             }
-            // 2) Подпись.
-            if (!HmacSigner.matches(HmacSigner.hexHmac(secret, timestamp + token), signature)) {
-                return false;
-            }
-            // 3) token одноразовый: даже валидную подпись нельзя использовать дважды (как рекомендует Mailgun).
-            Boolean fresh = redis.opsForValue().setIfAbsent(
-                    "notif:webhook:mailgun:tok:" + token, "1", Duration.ofSeconds(TOLERANCE_SECONDS * 2));
-            return Boolean.TRUE.equals(fresh);
+            // Одноразовость token — в слое дедупликации (NotificationWebhookService), а НЕ здесь: иначе
+            // честный повтор от Mailgun получил бы 401 и потерялся. Повтор там трактуется как дубль (200).
+            return HmacSigner.matches(HmacSigner.hexHmac(secret, timestamp + token), signature);
         } catch (Exception e) {
             log.debug("Mailgun webhook body unparseable", e);
             return false;

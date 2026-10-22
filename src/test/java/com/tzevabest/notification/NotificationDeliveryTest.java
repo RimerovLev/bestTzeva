@@ -122,10 +122,12 @@ class NotificationDeliveryTest extends IntegrationTest {
         String first = "{\"signature\":{\"timestamp\":\"" + ts + "\",\"token\":\"" + tok + "\",\"signature\":\""
                 + sig + "\"},\"event_id\":\"r-1\",\"message_id\":\"pm-r1\",\"status\":\"failed\"}";
         assertThat(postWebhook("mailgun", first, null).getStatusCode()).isEqualTo(HttpStatus.OK);
-        // та же подпись/token, другое тело (message_id) — token уже израсходован → 401
+        // та же подпись/token, другое тело (message_id) — token уже израсходован → дубль, молча
+        // игнорируется (200), поддельное тело НЕ применяется (pm-r2 остаётся SENT). Честный повтор
+        // от Mailgun не получает 401 (аудит п.10).
         String replay = "{\"signature\":{\"timestamp\":\"" + ts + "\",\"token\":\"" + tok + "\",\"signature\":\""
                 + sig + "\"},\"event_id\":\"r-2\",\"message_id\":\"pm-r2\",\"status\":\"failed\"}";
-        assertThat(postWebhook("mailgun", replay, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(postWebhook("mailgun", replay, null).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(statusOf("pm-r2")).isEqualTo("SENT");
     }
 

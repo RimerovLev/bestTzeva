@@ -57,31 +57,38 @@ public class NotificationWebhookService {
             throw new BusinessException("notification.webhook.invalid_signature", HttpStatus.UNAUTHORIZED);
         }
         JsonNode payload = parse(rawBody);
-        if (isReplay(provider, payload, rawBody)) {
-            return; // повтор — молча игнорируем
+        String dedupKey = replayKey(provider, payload, rawBody);
+        if (Boolean.TRUE.equals(redis.hasKey(dedupKey))) {
+            log.debug("Duplicate delivery webhook from {}", provider);
+            return; // повтор уже применённого события — молча игнорируем (200)
         }
         apply(text(payload, "message_id"), text(payload, "status"), text(payload, "error"));
+        // Помечаем обработанным ТОЛЬКО после успешного apply (аудит п.10): сбой БД не «проглотит»
+        // событие — честный повтор от провайдера доедет и применится. apply идемпотентен (по
+        // provider_message_id), поэтому гонка двух одинаковых доставок безопасна.
+        redis.opsForValue().set(dedupKey, "1", REPLAY_TTL);
     }
 
-    /** true, если это повтор уже применённого события (или недопустимый по защите от повторов формат). */
-    private boolean isReplay(String provider, JsonNode payload, String rawBody) {
+    /**
+     * Ключ дедупликации события. Mailgun — по одноразовому {@code token} (так его подсмотренная тройка
+     * не переигрывается с поддельным телом); иначе — по {@code event_id}; иначе, при наличии метки
+     * времени, — по хешу тела. Без идентификатора и метки времени тело можно крутить вечно — отклоняем.
+     */
+    private String replayKey(String provider, JsonNode payload, String rawBody) {
+        if ("mailgun".equalsIgnoreCase(provider)) {
+            String token = payload.path("signature").path("token").asText(null);
+            if (token != null) {
+                return "notif:webhook:mg:" + provider + ":" + token;
+            }
+        }
         String eventId = text(payload, "event_id");
-        String key;
         if (eventId != null) {
-            key = "notif:webhook:evt:" + provider + ":" + eventId;
-        } else if (timestamp(payload) != null) {
-            // Нет event_id, но есть метка времени: дедуп по хешу тела в пределах окна REPLAY_TTL.
-            key = "notif:webhook:body:" + provider + ":" + sha256Hex(rawBody);
-        } else {
-            // Ни идентификатора события, ни метки времени — подписанное тело можно крутить вечно.
-            throw new BusinessException("notification.webhook.replay_unprotected", HttpStatus.BAD_REQUEST);
+            return "notif:webhook:evt:" + provider + ":" + eventId;
         }
-        Boolean fresh = redis.opsForValue().setIfAbsent(key, "1", REPLAY_TTL);
-        if (!Boolean.TRUE.equals(fresh)) {
-            log.debug("Duplicate delivery webhook from {} ({})", provider, eventId != null ? eventId : "body-hash");
-            return true;
+        if (timestamp(payload) != null) {
+            return "notif:webhook:body:" + provider + ":" + sha256Hex(rawBody);
         }
-        return false;
+        throw new BusinessException("notification.webhook.replay_unprotected", HttpStatus.BAD_REQUEST);
     }
 
     private void apply(String messageId, String status, String error) {
