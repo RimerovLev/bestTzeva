@@ -12,7 +12,12 @@
 | provider | Схема подписи | Где подпись | Документация |
 |---|---|---|---|
 | `internal` | `hex(HMAC-SHA256(webhook-secret, rawBody))` | заголовок `X-Signature` | наша схема — для собственных интеграций и тестов |
-| `mailgun` | `hex(HMAC-SHA256(webhook-secret, timestamp + token))` | поля `signature.{timestamp,token,signature}` в теле | [Mailgun: Securing webhooks](https://documentation.mailgun.com/docs/mailgun/user-manual/events/#securing-webhooks) |
+| `mailgun` | `hex(HMAC-SHA256(webhook-secret, timestamp + token))` + окно 5 мин + одноразовый `token` | поля `signature.{timestamp,token,signature}` в теле | [Mailgun: Securing webhooks](https://documentation.mailgun.com/docs/mailgun/user-manual/events/#securing-webhooks) |
+
+Подпись Mailgun покрывает только `timestamp + token`, а не тело события, поэтому подсмотренная тройка
+иначе переигрывалась бы с любым поддельным телом (аудит п.10). Защита: отвергаем `timestamp` старше
+5 минут и держим `token` одноразовым в Redis (`SET NX`, TTL 10 мин) — валидную подпись нельзя
+использовать дважды.
 
 Добавление провайдера = новая реализация `WebhookVerifier` (Twilio: HMAC-SHA1 от URL и отсортированных
 параметров в base64, заголовок `X-Twilio-Signature`; SendGrid: ECDSA с публичным ключом). **Схему

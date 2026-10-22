@@ -84,8 +84,8 @@ class NotificationDeliveryTest extends IntegrationTest {
     void mailgun_webhook_verifies_by_its_documented_scheme() {
         // R-60: Mailgun подписывает hex(HMAC-SHA256(secret, timestamp + token)); подпись — в теле.
         seedSent("pm-mg", "mg@x.test");
-        String ts = "1735000001";
-        String token = "abc-token-123";
+        String ts = Long.toString(java.time.Instant.now().getEpochSecond()); // свежий timestamp (окно 5 мин)
+        String token = "tok-" + System.nanoTime();
         String signature = hmac(ts + token); // именно timestamp+token, как в документации Mailgun
         String body = "{\"signature\":{\"timestamp\":\"" + ts + "\",\"token\":\"" + token + "\",\"signature\":\""
                 + signature + "\"},\"event_id\":\"mg-1\",\"message_id\":\"pm-mg\",\"status\":\"failed\",\"error\":\"hard\"}";
@@ -98,6 +98,35 @@ class NotificationDeliveryTest extends IntegrationTest {
         String forged2 = forged.replace("pm-mg", "pm-mg2").replace("mg-1", "mg-2");
         assertThat(postWebhook("mailgun", forged2, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(statusOf("pm-mg2")).isEqualTo("SENT");
+    }
+
+    @Test
+    void mailgun_stale_timestamp_and_token_replay_are_rejected() {
+        // Аудит п.10: подпись покрывает только timestamp+token. Старый timestamp и повтор token
+        // (даже с валидной подписью, но ДРУГИМ телом) должны отклоняться.
+        seedSent("pm-old", "old@x.test");
+        String oldTs = "1735000001"; // 2024 — вне окна
+        String oldTok = "tok-old-" + System.nanoTime();
+        String oldBody = "{\"signature\":{\"timestamp\":\"" + oldTs + "\",\"token\":\"" + oldTok
+                + "\",\"signature\":\"" + hmac(oldTs + oldTok)
+                + "\"},\"event_id\":\"old-1\",\"message_id\":\"pm-old\",\"status\":\"failed\"}";
+        assertThat(postWebhook("mailgun", oldBody, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(statusOf("pm-old")).isEqualTo("SENT"); // не тронут
+
+        // повтор token с поддельным телом
+        seedSent("pm-r1", "r1@x.test");
+        seedSent("pm-r2", "r2@x.test");
+        String ts = Long.toString(java.time.Instant.now().getEpochSecond());
+        String tok = "tok-replay-" + System.nanoTime();
+        String sig = hmac(ts + tok);
+        String first = "{\"signature\":{\"timestamp\":\"" + ts + "\",\"token\":\"" + tok + "\",\"signature\":\""
+                + sig + "\"},\"event_id\":\"r-1\",\"message_id\":\"pm-r1\",\"status\":\"failed\"}";
+        assertThat(postWebhook("mailgun", first, null).getStatusCode()).isEqualTo(HttpStatus.OK);
+        // та же подпись/token, другое тело (message_id) — token уже израсходован → 401
+        String replay = "{\"signature\":{\"timestamp\":\"" + ts + "\",\"token\":\"" + tok + "\",\"signature\":\""
+                + sig + "\"},\"event_id\":\"r-2\",\"message_id\":\"pm-r2\",\"status\":\"failed\"}";
+        assertThat(postWebhook("mailgun", replay, null).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(statusOf("pm-r2")).isEqualTo("SENT");
     }
 
     // ── Отписка ───────────────────────────────────────────────────────────────────
