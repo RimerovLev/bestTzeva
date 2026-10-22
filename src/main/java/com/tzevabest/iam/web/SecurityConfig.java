@@ -83,8 +83,11 @@ public class SecurityConfig {
         return source;
     }
 
+    // Открытая dev-цепочка (anyRequest permitAll) — ТОЛЬКО для явных local/test (аудит п.1).
+    // Любой другой профиль (prod, незаданный → default, опечатка) получает prodSecurityFilterChain
+    // с anyRequest().authenticated() — fail-closed.
     @Bean
-    @Profile("!prod")
+    @Profile("local | test")
     SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
         common(http)
                 .authorizeHttpRequests(auth -> auth
@@ -124,8 +127,9 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // Закрытая цепочка — для prod И любого неизвестного/незаданного профиля (всё, кроме local/test).
     @Bean
-    @Profile("prod")
+    @Profile("!local & !test")
     SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
         common(http)
                 .authorizeHttpRequests(auth -> auth

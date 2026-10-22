@@ -17,6 +17,10 @@ WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 USER app
 EXPOSE 8080
+# Образ по умолчанию стартует в prod-профиле (fail-closed, аудит п.1): забытый
+# SPRING_PROFILES_ACTIVE не поднимет контейнер в local с открытым API и dev-секретами.
+# Для отладки можно переопределить: docker run -e SPRING_PROFILES_ACTIVE=local ...
+ENV SPRING_PROFILES_ACTIVE=prod
 # JVM под контейнер: heap как доля памяти контейнера.
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport -XX:+ExitOnOutOfMemoryError"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

@@ -10,8 +10,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Защита «на отказ»: приложение в профиле {@code prod} не стартует, если какой-либо секрет оставлен
- * небезопасным дефолтом из репозитория.
+ * Защита «на отказ»: при любом профиле, кроме {@code local}/{@code test} (prod, незаданный → default,
+ * опечатка в имени профиля), приложение не стартует, если какой-либо секрет оставлен небезопасным
+ * дефолтом из репозитория. Так забытый {@code SPRING_PROFILES_ACTIVE} не поднимет прод с dev-секретом.
  * <p>
  * Секреты без дефолта ({@code JWT_SECRET} и пр.) и так уронили бы старт неразрешённым плейсхолдером.
  * Но {@code SPAM_SIGNING_SECRET} и {@code PRIVACY_PSEUDONYM_SECRET} имеют dev-дефолты в
@@ -20,7 +21,7 @@ import java.util.Map;
  * такой случай явной ошибкой на старте, а заодно отвергает слишком короткие секреты.
  */
 @Component
-@Profile("prod")
+@Profile("!local & !test")
 @RequiredArgsConstructor
 public class ProdSecretsGuard {
 
