@@ -14,6 +14,7 @@ import com.tzevabest.notification.service.NotificationSender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -42,9 +43,13 @@ public class AdminUserService {
     private final PasswordEncoder passwordEncoder;
     private final NotificationSender notifications;
     private final MessageSource messages;
+    private final JdbcTemplate jdbc;
 
     @Value("${app.web.admin-url}")
     private String adminUrl;
+
+    /** Константный ключ транзакционного advisory-лока, сериализующего мутации состава ADMIN (п.12). */
+    private static final long ADMIN_MUTATION_LOCK = 713_041L;
 
     /** Токен приглашения потребляется тем же сбросом пароля (см. PasswordService), поэтому namespace общий. */
     private static final String INVITE_NAMESPACE = "pwd-reset";
@@ -82,9 +87,11 @@ public class AdminUserService {
             return; // нечего менять, лишних отзывов сессий не делаем
         }
         // Нельзя снять последнего активного ADMIN — иначе управлять ролями будет некому (аудит п.12).
-        if (oldRole == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE
-                && users.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
-            throw new ConflictException("user.last_admin");
+        if (oldRole == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE) {
+            lockAdminMutations();
+            if (users.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+                throw new ConflictException("user.last_admin");
+            }
         }
         user.setRole(newRole);
 
@@ -137,9 +144,11 @@ public class AdminUserService {
         if (user.getStatus() == UserStatus.BLOCKED) {
             return;
         }
-        if (user.getRole() == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE
-                && users.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
-            throw new ConflictException("user.last_admin");
+        if (user.getRole() == UserRole.ADMIN && user.getStatus() == UserStatus.ACTIVE) {
+            lockAdminMutations();
+            if (users.countByRoleAndStatus(UserRole.ADMIN, UserStatus.ACTIVE) <= 1) {
+                throw new ConflictException("user.last_admin");
+            }
         }
         user.setStatus(UserStatus.BLOCKED);
         auditService.record(currentUser.id(), currentUser.ip(), "user.blocked", "user", userId, Map.of());
@@ -157,6 +166,15 @@ public class AdminUserService {
         }
         user.setStatus(UserStatus.ACTIVE);
         auditService.record(currentUser.id(), currentUser.ip(), "user.unblocked", "user", userId, Map.of());
+    }
+
+    /**
+     * Транзакционный advisory-лок: сериализует одновременные снятия/блокировки ADMIN, чтобы два
+     * параллельных вызова не увидели оба {@code count = 2} и не оставили 0 администраторов (п.12).
+     * Освобождается при коммите/откате транзакции.
+     */
+    private void lockAdminMutations() {
+        jdbc.query("select pg_advisory_xact_lock(?)", rs -> null, ADMIN_MUTATION_LOCK);
     }
 
     private void sendInvite(User user) {

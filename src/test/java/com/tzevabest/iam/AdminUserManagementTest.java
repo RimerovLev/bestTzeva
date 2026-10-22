@@ -92,6 +92,30 @@ class AdminUserManagementTest extends IntegrationTest {
     }
 
     @Test
+    void last_admin_check_is_race_safe() throws Exception {
+        // Аудит п.12 (перепроверка): два одновременных понижения двух последних ADMIN не должны
+        // оставить 0 администраторов. Advisory-лок сериализует проверку → ровно один успех, один 409.
+        TestDataFactory.TestUser a1 = factory.createUser(s -> s.role = "ADMIN");
+        TestDataFactory.TestUser a2 = factory.createUser(s -> s.role = "ADMIN");
+
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.List<java.util.concurrent.Callable<Integer>> tasks = java.util.List.of(
+                () -> post("/api/v1/admin/users/" + a1.id() + "/role", "{\"role\":\"manager\"}", admin())
+                        .getStatusCode().value(),
+                () -> post("/api/v1/admin/users/" + a2.id() + "/role", "{\"role\":\"manager\"}", admin())
+                        .getStatusCode().value());
+        var results = pool.invokeAll(tasks);
+        int s1 = results.get(0).get();
+        int s2 = results.get(1).get();
+        pool.shutdown();
+
+        assertThat(java.util.List.of(s1, s2)).containsExactlyInAnyOrder(200, 409);
+        Integer activeAdmins = jdbcTemplate.queryForObject(
+                "select count(*) from users where role = 'ADMIN' and status = 'ACTIVE'", Integer.class);
+        assertThat(activeAdmins).isEqualTo(1); // ровно один остался — не 0
+    }
+
+    @Test
     void cannot_block_last_active_admin() {
         TestDataFactory.TestUser a = factory.createUser(s -> s.role = "ADMIN");
         assertThat(post("/api/v1/admin/users/" + a.id() + "/block", null, admin()).getStatusCode().value())
