@@ -22,7 +22,25 @@
     "loginPlaceholder": "name@example.com или 05X-XXXXXXX",
     "passwordLabel": "Пароль",
     "submit": "Войти",
-    "submitting": "Вход…"
+    "submitting": "Вход…",
+    "forgotLink": "Забыли пароль?"
+  },
+  "password": {
+    "resetTitle": "Сброс пароля",
+    "setTitle": "Установка пароля",
+    "newPassword": "Новый пароль",
+    "confirm": "Повторите пароль",
+    "submit": "Сохранить",
+    "submitting": "Сохранение…",
+    "mismatch": "Пароли не совпадают",
+    "tokenMissing": "Ссылка недействительна или устарела",
+    "done": "Пароль сохранён. Можно войти.",
+    "toLogin": "На экран входа",
+    "forgotTitle": "Восстановление пароля",
+    "forgotLabel": "Email или телефон",
+    "forgotSubmit": "Отправить ссылку",
+    "forgotDone": "Если аккаунт существует — мы отправили ссылку для сброса.",
+    "back": "Назад ко входу"
   },
   "header": {
     "logout": "Выйти",

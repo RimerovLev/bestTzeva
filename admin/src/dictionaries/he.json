@@ -22,7 +22,25 @@
     "loginPlaceholder": "name@example.com או 05X-XXXXXXX",
     "passwordLabel": "סיסמה",
     "submit": "כניסה",
-    "submitting": "מתחבר…"
+    "submitting": "מתחבר…",
+    "forgotLink": "שכחת סיסמה?"
+  },
+  "password": {
+    "resetTitle": "איפוס סיסמה",
+    "setTitle": "הגדרת סיסמה",
+    "newPassword": "סיסמה חדשה",
+    "confirm": "אישור סיסמה",
+    "submit": "שמירה",
+    "submitting": "שומר…",
+    "mismatch": "הסיסמאות אינן תואמות",
+    "tokenMissing": "הקישור אינו תקין או שפג תוקפו",
+    "done": "הסיסמה נשמרה. אפשר להיכנס.",
+    "toLogin": "למסך הכניסה",
+    "forgotTitle": "שחזור סיסמה",
+    "forgotLabel": "אימייל או טלפון",
+    "forgotSubmit": "שליחת קישור",
+    "forgotDone": "אם קיים חשבון — נשלח קישור לאיפוס.",
+    "back": "חזרה לכניסה"
   },
   "header": {
     "logout": "יציאה",

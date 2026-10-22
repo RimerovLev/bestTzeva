@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { fieldErrors, resolveErrorMessage, type ResolvedError } from "@/lib/api/messages";
+import { ForgotPasswordScreen } from "@/routes/ForgotPasswordScreen";
 
 /**
  * Экран входа. Вход по email или телефону. Ошибки — по кодам RFC 9457: общий текст из словаря,
@@ -18,6 +19,11 @@ export function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<ResolvedError | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [forgot, setForgot] = useState(false);
+
+  if (forgot) {
+    return <ForgotPasswordScreen onBack={() => setForgot(false)} />;
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -82,6 +88,14 @@ export function LoginScreen() {
         <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
           {submitting ? dict.login.submitting : dict.login.submit}
         </Button>
+
+        <button
+          type="button"
+          onClick={() => setForgot(true)}
+          className="block w-full text-center text-sm text-brass hover:underline"
+        >
+          {dict.login.forgotLink}
+        </button>
       </form>
     </div>
   );

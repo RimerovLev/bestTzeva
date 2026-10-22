@@ -6,6 +6,7 @@ import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import { AppSkeleton } from "@/components/ui/Skeleton";
 import { LoginScreen } from "@/routes/LoginScreen";
+import { SetPasswordScreen } from "@/routes/SetPasswordScreen";
 import { router } from "@/router";
 import { ApiError } from "@/lib/api/problem";
 import "@/styles/globals.css";
@@ -31,6 +32,10 @@ const queryClient = new QueryClient({
  */
 function AppGate() {
   const { status } = useAuth();
+  // Публичные экраны по токену из письма доступны без сессии и до разводки по аутентификации:
+  // роутер приложения монтируется только для вошедших, поэтому путь обрабатываем здесь (аудит п.2/3).
+  const path = window.location.pathname;
+  if (path === "/reset-password" || path === "/set-password") return <SetPasswordScreen />;
   if (status === "loading") return <AppSkeleton />;
   if (status === "anonymous") return <LoginScreen />;
   return <RouterProvider router={router} />;
