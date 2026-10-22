@@ -156,6 +156,8 @@ app:
   web:
     # Базовый URL для ссылок в письмах (подтверждение email, сброс пароля).
     base-url: ${APP_BASE_URL:http://localhost:8080}
+    # URL админки — для ссылок, которые ведут на экран сотрудника (приглашение/установка пароля).
+    admin-url: ${APP_ADMIN_URL:http://localhost:5173}
   notification:
     # Период разбора очереди уведомлений (transactional outbox, T-12.2).
     dispatch-interval: ${NOTIFICATION_DISPATCH_INTERVAL:PT30S}

@@ -5,6 +5,7 @@ import com.tzevabest.common.web.error.BadRequestException;
 import com.tzevabest.common.web.error.NotFoundException;
 import com.tzevabest.common.web.error.ValidationException;
 import com.tzevabest.iam.domain.User;
+import com.tzevabest.iam.domain.UserStatus;
 import com.tzevabest.iam.repository.UserRepository;
 import com.tzevabest.notification.service.NotificationSender;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,15 @@ public class PasswordService {
                 .orElseThrow(() -> new BadRequestException("common.auth.reset_invalid"));
         User user = users.findById(userId)
                 .orElseThrow(() -> new BadRequestException("common.auth.reset_invalid"));
+        // Заблокированный не восстанавливает доступ через сброс пароля (аудит п.15).
+        if (user.getStatus() == UserStatus.BLOCKED) {
+            throw new BadRequestException("common.auth.reset_invalid");
+        }
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        // Приглашённый сотрудник (PENDING) активируется, задав пароль по ссылке-приглашению (аудит п.3).
+        if (user.getStatus() == UserStatus.PENDING) {
+            user.setStatus(UserStatus.ACTIVE);
+        }
         refreshStore.revokeAllForUser(userId); // все сессии инвалидируются
     }
 

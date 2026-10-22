@@ -52,6 +52,10 @@ app:
   privacy:
     # Обязателен в prod: с дефолтом псевдонимы анонимизации предсказуемы (соль публична).
     pseudonym-secret: ${PRIVACY_PSEUDONYM_SECRET}
+  web:
+    # Обязательны в prod: иначе ссылки из писем (сброс пароля, приглашение) ведут на localhost.
+    base-url: ${APP_BASE_URL}
+    admin-url: ${APP_ADMIN_URL}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   security:
