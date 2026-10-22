@@ -46,6 +46,12 @@ app:
     # В prod оба секрета обязательны (без дефолтов), как JWT_SECRET (R-66).
     webhook-secret: ${NOTIFICATION_WEBHOOK_SECRET}
     unsubscribe-secret: ${NOTIFICATION_UNSUBSCRIBE_SECRET}
+  spam:
+    # Обязателен в prod: с дефолтом токены антиспам-форм подделываемы (секрет публичен в репозитории).
+    signing-secret: ${SPAM_SIGNING_SECRET}
+  privacy:
+    # Обязателен в prod: с дефолтом псевдонимы анонимизации предсказуемы (соль публична).
+    pseudonym-secret: ${PRIVACY_PSEUDONYM_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
   security:

@@ -19,6 +19,25 @@ const nextConfig: NextConfig = {
   // отдаёт их в head только известным ботам, а превью мессенджеров и аудиторы SEO не из его списка
   // видели страницу без описания. Цена — head ждёт данные товара, они и так нужны для страницы.
   htmlLimitedBots: /.*/,
+  // Заголовки безопасности для всех ответов витрины. CSP вынесен отдельно (нужно сверять источники
+  // Plausible и изображений под конкретный деплой) — задаётся на уровне прокси/CDN.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -23,13 +23,16 @@ Flyway применяется **отдельным шагом ДО старта 
 **Правило совместимости:** миграция обязана быть обратно совместима с ПРЕДЫДУЩЕЙ версией кода
 (rolling deploy). Не удалять/переименовывать колонку в том же релизе, что перестаёт её писать —
 двухфазно: (1) добавить новое + писать в оба, (2) следующий релиз перестаёт читать старое, (3) ещё
-позже — удалить. Все существующие миграции только добавляют (V1…V46).
+позже — удалить. Все существующие миграции только добавляют (V1…V49).
 
 ## Секреты
 
-Только из окружения CI и AWS Secrets Manager / SSM Parameter Store — не в репозитории. Проверить, что
-`JWT_SECRET`, `NOTIFICATION_SIGNING_SECRET`, `SPAM_SIGNING_SECRET`, реквизиты SMTP/SMS/S3 не имеют
-прод-дефолтов (в `application.yml` дефолты помечены `dev-only`/пустые — в prod обязательны env).
+Только из окружения CI и AWS Secrets Manager / SSM Parameter Store — не в репозитории. В prod
+обязательны (без дефолтов): `JWT_SECRET`, `NOTIFICATION_WEBHOOK_SECRET`,
+`NOTIFICATION_UNSUBSCRIBE_SECRET`, `SPAM_SIGNING_SECRET`, `PRIVACY_PSEUDONYM_SECRET`, а также реквизиты
+SMTP/SMS/S3 и `CORS_ALLOWED_ORIGINS`/`TRUSTED_PROXIES`. В `application.yml` dev-дефолты помечены
+`dev-only`. Подстраховка: `ProdSecretsGuard` (профиль `prod`) не даёт приложению стартовать, если
+какой-либо секрет оставлен dev-дефолтом, пустым или слишком коротким.
 
 ## Откат
 
