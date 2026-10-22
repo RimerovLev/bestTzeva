@@ -68,11 +68,21 @@ public class RefreshTokenStore {
             redis.call('ZADD', index, now, tokenId)
             local count = redis.call('ZCARD', index)
             if count > maxSessions then
-                local old = redis.call('ZRANGE', index, 0, count - maxSessions - 1)
-                for i = 1, #old do
-                    redis.call('DEL', prefix .. old[i])
-                    redis.call('ZREM', index, old[i])
-                    redis.call('SET', retiredPrefix .. old[i], 'evicted|0|', 'PX', ttl)
+                -- Вытесняем старейшие, но НИКОГДА — только что добавленный токен. При равных score
+                -- (несколько логинов в одну мс) ZRANGE рвёт ничью лексикографически по tokenId и мог бы
+                -- выбрать новый токен: его hash ниже всё равно пересоздаётся HSET'ом, и осталась бы
+                -- валидная сессия вне индекса — переживающая REVOKE_ALL (сброс пароля / logout-all). R-?? / аудит п.6.
+                local toEvict = count - maxSessions
+                local candidates = redis.call('ZRANGE', index, 0, -1)
+                local evicted = 0
+                for i = 1, #candidates do
+                    if evicted >= toEvict then break end
+                    if candidates[i] ~= tokenId then
+                        redis.call('DEL', prefix .. candidates[i])
+                        redis.call('ZREM', index, candidates[i])
+                        redis.call('SET', retiredPrefix .. candidates[i], 'evicted|0|', 'PX', ttl)
+                        evicted = evicted + 1
+                    end
                 end
             end
             local key = prefix .. tokenId

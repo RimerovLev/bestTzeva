@@ -95,6 +95,28 @@ class RefreshTokenStoreTest extends IntegrationTest {
         assertThat(store.validateAndRotate(USER, "oldest", "r-old", TTL.toMillis())).isFalse();
     }
 
+    @Test
+    void new_session_is_never_evicted_and_cannot_survive_revoke_all() {
+        // Детерминированно воспроизводим гонку из аудита (п.6): предсеансим 5 сессий с БУДУЩИМ score,
+        // тогда новый токен (score = now) оказывается «старейшим» кандидатом на вытеснение. Баг: его
+        // удаляли из индекса, но hash пересоздавался → валидная сессия вне индекса, переживающая
+        // revokeAllForUser (сброс пароля / logout-all).
+        long future = System.currentTimeMillis() + 1_000_000;
+        for (int i = 1; i <= 5; i++) {
+            redis.opsForZSet().add(indexKey(), "pre" + i, future);
+        }
+        store.issue(USER, "fresh", "r-fresh", "agent", "1.1.1.1", TTL);
+
+        // новый токен остаётся в индексе (вытеснили кого-то из предсеансенных, но не его)
+        assertThat(redis.opsForZSet().score(indexKey(), "fresh")).isNotNull();
+        assertThat(redis.opsForZSet().zCard(indexKey())).isEqualTo(5L);
+
+        // и, как следствие, revokeAllForUser реально его убивает — осиротевшей сессии не остаётся
+        store.revokeAllForUser(USER);
+        assertThat(store.validateAndRotate(USER, "fresh", "r-fresh", TTL.toMillis())).isFalse();
+        assertThat(keys()).isEmpty();
+    }
+
     private Set<String> keys() {
         return redis.keys("auth:refresh:" + USER + ":*");
     }
