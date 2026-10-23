@@ -171,8 +171,22 @@ app:
     # Срок действия токена отписки (R-62): по истечении ссылка недействительна.
     unsubscribe-ttl: ${NOTIFICATION_UNSUBSCRIBE_TTL:P30D}
     whatsapp:
-      # WhatsApp Business API за флагом (T-12.3): по умолчанию выключен.
+      # WhatsApp Business Cloud API (Meta) за флагом (T-12.3): по умолчанию выключен — работает заглушка.
       enabled: ${NOTIFICATION_WHATSAPP_ENABLED:false}
+      # ID номера-отправителя и токен доступа из WhatsApp Business (нужны при enabled=true).
+      phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+      access-token: ${WHATSAPP_ACCESS_TOKEN:}
+      api-version: ${WHATSAPP_API_VERSION:v21.0}
+      # Код уведомления (NotificationTemplate.code) → имя ОДОБРЕННОГО WhatsApp-шаблона (в WhatsApp Manager).
+      # Параметры тела шаблона — это значения подстановок модели ({{1}}, {{2}}, …). Заполняется по мере
+      # заведения шаблонов и перевода конкретных уведомлений на канал WHATSAPP.
+      templates:
+        otp_code: ${WHATSAPP_TEMPLATE_OTP_CODE:otp_code}
+      # Локаль приложения → языковой код шаблона WhatsApp (переопределяемо под фактические шаблоны).
+      languages:
+        he: he
+        ru: ru
+        en: en_US
 
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}

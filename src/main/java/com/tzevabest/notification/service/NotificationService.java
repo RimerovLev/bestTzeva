@@ -46,8 +46,10 @@ public class NotificationService {
     private final EmailSender emailSender;
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
+    private final com.tzevabest.notification.service.whatsapp.WhatsappMessages whatsappMessages;
     private final UnsubscribeService unsubscribe;
     private final NotificationMetrics metrics;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
 
     /** Рендерит сообщение без отправки — точка для тестов и предпросмотра. */
     public RenderedMessage render(NotificationTemplate template, String localeParam, NotificationModel model) {
@@ -109,9 +111,11 @@ public class NotificationService {
         entry.setBodySnapshot(rendered.body());
         entry.setPriority(template.priority().name());
         entry.setAttemptCount(1);
+        java.util.List<String> params = paramStrings(model);
+        entry.setTemplateParams(params);
         long started = System.currentTimeMillis();
         try {
-            entry.setProviderMessageId(dispatch(template.channel(), recipient, rendered));
+            entry.setProviderMessageId(dispatch(template, recipient, rendered, resolveLocale(localeParam), params));
             entry.setStatus(NotificationStatus.SENT);
             entry.setSentAt(Instant.now());
             metrics.recordSent(template.channel().name(), System.currentTimeMillis() - started);
@@ -167,22 +171,45 @@ public class NotificationService {
         String idempotencyKey = referenceId == null ? null
                 : template.code() + ":" + recipient + ":" + referenceId;
         java.sql.Timestamp nextAttempt = sendAt == null ? null : java.sql.Timestamp.from(sendAt);
+        String paramsJson = paramsJson(paramStrings(model)); // значения подстановок — для WhatsApp-шаблона из очереди
         jdbc.update("""
                 insert into notifications_log (channel, template_code, recipient, locale, subject,
-                        body_snapshot, status, priority, attempt_count, next_attempt_at, idempotency_key)
-                values (?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, coalesce(?, now()), ?)
+                        body_snapshot, status, priority, attempt_count, next_attempt_at, idempotency_key,
+                        template_params)
+                values (?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, coalesce(?, now()), ?, ?::jsonb)
                 on conflict (idempotency_key) do nothing""",
                 template.channel().name(), template.code(), recipient, resolveLocale(localeParam),
-                rendered.subject(), rendered.body(), template.priority().name(), nextAttempt, idempotencyKey);
+                rendered.subject(), rendered.body(), template.priority().name(), nextAttempt, idempotencyKey,
+                paramsJson);
     }
 
-    private String dispatch(NotificationChannel channel, String recipient, RenderedMessage rendered) {
-        return switch (channel) {
+    private String dispatch(NotificationTemplate template, String recipient, RenderedMessage rendered,
+                            String locale, java.util.List<String> params) {
+        return switch (template.channel()) {
             case EMAIL -> emailSender.send(recipient, rendered.subject(), rendered.body());
             case SMS -> smsSender.send(recipient, rendered.body());
-            case WHATSAPP -> whatsappSender.send(recipient, rendered.body());
+            // WhatsApp — только approved-шаблон с параметрами (значения подстановок модели).
+            case WHATSAPP -> whatsappSender.send(recipient, whatsappMessages.resolve(template.code(), locale, params));
             case PUSH -> throw new UnsupportedOperationException("PUSH channel is not implemented");
         };
+    }
+
+    /** Значения подстановок модели как строки — параметры WhatsApp-шаблона и снимок в очереди. */
+    private static java.util.List<String> paramStrings(NotificationModel model) {
+        Object[] args = model.args();
+        java.util.List<String> out = new java.util.ArrayList<>(args.length);
+        for (Object a : args) {
+            out.add(a == null ? null : String.valueOf(a));
+        }
+        return out;
+    }
+
+    private String paramsJson(java.util.List<String> params) {
+        try {
+            return json.writeValueAsString(params);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize notification params", e);
+        }
     }
 
     /** Разбивает тело на абзацы по пустой строке; экранирование остаётся за th:text в шаблоне. */

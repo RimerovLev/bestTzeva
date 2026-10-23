@@ -111,7 +111,37 @@ email на иврите содержит `dir="rtl"`; `send` пишет стро
 ### Секреты и конфигурация
 
 Реквизиты провайдеров и `signing-secret` — только из окружения (в dev — небезопасные дефолты).
-`app.notification.whatsapp.enabled` включает WhatsApp.
+## WhatsApp (Meta Cloud API, шаблоны)
+
+Канал WhatsApp реализован поверх **WhatsApp Business Cloud API (Meta)** за флагом
+`app.notification.whatsapp.enabled` (по умолчанию выключен — работает заглушка `LoggingWhatsappSender`;
+при `true` — `MetaWhatsappSender`, ровно один бин активен).
+
+**Важно:** WhatsApp доставляет сообщения, инициированные бизнесом (OTP, статусы заявок вне 24-часового
+окна), **только по ОДОБРЕННЫМ шаблонам** — свободный текст не дойдёт. Поэтому:
+
+- каждый код уведомления (`NotificationTemplate.code()`) сопоставляется имени approved-шаблона в
+  `app.notification.whatsapp.templates.<code>` (шаблоны заводятся в WhatsApp Manager);
+- параметры тела шаблона (`{{1}}`, `{{2}}`, …) — это **значения подстановок модели**
+  (`NotificationModel.args()`). Они сохраняются в очереди (`notifications_log.template_params`, jsonb,
+  миграция V51), чтобы фоновый диспетчер мог отправить шаблон из outbox; `body_snapshot` остаётся
+  рендеренным текстом для журнала/EMAIL/SMS;
+- язык шаблона берётся из локали пользователя через `app.notification.whatsapp.languages`.
+
+**Env в prod (при `enabled=true`):** `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`
+(Bearer), опц. `WHATSAPP_API_VERSION`. Отправка: `POST {base}/{version}/{phone-number-id}/messages`,
+тип `template`. 4xx (неверный номер/шаблон) — не ретраится; 429/5xx/сеть — ретраится.
+
+**Как перевести уведомление на WhatsApp:** задать канал шаблона `WHATSAPP` в
+`NotificationTemplate`, завести approved-шаблон с нужными `{{n}}` под `model.args()` и прописать его имя
+в `app.notification.whatsapp.templates.<code>`. (Канал по умолчанию у OTP — SMS; переключение — продуктовое
+решение + наличие одобренного WA-шаблона.)
+
+Тесты: `WhatsappSenderUnitTest` (payload Graph API + резолвинг шаблона/языка, без сети),
+`NotificationWhatsappTest` (сохранение `template_params` в очереди и сквозная отправка WHATSAPP-строки
+как шаблона с параметрами).
+
+---
 
 Тесты: `SmsSegmenterTest` (сегменты иврит/латиница), `QuietHoursPolicyTest` (ночная отсрочка),
 `NotificationDeliveryTest` (вебхук: подпись/повтор/статус; отписка: отзыв согласия и подавление

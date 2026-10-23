@@ -259,6 +259,11 @@ class NotificationOutboxTest extends IntegrationTest {
         public String send(String to, String message) {
             return handle(to);
         }
+
+        @Override
+        public String send(String to, com.tzevabest.notification.service.whatsapp.WhatsappTemplateMessage message) {
+            return handle(to);
+        }
     }
 
     @TestConfiguration

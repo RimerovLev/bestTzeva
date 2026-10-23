@@ -59,4 +59,9 @@ public class NotificationLog extends BaseEntity {
 
     @Column(name = "priority", nullable = false, length = 16)
     private String priority = "NORMAL";
+
+    /** Параметры WhatsApp-шаблона (значения подстановок модели) — jsonb-массив строк. */
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "template_params")
+    private java.util.List<String> templateParams;
 }

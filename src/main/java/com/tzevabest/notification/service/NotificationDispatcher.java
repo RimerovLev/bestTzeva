@@ -53,11 +53,15 @@ public class NotificationDispatcher {
     private final EmailSender emailSender;
     private final SmsSender smsSender;
     private final WhatsappSender whatsappSender;
+    private final com.tzevabest.notification.service.whatsapp.WhatsappMessages whatsappMessages;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
     private final NotificationMetrics metrics;
     private final QuietHoursPolicy quietHours;
 
     public NotificationDispatcher(JdbcTemplate jdbc, DistributedLock lock, PlatformTransactionManager txManager,
                                   EmailSender emailSender, SmsSender smsSender, WhatsappSender whatsappSender,
+                                  com.tzevabest.notification.service.whatsapp.WhatsappMessages whatsappMessages,
+                                  com.fasterxml.jackson.databind.ObjectMapper json,
                                   NotificationMetrics metrics, QuietHoursPolicy quietHours) {
         this.jdbc = jdbc;
         this.lock = lock;
@@ -65,6 +69,8 @@ public class NotificationDispatcher {
         this.emailSender = emailSender;
         this.smsSender = smsSender;
         this.whatsappSender = whatsappSender;
+        this.whatsappMessages = whatsappMessages;
+        this.json = json;
         this.metrics = metrics;
         this.quietHours = quietHours;
     }
@@ -104,7 +110,8 @@ public class NotificationDispatcher {
                     where status = 'QUEUED' and next_attempt_at <= now()
                     order by next_attempt_at, id
                     limit ? for update skip locked)
-                returning id, channel, recipient, subject, body_snapshot, attempt_count, created_at, priority""",
+                returning id, channel, recipient, subject, body_snapshot, attempt_count, created_at, priority,
+                        template_code, locale, template_params""",
                 (rs, n) -> mapRow(rs), owner, BATCH));
     }
 
@@ -180,9 +187,23 @@ public class NotificationDispatcher {
         return switch (channel) {
             case EMAIL -> emailSender.send(row.recipient, row.subject, row.body);
             case SMS -> smsSender.send(row.recipient, row.body);
-            case WHATSAPP -> whatsappSender.send(row.recipient, row.body);
+            // WhatsApp — approved-шаблон: имя по template_code, параметры из сохранённого template_params.
+            case WHATSAPP -> whatsappSender.send(row.recipient,
+                    whatsappMessages.resolve(row.templateCode, row.locale, parseParams(row.templateParams)));
             case PUSH -> throw new NonRetryableNotificationException("PUSH channel is not implemented");
         };
+    }
+
+    private List<String> parseParams(String templateParamsJson) {
+        if (templateParamsJson == null || templateParamsJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            return json.readValue(templateParamsJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new NonRetryableNotificationException("Bad template_params JSON: " + e.getOriginalMessage());
+        }
     }
 
     private static Row mapRow(ResultSet rs) throws java.sql.SQLException {
@@ -195,6 +216,9 @@ public class NotificationDispatcher {
         r.attemptCount = rs.getInt("attempt_count");
         r.createdAt = rs.getTimestamp("created_at").toInstant();
         r.priority = rs.getString("priority");
+        r.templateCode = rs.getString("template_code");
+        r.locale = rs.getString("locale");
+        r.templateParams = rs.getString("template_params");
         return r;
     }
 
@@ -207,5 +231,8 @@ public class NotificationDispatcher {
         int attemptCount;
         Instant createdAt;
         String priority;
+        String templateCode;
+        String locale;
+        String templateParams;
     }
 }
