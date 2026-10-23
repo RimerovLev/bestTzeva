@@ -8,3 +8,7 @@ onlyBuiltDependencies:
 # Явно помечаем его сборку как пропущенную, чтобы pnpm не падал на ERR_PNPM_IGNORED_BUILDS.
 ignoredBuiltDependencies:
   - unrs-resolver
+# Поднимаем уязвимые транзитивные зависимости (аудит п.5): postcss и source-map-js тянет next.
+overrides:
+  postcss: ">=8.5.23"
+  source-map-js: ">=1.2.2"
