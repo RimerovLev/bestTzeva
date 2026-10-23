@@ -192,7 +192,8 @@ public class AdminUserService {
     }
 
     private void sendInvite(User user) {
-        String token = tokens.issue(INVITE_NAMESPACE, user.getId(), INVITE_TTL);
+        // Один активный токен на пользователя: повторное приглашение гасит прежнюю ссылку (аудит п.15).
+        String token = tokens.issueSingle(INVITE_NAMESPACE, user.getId(), INVITE_TTL);
         String link = adminUrl + "/set-password?token=" + token;
         Locale locale = Locale.forLanguageTag(user.getLocale());
         String subject = messages.getMessage("email.staff_invite.subject", null, locale);

@@ -33,4 +33,14 @@ class OneTimeTokenStoreTest extends IntegrationTest {
     void unknown_token_is_empty() {
         assertThat(store.consume("test", "made-up-token")).isEmpty();
     }
+
+    @Test
+    void issue_single_invalidates_previous_token() {
+        // Аудит п.15: новый токен сброса гасит прежний — одновременно живёт только последняя ссылка.
+        String first = store.issueSingle("pwd-reset", 7L, Duration.ofHours(1));
+        String second = store.issueSingle("pwd-reset", 7L, Duration.ofHours(1));
+
+        assertThat(store.consume("pwd-reset", first)).isEmpty();   // прежний больше не работает
+        assertThat(store.consume("pwd-reset", second)).contains(7L); // действует только последний
+    }
 }

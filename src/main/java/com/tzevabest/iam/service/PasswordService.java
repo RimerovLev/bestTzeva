@@ -45,7 +45,8 @@ public class PasswordService {
     /** Ответ одинаков независимо от существования аккаунта. */
     public void forgot(String login) {
         findByLogin(login).ifPresent(user -> {
-            String token = tokens.issue(NAMESPACE, user.getId(), TTL);
+            // Один активный токен сброса на пользователя: прежние ссылки гасятся (аудит п.15).
+            String token = tokens.issueSingle(NAMESPACE, user.getId(), TTL);
             String link = adminUrl + "/reset-password?token=" + token;
             Locale locale = Locale.forLanguageTag(user.getLocale());
             String subject = messages.getMessage("email.password_reset.subject", null, locale);

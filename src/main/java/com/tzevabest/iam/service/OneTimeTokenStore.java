@@ -31,6 +31,27 @@ public class OneTimeTokenStore {
         return token;
     }
 
+    /**
+     * Как {@link #issue}, но «один активный токен на пользователя» (аудит п.15): прежний токен этого
+     * пользователя в этом namespace гасится, чтобы одновременно не жили несколько ссылок сброса.
+     */
+    public String issueSingle(String namespace, long userId, Duration ttl) {
+        String pointer = userPointer(namespace, userId);
+        String prevHash = redis.opsForValue().getAndDelete(pointer);
+        if (prevHash != null) {
+            redis.delete("auth:" + namespace + ":" + prevHash);
+        }
+        String token = randomToken();
+        String hash = sha256(token);
+        redis.opsForValue().set("auth:" + namespace + ":" + hash, Long.toString(userId), ttl);
+        redis.opsForValue().set(pointer, hash, ttl);
+        return token;
+    }
+
+    private static String userPointer(String namespace, long userId) {
+        return "auth:" + namespace + ":user:" + userId;
+    }
+
     public Optional<Long> consume(String namespace, String token) {
         if (token == null || token.isBlank()) {
             return Optional.empty();

@@ -27,7 +27,7 @@ public class S3MediaStorage implements MediaStorage {
 
     @Override
     public StoredObject put(String keyPrefix, String filename, String contentType, byte[] data) {
-        String key = normalizePrefix(keyPrefix) + UUID.randomUUID() + extension(filename);
+        String key = normalizePrefix(keyPrefix) + UUID.randomUUID() + extensionFor(contentType, filename);
         s3.putObject(PutObjectRequest.builder()
                         .bucket(props.bucket())
                         .key(key)
@@ -39,7 +39,7 @@ public class S3MediaStorage implements MediaStorage {
 
     @Override
     public String putPrivate(String keyPrefix, String filename, String contentType, byte[] data) {
-        String key = normalizePrefix(keyPrefix) + UUID.randomUUID() + extension(filename);
+        String key = normalizePrefix(keyPrefix) + UUID.randomUUID() + extensionFor(contentType, filename);
         s3.putObject(PutObjectRequest.builder()
                         .bucket(props.privateBucket())
                         .key(key)
@@ -91,6 +91,25 @@ public class S3MediaStorage implements MediaStorage {
         }
         String p = prefix.replaceAll("^/+", "").replaceAll("/+$", "");
         return p + "/";
+    }
+
+    /** Расширение по РАСПОЗНАННОМУ типу (аудит п.9), с откатом на расширение из имени клиента. */
+    private static String extensionFor(String contentType, String filename) {
+        if (contentType != null) {
+            switch (contentType.toLowerCase(Locale.ROOT)) {
+                case "image/jpeg": return ".jpg";
+                case "image/png": return ".png";
+                case "image/webp": return ".webp";
+                case "image/gif": return ".gif";
+                case "image/heic": return ".heic";
+                case "image/avif": return ".avif";
+                case "video/mp4": return ".mp4";
+                case "video/webm": return ".webm";
+                case "application/pdf": return ".pdf";
+                default: break;
+            }
+        }
+        return extension(filename);
     }
 
     /** Расширение из имени файла (с точкой), в нижнем регистре; пусто, если нет. */
