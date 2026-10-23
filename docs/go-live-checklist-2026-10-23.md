@@ -79,6 +79,10 @@
 - [ ] **ESP + List-Unsubscribe**: подключить реального почтового провайдера; добавить заголовки
       `List-Unsubscribe`/`List-Unsubscribe-Post` (Gmail/Yahoo требуют one-click для массовых рассылок,
       в Израиле простая отписка обязательна) — это остаток п.7, завязан на провайдера.
+- [ ] **WhatsApp (опционально)**: канал за флагом `NOTIFICATION_WHATSAPP_ENABLED`. Для включения —
+      Meta WhatsApp Business: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, завести
+      ОДОБРЕННЫЕ шаблоны и прописать их имена в `app.notification.whatsapp.templates.*`, перевести
+      нужные уведомления на канал `WHATSAPP` (см. notifications.md). По умолчанию выключен.
 - [ ] Prometheus/метрики: в prod наружу закрыто (`health,info`). Если нужен скрейп — отдельный
       защищённый порт/сеть, не публично.
 - [ ] Dependabot/Renovate — регулярный скан зависимостей (разовый уже чист).
