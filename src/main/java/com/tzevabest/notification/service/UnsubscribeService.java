@@ -48,12 +48,14 @@ public class UnsubscribeService {
     @Value("${app.notification.unsubscribe-ttl:P30D}")
     private Duration ttl;
 
-    @Value("${app.web.base-url:http://localhost:8080}")
-    private String baseUrl;
+    // Ссылка ведёт на страницу витрины (там кнопка подтверждения → POST), а не на GET API, который
+    // открывал бы сырой JSON и срабатывал бы на сканерах ссылок (аудит п.7).
+    @Value("${app.web.storefront-url:http://localhost:3000}")
+    private String storefrontUrl;
 
-    /** Ссылка отписки для получателя (email): непрозрачный токен со сроком действия. */
+    /** Ссылка отписки для получателя (email): страница витрины с непрозрачным токеном и сроком. */
     public String unsubscribeLink(String contact) {
-        return baseUrl + "/api/v1/notifications/unsubscribe?token=" + issue(contact);
+        return storefrontUrl + "/unsubscribe?token=" + issue(contact);
     }
 
     /** Обрабатывает подтверждённую отписку (POST): проверяет токен и пишет отзыв MARKETING-согласия. */

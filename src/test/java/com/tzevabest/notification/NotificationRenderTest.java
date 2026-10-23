@@ -80,7 +80,7 @@ class NotificationRenderTest extends IntegrationTest {
         // R-61: информационное (нетранзакционное) письмо несёт ссылку отписки с токеном
         RenderedMessage info = notifications.render(NotificationTemplate.MARKETING_NEWS, "en",
                 new com.tzevabest.notification.dto.MarketingNewsModel(), recipient);
-        assertThat(info.body()).contains("/api/v1/notifications/unsubscribe?token=");
+        assertThat(info.body()).contains("/unsubscribe?token="); // страница витрины (аудит п.7)
 
         // транзакционное — не несёт (блок скрыт)
         RenderedMessage txn = notifications.render(NotificationTemplate.PRODUCT_REQUEST_RECEIVED, "en",
