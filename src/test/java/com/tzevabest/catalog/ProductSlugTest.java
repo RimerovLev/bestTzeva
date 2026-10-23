@@ -8,13 +8,18 @@ import com.tzevabest.iam.service.JwtService;
 import com.tzevabest.support.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings.Redirects;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 
@@ -31,6 +36,15 @@ class ProductSlugTest extends IntegrationTest {
     private JwtService jwt;
     @Autowired
     private ObjectMapper json;
+    @LocalServerPort
+    private int port;
+
+    /** Клиент, НЕ следующий за редиректами: с Spring Boot 3.5 TestRestTemplate (HttpClient5) их следует. */
+    private ResponseEntity<String> getNoFollow(String path) {
+        RestTemplate noFollow = new RestTemplate(ClientHttpRequestFactoryBuilder.detect()
+                .build(ClientHttpRequestFactorySettings.defaults().withRedirects(Redirects.DONT_FOLLOW)));
+        return noFollow.getForEntity("http://localhost:" + port + path, String.class);
+    }
 
     @Test
     void card_opens_by_slug_generated_from_english_name() throws Exception {
@@ -61,8 +75,8 @@ class ProductSlugTest extends IntegrationTest {
         assertThat(upd.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(json.readTree(upd.getBody()).get("slug").asText()).isEqualTo("premium-paint");
 
-        // старый slug → 301 на новый (TestRestTemplate не следует за редиректами)
-        ResponseEntity<String> old = rest.getForEntity("/api/v1/products/paint", String.class);
+        // старый slug → 301 на новый (клиентом, НЕ следующим за редиректами)
+        ResponseEntity<String> old = getNoFollow("/api/v1/products/paint");
         assertThat(old.getStatusCode()).isEqualTo(HttpStatus.MOVED_PERMANENTLY);
         assertThat(old.getHeaders().getLocation()).hasToString("/api/v1/products/premium-paint");
 
