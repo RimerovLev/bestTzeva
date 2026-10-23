@@ -2,17 +2,25 @@
 
 ## Образ
 
-Многоступенчатый `Dockerfile`: сборка на `temurin:21-jdk`, рантайм на `temurin:21-jre-alpine`,
-непривилегированный пользователь `app`, `MaxRAMPercentage=75`, HEALTHCHECK по
-`/actuator/health/readiness`. Тесты (Testcontainers, нужен Docker) гоняет CI, не сборка образа.
+Многоступенчатый `Dockerfile` (бэкенд): сборка на `temurin:21-jdk`, рантайм на `temurin:21-jre-alpine`,
+непривилегированный пользователь `app`, `MaxRAMPercentage=75`, `ENV SPRING_PROFILES_ACTIVE=prod`,
+HEALTHCHECK по `/actuator/health/readiness`. Тесты (Testcontainers, нужен Docker) гоняет CI, не сборка.
+
+**Фронтенд (аудит п.4):**
+- `web/Dockerfile` — витрина Next в режиме `standalone`, рантайм `node:22-alpine`, non-root;
+  `NEXT_PUBLIC_*` инлайнятся на сборке, поэтому адреса API/сайта передаются build-args в CI.
+- `admin/Dockerfile` + `admin/nginx.conf` — статика Vite раздаётся nginx со строгими заголовками
+  безопасности и CSP (аудит п.11); SPA-fallback на `index.html`.
 
 ## CI/CD (GitHub Actions)
 
 - **PR** (`pr.yml`): `./gradlew check` (юнит + интеграционные на Testcontainers + порог JaCoCo) и
   скан зависимостей Trivy (HIGH/CRITICAL → красный).
-- **merge в main** (`main.yml`): тесты → сборка образа, тег по git-хешу и семантической версии,
-  публикация в GHCR, скан образа Trivy → деплой на staging → smoke-тесты. Прод — отдельный job с
-  ручным подтверждением (environment protection), предыдущий тег сохраняется для отката.
+- **merge в main** (`main.yml`): тесты → сборка образов бэкенда, витрины и админки, тег по git-хешу,
+  публикация в GHCR, **блокирующий** скан каждого образа Trivy (HIGH/CRITICAL → красный) → деплой на
+  staging → smoke по `/actuator/health/readiness`. Прод — отдельный job с ручным подтверждением
+  (environment protection), предыдущий тег сохраняется для отката. Реальная выкатка (ECS/k8s) и цель
+  деплоя задаются окружением — шаги `deploy-*` остаются шаблоном под конкретную инфраструктуру.
 
 ## Миграции (совместимость и без простоя)
 
