@@ -50,10 +50,11 @@ class AuthRecoveryIntegrationTest extends IntegrationTest {
                 .isEqualTo(HttpStatus.ACCEPTED);
 
         String token = extract(TOKEN, capturedEmailBody());
-        assertThat(get("/api/v1/auth/email/verify?token=" + token).getStatusCode())
+        // Подтверждение — POST (GET состояние не меняет, аудит п.14).
+        assertThat(post("/api/v1/auth/email/verify", body("token", token), access).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
         // повторное использование ссылки
-        assertThat(get("/api/v1/auth/email/verify?token=" + token).getStatusCode())
+        assertThat(post("/api/v1/auth/email/verify", body("token", token), access).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 

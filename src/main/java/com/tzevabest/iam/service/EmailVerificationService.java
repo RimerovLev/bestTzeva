@@ -24,9 +24,12 @@ public class EmailVerificationService {
     private final UserRepository users;
     private final OneTimeTokenStore tokens;
     private final NotificationSender notifications;
+    private final org.springframework.context.MessageSource messages;
 
-    @Value("${app.web.base-url}")
-    private String baseUrl;
+    // Ссылка ведёт на страницу витрины (там POST), а не на GET API (аудит п.14): GET-подтверждение
+    // срабатывало бы на сканерах ссылок, «съедая» одноразовый токен.
+    @Value("${app.web.storefront-url:http://localhost:3000}")
+    private String storefrontUrl;
 
     public void sendVerification(long userId) {
         User user = users.findById(userId)
@@ -34,10 +37,12 @@ public class EmailVerificationService {
         if (user.getEmail() == null) {
             throw new BadRequestException("common.auth.no_email");
         }
-        String token = tokens.issue(NAMESPACE, userId, TTL);
-        String link = baseUrl + "/api/v1/auth/email/verify?token=" + token;
-        notifications.sendEmail(user.getEmail(), "Tzeva Best — verify your email",
-                "Confirm your email: " + link);
+        String token = tokens.issueSingle(NAMESPACE, userId, TTL);
+        String link = storefrontUrl + "/verify-email?token=" + token;
+        java.util.Locale locale = java.util.Locale.forLanguageTag(user.getLocale());
+        notifications.sendEmail(user.getEmail(),
+                messages.getMessage("email.verify.subject", null, locale),
+                messages.getMessage("email.verify.body", new Object[]{link}, locale));
     }
 
     @Transactional
