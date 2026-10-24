@@ -12,11 +12,14 @@
 
 ## Фаза 0 — код в main
 
-- [ ] Настроить git-remote (сейчас его нет): `git remote add origin <URL>`.
-- [ ] Запушить ветку: `git push -u origin feature/frontend-storefront`.
-- [ ] Открыть PR → дождаться зелёного `pr.yml` (gradle check + Trivy fs) и фронтовых CI
-      (`web-ci`, `admin-ci`, `e2e`).
-- [ ] Смёржить в `main` (его сейчас нет — создать как основную ветку; в репо есть `master`).
+- [x] git-remote: `origin` = https://github.com/RimerovLev/bestTzeva.git (2026-10-24).
+- [x] Запушена ветка `feature/frontend-storefront` (HTTPS + classic PAT с `repo`+`workflow`).
+- [x] `main` создан из ветки как основной мейнлайн (solo-репо, PR-флоу не используем —
+      мержим в main напрямую). Оба на `6978ce0`.
+- [ ] Выставить `main` дефолтной веткой: GitHub → Settings → General → Default branch.
+- [ ] Дождаться зелёного CI на push в main: `test` (gradle check) + `image`/`image-web`/`image-admin`
+      (сборка и пуш 3 образов в GHCR + блокирующий Trivy). Actions:
+      https://github.com/RimerovLev/bestTzeva/actions
 
 ## Фаза 1 — провижининг инфраструктуры
 
@@ -35,6 +38,10 @@
 
 В Secrets Manager / SSM, НЕ в репозитории. Приложение в prod не стартует без них (fail-closed:
 `ProdSecretsGuard` отвергает dev-дефолты, пустые и короткие <24 симв.).
+
+> Для пути «VM + docker-compose» секреты живут в `ops/deploy/.env` на VM (gitignored).
+> 5 подписей + DB/Redis/S3-пароли + BOOTSTRAP_ADMIN_PASSWORD уже сгенерированы случайно в
+> локальном `ops/deploy/.env` (2026-10-24); осталось заполнить домены/почту и перенести файл на VM.
 
 **Обязательные секреты бэкенда (без дефолтов):**
 - [ ] `JWT_SECRET` (длинный случайный, ≥32 байт)
