@@ -110,25 +110,36 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
+  # VM + docker-compose (ops/deploy): по SSH тянем свежие образы и поднимаем стек. Миграции применяет
+  # app при старте (один инстанс на VM — гонки нет; SPRING_FLYWAY_ENABLED=true в ops/deploy/.env).
+  # .env живёт на VM и в CI не передаётся. Секреты окружения: DEPLOY_SSH_{HOST,USER,KEY}, DEPLOY_PATH;
+  # var API_DOMAIN — для smoke по readiness.
   deploy-staging:
     needs: [image, image-web, image-admin]
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      # Миграции — ОТДЕЛЬНЫМ шагом ДО старта нового контейнера (без гонки инстансов).
-      - name: Run Flyway migrations
-        run: echo "flyway migrate (url/creds из secrets); см. docs/deployment.md"
-      - name: Deploy images to staging
-        run: echo "deploy backend/web/admin :sha-${{ github.sha }} to staging (ECS/k8s; цель задаётся окружением)"
-      - name: Smoke tests against staging
-        run: echo "curl -f https://staging/actuator/health/readiness && smoke suite"
+      - name: Deploy to staging over SSH
+        run: |
+          install -m 600 /dev/stdin "$HOME/deploy_key" <<< "${{ secrets.DEPLOY_SSH_KEY }}"
+          ssh -o StrictHostKeyChecking=accept-new -i "$HOME/deploy_key" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && export IMAGE_TAG=sha-${{ github.sha }} && \
+             docker compose -f docker-compose.prod.yml --env-file .env pull && \
+             docker compose -f docker-compose.prod.yml --env-file .env up -d && \
+             curl -fsS --retry 10 --retry-delay 6 --retry-all-errors https://${{ vars.API_DOMAIN }}/actuator/health/readiness"
 
   deploy-prod:
     needs: deploy-staging
     runs-on: ubuntu-latest
-    environment: production # ручное подтверждение (protection rule)
+    environment: production # ручное подтверждение (protection rule); прежний IMAGE_TAG — для отката
     steps:
-      - name: Run Flyway migrations (prod)
-        run: echo "flyway migrate (prod); миграции обратно совместимы с предыдущей версией кода"
-      - name: Deploy to prod (keep previous tag for rollback)
-        run: echo "deploy; предыдущий тег сохранён для быстрого отката"
+      - name: Deploy to prod over SSH
+        run: |
+          install -m 600 /dev/stdin "$HOME/deploy_key" <<< "${{ secrets.DEPLOY_SSH_KEY }}"
+          ssh -o StrictHostKeyChecking=accept-new -i "$HOME/deploy_key" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && export IMAGE_TAG=sha-${{ github.sha }} && \
+             docker compose -f docker-compose.prod.yml --env-file .env pull && \
+             docker compose -f docker-compose.prod.yml --env-file .env up -d && \
+             curl -fsS --retry 10 --retry-delay 6 --retry-all-errors https://${{ vars.API_DOMAIN }}/actuator/health/readiness"

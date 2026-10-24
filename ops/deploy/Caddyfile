@@ -1,0 +1,34 @@
+# Caddy: авто-TLS (Let's Encrypt) + маршрутизация доменов на внутренние сервисы.
+# Нужны публичные A/AAAA-записи на VM и открытые 80/443. Caddy сам выпускает/обновляет сертификаты.
+
+# API (публичный бэкенд).
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}
+
+# Витрина (Next). API она зовёт по своему домену (NEXT_PUBLIC_API_BASE_URL), CORS его разрешает.
+{$WEB_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+# Медиа (MinIO): публичный бакет читается браузером, presigned-ссылки подписаны под этот же хост —
+# поэтому сохраняем Host (иначе SigV4 не сойдётся). Для масштаба предпочтительнее managed S3/CDN.
+{$MEDIA_DOMAIN} {
+	reverse_proxy minio:9000 {
+		header_up Host {host}
+	}
+}
+
+# Админка: /api/* проксируется на бэкенд (тот же origin → CSP админки connect-src 'self' работает),
+# остальное — статика nginx (SPA + заголовки безопасности и CSP задаёт сам admin-образ).
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	handle /api/* {
+		reverse_proxy app:8080
+	}
+	handle {
+		reverse_proxy admin:8080
+	}
+}
