@@ -1,0 +1,48 @@
+# Бета-оверлей к docker-compose.prod.yml: вместо pull из GHCR собираем образы прямо на VM
+# из исходников. Нужно, чтобы в витрину (Next) на этапе сборки вшились правильные sslip.io-адреса
+# (NEXT_PUBLIC_* инлайнятся на build). Админка — same-origin /api (VITE пустой, проксирует Caddy).
+#
+# Запуск на VM:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.beta.override.yml --env-file .env up -d --build
+#
+# `image:` из prod-файла остаётся тегом для собранного образа (pull не требуется).
+
+# Контексты заданы относительно этого файла (ops/deploy/), исходники — в корне репо → ../..
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+
+  web:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: https://${API_DOMAIN}
+        NEXT_PUBLIC_SITE_URL: https://${WEB_DOMAIN}
+
+  admin:
+    build:
+      context: ../../admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "" # same-origin: Caddy проксирует /api админ-домена на app
+
+  # MinIO собираем из публичного бинарника (образы minio/minio закрыли). Консоль убрана → команду
+  # переопределяем на чистый S3 (:9000), healthcheck — по HTTP-эндпоинту вместо mc (его в образе нет).
+  minio:
+    build:
+      context: ./minio
+      dockerfile: Dockerfile
+    command: ["server", "/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    build:
+      context: ./mc
+      dockerfile: Dockerfile
