@@ -21,6 +21,15 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: https://${API_DOMAIN}
         NEXT_PUBLIC_SITE_URL: https://${WEB_DOMAIN}
+    environment:
+      HOSTNAME: "0.0.0.0" # иначе Next standalone слушает только hostname контейнера, не 127.0.0.1
+      PORT: "3000"
+    healthcheck: # базовый бьёт в localhost→::1 (IPv6), сервер на IPv4 → 127.0.0.1
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   admin:
     build:
@@ -28,21 +37,41 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: "" # same-origin: Caddy проксирует /api админ-домена на app
-
-  # MinIO собираем из публичного бинарника (образы minio/minio закрыли). Консоль убрана → команду
-  # переопределяем на чистый S3 (:9000), healthcheck — по HTTP-эндпоинту вместо mc (его в образе нет).
-  minio:
-    build:
-      context: ./minio
-      dockerfile: Dockerfile
-    command: ["server", "/data"]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
+  # S3-бэкенд: MinIO в 2025 закрыли и образы, и бинарники (dl.min.io → 410, релиз minio без ассетов).
+  # Берём SeaweedFS (S3-совместим, образ тянется). Сервис называется minio, чтобы Caddy/app не менять.
+  # identities (s3.json) — ключи приложения + анонимное чтение публичного бакета. S3 на :9000.
+  minio:
+    image: chrislusf/seaweedfs:latest
+    command: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-s3.config=/etc/seaweedfs/s3.json", "-master.volumeSizeLimitMB=1024"]
+    volumes:
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9333/cluster/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  # Создание бакетов через mc (он S3-совместим и работает с SeaweedFS). mc — из GitHub-релиза.
+  # Анонимное чтение публичного бакета уже даёт identity "anonymous" в s3.json; mc-политику пробуем,
+  # но не падаем, если SeaweedFS её не поддержит.
   minio-init:
     build:
       context: ./mc
       dockerfile: Dockerfile
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set m http://minio:9000 "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" &&
+        (mc mb -p m/${S3_BUCKET} || true) &&
+        (mc mb -p m/${S3_BUCKET_PRIVATE} || true) &&
+        (mc anonymous set download m/${S3_BUCKET} || true) &&
+        echo "buckets ready"
