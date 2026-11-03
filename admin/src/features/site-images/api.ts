@@ -12,7 +12,8 @@ export interface SiteImageView {
 /** Порядок слотов в UI. Подписи берутся из словаря (dict.siteImages.slots). */
 export const SITE_IMAGE_SLOTS = [
   "hero_can",
-  "works",
+  "works_before",
+  "works_after",
   "banner",
   "logo",
   "social_1",

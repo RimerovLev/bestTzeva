@@ -117,7 +117,7 @@ class SiteImageServiceTest {
         when(repo.findAll()).thenReturn(List.of());
         List<SiteImageView> list = service.adminList();
         assertThat(list).extracting(SiteImageView::slot)
-                .contains("hero_can", "works", "banner", "logo", "social_1", "social_6");
+                .contains("hero_can", "works_before", "works_after", "banner", "logo", "social_1", "social_6");
         assertThat(list).allSatisfy(v -> assertThat(v.url()).isNull());
     }
 

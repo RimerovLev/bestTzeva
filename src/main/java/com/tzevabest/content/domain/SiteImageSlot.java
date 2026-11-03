@@ -5,7 +5,8 @@ import java.util.Optional;
 /** Допустимые слоты редактируемых картинок сайта (овнер меняет их из админки). */
 public enum SiteImageSlot {
     HERO_CAN("hero_can"),
-    WORKS("works"),
+    WORKS_BEFORE("works_before"),
+    WORKS_AFTER("works_after"),
     BANNER("banner"),
     LOGO("logo"),
     SOCIAL_1("social_1"),

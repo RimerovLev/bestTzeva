@@ -7,7 +7,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080"
 /** slot → CSS-переменная витрины. Дефолт картинки задан в CSS (fallback у var()). */
 const SLOT_VARS: Record<string, string> = {
   hero_can: "--img-hero-can",
-  works: "--img-works",
+  works_before: "--img-works-before",
+  works_after: "--img-works-after",
   banner: "--img-banner",
   logo: "--img-logo",
 };

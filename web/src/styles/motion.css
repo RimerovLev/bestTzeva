@@ -150,7 +150,6 @@
 .hero-can {
   position: absolute; z-index: 3; inset-inline-end: clamp(10px, 6vw, 90px); top: clamp(96px, 16vh, 170px); width: clamp(110px, 15vw, 210px);
   aspect-ratio: 420 / 526; border: 0; padding: 0; background: var(--img-hero-can, url("/assets/motion/can.webp")) center / contain no-repeat; cursor: pointer;
-  filter: drop-shadow(8px 10px 0 rgba(18, 18, 18, .9));
 }
 .badge-ring {
   position: absolute; z-index: 3; width: clamp(96px, 10vw, 140px); aspect-ratio: 1;
@@ -201,7 +200,8 @@
 }
 .ba-layer { position: absolute; inset: 0; background-size: 200% 100%; background-repeat: no-repeat; }
 /* фото включает RevealEffects на подходе к экрану (.lazy-bg → .bg-on) */
-.ba.bg-on .ba-layer { background-image: var(--img-works, url("/assets/motion/works.webp")); }
+.ba.bg-on .ba-before { background-image: var(--img-works-before, url("/assets/motion/works.webp")); }
+.ba.bg-on .ba-after { background-image: var(--img-works-after, url("/assets/motion/works.webp")); }
 .ba-after { background-position: 100% 0; }
 .ba-before { background-position: 0 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
 .handle { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 4px; margin-left: -2px; background: var(--ink); pointer-events: none; }
