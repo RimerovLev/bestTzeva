@@ -14,6 +14,7 @@
   "header": {
     "contact": "צור קשר",
     "phoneLabel": "טלפון",
+    "emailLabel": "אימייל",
     "switchToRu": "Русский",
     "switchToHe": "עברית",
     "languageMenu": "בחירת שפה",
@@ -333,6 +334,15 @@
         }
       ]
     },
+    "social": {
+      "eyebrow": "אנחנו ברשתות",
+      "title": { "a": "העבודות שלנו", "hl": "בטיקטוק ובאינסטגרם" },
+      "body": "סרטונים קצרים מהאתרים: לפני ואחרי, התאמת גוונים וטיפים מהצוות.",
+      "cta": "עקבו אחרינו @bestzeva",
+      "instagram": "עקבו באינסטגרם @bestzeva_ltd",
+      "tiktokLabel": "TikTok @bestzeva",
+      "instagramLabel": "Instagram @bestzeva_ltd"
+    },
     "contact": {
       "eyebrow": "צור קשר",
       "title": {
@@ -341,12 +351,13 @@
       },
       "body": "השאירו טלפון: נחזור אליכם, נברר פרטים ונתאם מדידה.",
       "phone": {
-        "phone": "+972 00 000 0000",
-        "tel": "+972000000000",
+        "phone": "+972 55-556-2263",
+        "tel": "+972555562263",
         "copy": "העתקה",
         "copied": "המספר הועתק",
         "selected": "המספר סומן, העתיקו אותו"
       },
+      "email": "shafirtzeva@gmail.com",
       "form": {
         "name": "שם",
         "namePlaceholder": "לדוגמה, נועה",
@@ -625,6 +636,7 @@
     "companyNumber": "ח.פ.",
     "address": "כתובת",
     "hours": "שעות פעילות",
+    "email": "אימייל",
     "navLabel": "ניווט בתחתית העמוד"
   },
   "errors": {

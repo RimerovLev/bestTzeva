@@ -1,4 +1,5 @@
-import { api, unwrap } from "@/lib/api/http";
+import { api, API_BASE, authFetch, unwrap } from "@/lib/api/http";
+import { ApiError, CLIENT_ERROR_CODES, isProblemDetail } from "@/lib/api/problem";
 import type { components } from "@/lib/api/schema.admin";
 import type { components as PublicComponents } from "@/lib/api/schema.public";
 
@@ -9,6 +10,43 @@ export type ColorSwatch = PublicComponents["schemas"]["ColorSwatchResponse"];
 export type ImportResult = components["schemas"]["ImportResult"];
 
 export const COLOR_SYSTEMS = ["RAL", "NCS", "INTERNAL"] as const;
+
+// ── Бренды (справочник для выпадающего списка) ────────────────────────────────
+
+export interface BrandRef {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export async function listBrands(): Promise<BrandRef[]> {
+  const res = await authFetch(`${API_BASE}/api/v1/admin/brands`);
+  if (!res.ok) return [];
+  return (await res.json()) as BrandRef[];
+}
+
+export async function createBrand(name: string): Promise<BrandRef> {
+  const res = await authFetch(`${API_BASE}/api/v1/admin/brands`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const body: unknown = await res.json().catch(() => undefined);
+    if (isProblemDetail(body)) throw ApiError.fromProblem(body, res.status);
+    throw new ApiError({ code: CLIENT_ERROR_CODES.unknown, status: res.status });
+  }
+  return (await res.json()) as BrandRef;
+}
+
+export async function deleteBrand(id: number): Promise<void> {
+  const res = await authFetch(`${API_BASE}/api/v1/admin/brands/${id}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    const body: unknown = await res.json().catch(() => undefined);
+    if (isProblemDetail(body)) throw ApiError.fromProblem(body, res.status);
+    throw new ApiError({ code: CLIENT_ERROR_CODES.unknown, status: res.status });
+  }
+}
 
 // ── Категории ────────────────────────────────────────────────────────────────
 

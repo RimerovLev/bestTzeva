@@ -17,6 +17,7 @@ import {
   BASE_TYPES,
   type ProductSaveRequest,
 } from "./api";
+import { createBrand, listBrands } from "./refApi";
 
 const trOptional = z.object({
   name: z.string().optional(),
@@ -74,6 +75,7 @@ export function ProductForm({ onDone, onCancel }: { onDone: () => void; onCancel
   const c = dict.catalog;
   const qc = useQueryClient();
   const categoriesQuery = useQuery({ queryKey: ["categories", locale], queryFn: listCategories });
+  const brandsQuery = useQuery({ queryKey: ["brands"], queryFn: listBrands });
 
   const [tab, setTab] = useState<Locale | "en">("he");
   const [formError, setFormError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ export function ProductForm({ onDone, onCancel }: { onDone: () => void; onCancel
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -120,6 +123,18 @@ export function ProductForm({ onDone, onCancel }: { onDone: () => void; onCancel
 
   const localesTabs: (Locale | "en")[] = ["he", "ru", "en"];
 
+  const addBrand = async () => {
+    const name = window.prompt(c.brandNew);
+    if (!name || !name.trim()) return;
+    try {
+      const brand = await createBrand(name.trim());
+      await brandsQuery.refetch();
+      setValue("brand_id", String(brand.id));
+    } catch (e) {
+      window.alert(resolveErrorMessage(dict.errors, e).text);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
       <div className="flex items-center justify-between">
@@ -137,7 +152,15 @@ export function ProductForm({ onDone, onCancel }: { onDone: () => void; onCancel
             {(categoriesQuery.data ?? []).map((cat) => <option key={cat.id} value={cat.id}>{cat.name ?? cat.slug}</option>)}
           </select>
         </F>
-        <F label={c.brand} error={errmsg(errors.brand_id)} hint={c.brandHint}><input type="number" {...register("brand_id")} className={inputCls(!!errors.brand_id)} /></F>
+        <F label={c.brand} error={errmsg(errors.brand_id)}>
+          <div className="flex gap-2">
+            <select {...register("brand_id")} className={inputCls(!!errors.brand_id) + " flex-1"}>
+              <option value="">—</option>
+              {(brandsQuery.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <Button type="button" variant="outline" onClick={addBrand} title={c.brandNew}>+</Button>
+          </div>
+        </F>
         <EnumF label={c.paintType} name="paint_type" options={PAINT_TYPES} labels={dict.enums.paint_type} register={register} />
         <EnumF label={c.usageArea} name="usage_area" options={USAGE_AREAS} labels={dict.enums.usage_area} register={register} />
         <EnumF label={c.finish} name="finish" options={FINISHES} labels={dict.enums.finish} register={register} />
@@ -163,7 +186,7 @@ export function ProductForm({ onDone, onCancel }: { onDone: () => void; onCancel
           ))}
         </div>
         {localesTabs.map((t) => (
-          <div key={t} hidden={tab !== t} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div key={t} className={tab === t ? "grid grid-cols-1 gap-3 sm:grid-cols-2" : "hidden"}>
             <F label={c.trName} error={t === "he" ? errmsg(errors.translations?.he?.name) : undefined}>
               <input {...register(`translations.${t}.name` as const)} className={inputCls(t === "he" && !!errors.translations?.he?.name)} />
             </F>

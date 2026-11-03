@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   ScrollText,
   Users,
+  Image as ImageIcon,
+  Images as ImagesIcon,
+  Bookmark,
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/I18nProvider";
@@ -24,10 +27,13 @@ const ICONS: Record<SectionKey, LucideIcon> = {
   catalog: Tags,
   categories: FolderTree,
   colors: Palette,
+  brands: Bookmark,
   spam: ShieldBan,
   audit: ScrollText,
   privacy: ShieldCheck,
   users: Users,
+  siteImages: ImageIcon,
+  portfolio: ImagesIcon,
 };
 
 /**

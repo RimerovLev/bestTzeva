@@ -71,7 +71,7 @@
 .nav-inner { display: flex; align-items: center; gap: 16px; padding-block: 12px; position: relative; }
 .logo {
   flex: none; display: block; width: 152px; height: 44px; padding: 5px 10px; border: 2px solid var(--ink); border-radius: 14px;
-  background: #fff url("/assets/motion/logo.webp") center / contain no-repeat; background-origin: content-box; box-shadow: 3px 3px 0 var(--ink);
+  background: #fff var(--img-logo, url("/assets/motion/logo.webp")) center / contain no-repeat; background-origin: content-box; box-shadow: 3px 3px 0 var(--ink);
 }
 .links { display: flex; gap: 6px; margin-inline: auto; }
 .links a { text-decoration: none; font-weight: 600; font-size: 15px; padding: 9px 14px; border-radius: 999px; border: 2px solid transparent; transition: background .25s, border-color .25s; }
@@ -149,7 +149,7 @@
 .hero-hint i { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); }
 .hero-can {
   position: absolute; z-index: 3; inset-inline-end: clamp(10px, 6vw, 90px); top: clamp(96px, 16vh, 170px); width: clamp(110px, 15vw, 210px);
-  aspect-ratio: 420 / 526; border: 0; padding: 0; background: url("/assets/motion/can.webp") center / contain no-repeat; cursor: pointer;
+  aspect-ratio: 420 / 526; border: 0; padding: 0; background: var(--img-hero-can, url("/assets/motion/can.webp")) center / contain no-repeat; cursor: pointer;
   filter: drop-shadow(8px 10px 0 rgba(18, 18, 18, .9));
 }
 .badge-ring {
@@ -201,7 +201,7 @@
 }
 .ba-layer { position: absolute; inset: 0; background-size: 200% 100%; background-repeat: no-repeat; }
 /* фото включает RevealEffects на подходе к экрану (.lazy-bg → .bg-on) */
-.ba.bg-on .ba-layer { background-image: url("/assets/motion/works.webp"); }
+.ba.bg-on .ba-layer { background-image: var(--img-works, url("/assets/motion/works.webp")); }
 .ba-after { background-position: 100% 0; }
 .ba-before { background-position: 0 0; clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
 .handle { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 4px; margin-left: -2px; background: var(--ink); pointer-events: none; }
@@ -240,7 +240,7 @@
 .banner { position: relative; flex: none; width: min(540px, 86vw); min-height: 400px; border-radius: var(--r); overflow: hidden; border: 2px solid var(--ink); box-shadow: var(--sh); scroll-snap-align: start; }
 .hs.pinned .banner { min-height: 0; }
 .banner-img { position: absolute; inset: 0; background: center 45% / cover no-repeat; transform: scale(1.03); transition: transform 1.4s var(--ease); }
-.banner-img.bg-on { background-image: url("/assets/motion/flat.webp"); }
+.banner-img.bg-on { background-image: var(--img-banner, url("/assets/motion/flat.webp")); }
 .banner:hover .banner-img { transform: scale(1.1) rotate(-1deg); }
 .banner-cap { position: absolute; inset-inline: 16px; bottom: 16px; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 16px; background: var(--paper); }
 .banner-cap b { font-family: var(--f-display); font-weight: 400; font-size: 20px; display: block; line-height: 1.15; text-transform: uppercase; }
@@ -250,7 +250,7 @@
 .prod-vis { position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: #fff; border: 2px solid var(--ink); }
 .prod-vis::before { content: ""; position: absolute; inset: 10%; border-radius: 50%; background: var(--c); transition: transform .7s var(--spring); }
 .prod:hover .prod-vis::before { transform: scale(1.22); }
-.prod-can { position: absolute; inset: 14% 20% 8%; background: url("/assets/motion/can.webp") center / contain no-repeat; filter: drop-shadow(5px 6px 0 rgba(18, 18, 18, .85)); transition: transform .7s var(--spring); }
+.prod-can { position: absolute; inset: 14% 20% 8%; background: var(--img-hero-can, url("/assets/motion/can.webp")) center / contain no-repeat; filter: drop-shadow(5px 6px 0 rgba(18, 18, 18, .85)); transition: transform .7s var(--spring); }
 .prod:hover .prod-can { transform: translateY(-10px) rotate(-8deg) scale(1.05); }
 .prod-type { font: 500 11px/1.2 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
 .prod h3 { font-family: var(--f-display); font-weight: 400; font-size: 19px; line-height: 1.1; margin: 0; text-transform: uppercase; }
@@ -569,3 +569,27 @@
   .st-1 { display: none; }
   .svc-meta { grid-auto-flow: row; }
 }
+
+/* ── Соц-телефоны (TikTok + Instagram): заставка → скролл ленты «видео» ───────── */
+.sp-wrap { display: flex; justify-content: center; align-items: flex-start; gap: clamp(16px, 6vw, 56px); flex-wrap: nowrap; padding: 10px 0 4px; }
+.sp-phone { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; text-decoration: none; transition: transform .55s var(--spring); will-change: transform; }
+.sp-phone:hover { transform: translateY(-6px) rotate(0deg) !important; }
+.sp-screen { position: relative; width: clamp(200px, 46vw, 300px); aspect-ratio: 9 / 19; border-radius: 34px; background: #0b0b0f; border: 8px solid #121212; box-shadow: 0 22px 50px rgba(18,18,18,.32), inset 0 0 0 2px rgba(255,255,255,.06); overflow: hidden; }
+.sp-notch { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 40%; height: 15px; background: #121212; border-radius: 0 0 12px 12px; z-index: 6; }
+.sp-feed { display: flex; flex-direction: column; gap: 8px; padding: 8px; animation: sp-scroll 18s linear infinite; }
+.sp-phone:hover .sp-feed { animation-play-state: paused; }
+@keyframes sp-scroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.sp-tile { position: relative; flex: 0 0 auto; height: clamp(210px, 54vw, 320px); border-radius: 16px; background-size: cover; background-position: center; overflow: hidden; box-shadow: inset 0 -48px 60px -34px rgba(0,0,0,.6); }
+.sp-badge { position: absolute; inset: 0; margin: auto; width: 46px; height: 46px; display: grid; place-items: center; background: rgba(0,0,0,.32); border: 2px solid rgba(255,255,255,.9); border-radius: 50%; }
+.sp-badge.insta { border-radius: 13px; }
+.sp-views { position: absolute; left: 9px; bottom: 9px; color: #fff; font-size: 12px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.sp-splash { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; transition: opacity .7s ease; }
+.sp-splash-label { color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .2px; opacity: .92; }
+.sp-caption { display: inline-flex; align-items: center; gap: 8px; padding: 9px 17px; border-radius: 999px; font-weight: 800; font-size: 15px; color: #fff; box-shadow: 3px 3px 0 var(--ink); transition: transform .3s var(--spring); }
+.sp-phone:hover .sp-caption { transform: translateY(-2px); }
+.sp-caption--tiktok { background: #0b0b0f; }
+.sp-caption--insta { background: linear-gradient(90deg, #7048e8, #d6336c 52%, #f76707); }
+.sp-cap-ico { display: inline-grid; place-items: center; }
+.sp-cap-ico svg { width: 18px; height: 18px; }
+.sp-cap-arrow { font-size: 16px; opacity: .92; }
+@media (prefers-reduced-motion: reduce) { .sp-feed { animation: none; } .sp-splash { transition: none; } }

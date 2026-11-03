@@ -17,6 +17,8 @@ import { ProcessPath } from "@/components/motion/ProcessPath";
 import { ScrubText } from "@/components/motion/ScrubText";
 import { LeadForm, type LeadFormText } from "@/components/motion/LeadForm";
 import { CopyPhone } from "@/components/motion/CopyPhone";
+import { SocialPhones } from "@/components/motion/SocialPhones";
+import { getSiteImages } from "@/lib/site/images";
 import { RevealEffects } from "@/components/motion/RevealEffects";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { businessLd, pageMeta } from "@/lib/seo";
@@ -104,6 +106,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const h = dict.home;
   const errors = dict.errors as unknown as Record<string, string>;
   const products = await railProducts(locale, dict);
+  // Фото для соц-телефонов: слоты social_1..6 (их грузит владелец в «Картинки сайта»), иначе дефолт.
+  const siteImages = await getSiteImages();
+  const socialPhotos = ["social_1", "social_2", "social_3", "social_4", "social_5", "social_6"].map(
+    (slot) => siteImages[slot] ?? null,
+  );
 
   const leadText: LeadFormText = {
     ...h.contact.form,
@@ -210,6 +217,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
+      {/* TIKTOK */}
+      <section className="sec s-paper" id="tiktok">
+        <div className="wrap">
+          <SecHead eyebrow={h.social.eyebrow} title={<SecTitle t={h.social.title} />} body={h.social.body} />
+          <SocialPhones photos={socialPhotos} labelTiktok={h.social.tiktokLabel} labelInstagram={h.social.instagramLabel} />
+        </div>
+      </section>
+
       {/* КОНТАКТ */}
       <section className="sec s-ink" id="contact">
         <div className="wrap contact">
@@ -220,6 +235,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <div className="ci">
               <span className="ci-label">{dict.header.phoneLabel}</span>
               <CopyPhone {...h.contact.phone} />
+            </div>
+            <div className="ci">
+              <span className="ci-label">{dict.header.emailLabel}</span>
+              <a href={`mailto:${h.contact.email}`} dir="ltr">{h.contact.email}</a>
             </div>
             <div className="ci">
               <span className="ci-label">{dict.footer.hours}</span>

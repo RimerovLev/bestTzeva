@@ -33,3 +33,4 @@ replay_pid*
 
 # бета: S3-конфиг SeaweedFS с ключами (только на VM)
 ops/deploy/seaweedfs/
+.claude/

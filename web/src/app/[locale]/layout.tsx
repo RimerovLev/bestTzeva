@@ -7,6 +7,7 @@ import { fontVariables } from "@/lib/fonts";
 import { SITE_URL } from "@/lib/seo";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { getSiteImages, siteImageVars } from "@/lib/site/images";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { Analytics } from "@/components/seo/Analytics";
 import { Providers } from "@/app/providers";
@@ -46,10 +47,12 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound();
   const typedLocale: Locale = locale;
   const dict = await getDictionary(typedLocale);
+  // Картинки сайта, заданные овнером (слоты). Переопределяют дефолтные через CSS-переменные на body.
+  const siteImages = await getSiteImages();
 
   return (
     <html lang={typedLocale} dir={dir[typedLocale]} className={`${fontVariables} scroll-smooth`}>
-      <body className="flex min-h-screen flex-col overflow-x-clip text-ink">
+      <body className="flex min-h-screen flex-col overflow-x-clip text-ink" style={siteImageVars(siteImages)}>
         <Providers>
           <MotionProvider>
             <Header locale={typedLocale} dict={dict} />

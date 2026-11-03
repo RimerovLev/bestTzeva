@@ -8,19 +8,28 @@ import com.tzevabest.common.web.security.CurrentUser;
 import com.tzevabest.media.service.ContentTypeSniffer;
 import com.tzevabest.media.service.MediaStorage;
 import com.tzevabest.media.service.StoredObject;
+import com.tzevabest.service.dto.PortfolioAdminCard;
+import com.tzevabest.service.dto.PortfolioAdminView;
 import com.tzevabest.service.dto.PortfolioCreate;
 import com.tzevabest.service.dto.PortfolioMediaResponse;
 import com.tzevabest.service.dto.PortfolioTranslationInput;
+import com.tzevabest.service.domain.PropertyType;
 import com.tzevabest.service.domain.WorkType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -150,7 +159,88 @@ public class PortfolioAdminService {
         return id;
     }
 
+    /** Список проектов для админки (включая неопубликованные). Заголовок — HE, иначе любой перевод. */
+    @Transactional(readOnly = true)
+    public List<PortfolioAdminCard> adminList() {
+        return jdbc.query("""
+                select p.id, p.slug,
+                  (select t.title from portfolio_translations t where t.project_id = p.id
+                     order by case t.locale when 'he' then 0 when 'ru' then 1 else 2 end limit 1) as title,
+                  p.property_type, p.city, p.completed_at, p.is_published,
+                  (select count(*) from portfolio_media m where m.project_id = p.id) as media_count
+                from portfolio_projects p order by p.sort_order, p.id""",
+                (rs, i) -> new PortfolioAdminCard(
+                        rs.getLong("id"), rs.getString("slug"), rs.getString("title"),
+                        propertyType(rs.getString("property_type")), rs.getString("city"),
+                        rs.getObject("completed_at", LocalDate.class), rs.getBoolean("is_published"),
+                        rs.getInt("media_count")));
+    }
+
+    /** Полные данные проекта для редактирования: все переводы и все медиа (с видом и парой). */
+    @Transactional(readOnly = true)
+    public PortfolioAdminView adminDetail(long id) {
+        Object[] p = jdbc.query("""
+                select slug, property_type, city, area_sqm, duration_days, completed_at, is_published
+                from portfolio_projects where id = ?""",
+                rs -> rs.next() ? new Object[]{
+                        rs.getString("slug"), rs.getString("property_type"), rs.getString("city"),
+                        rs.getBigDecimal("area_sqm"), rs.getObject("duration_days", Integer.class),
+                        rs.getObject("completed_at", LocalDate.class), rs.getBoolean("is_published")
+                } : null, id);
+        if (p == null) {
+            throw new NotFoundException("portfolio.not_found");
+        }
+        List<PortfolioTranslationInput> translations = jdbc.query("""
+                select locale, title, description, meta_title, meta_description
+                from portfolio_translations where project_id = ? order by locale""",
+                (rs, i) -> new PortfolioTranslationInput(rs.getString("locale"), rs.getString("title"),
+                        rs.getString("description"), rs.getString("meta_title"), rs.getString("meta_description")),
+                id);
+        List<PortfolioMediaResponse> media = jdbc.query("""
+                select id, url, kind, pair_group, sort_order from portfolio_media
+                where project_id = ? order by sort_order, id""",
+                (rs, i) -> new PortfolioMediaResponse(rs.getLong("id"), rs.getString("url"), rs.getString("kind"),
+                        rs.getString("pair_group"), rs.getInt("sort_order")),
+                id);
+        Set<WorkType> workTypes = EnumSet.noneOf(WorkType.class);
+        for (String wt : jdbc.query("select work_type from portfolio_project_work_types where project_id = ?",
+                (rs, i) -> rs.getString("work_type"), id)) {
+            workTypes.add(WorkType.valueOf(wt));
+        }
+        return new PortfolioAdminView(id, (String) p[0], propertyType((String) p[1]), (String) p[2],
+                (BigDecimal) p[3], (Integer) p[4], (LocalDate) p[5], workTypes, (Boolean) p[6],
+                translations, media);
+    }
+
+    /** Удалить один медиа-файл проекта (строку БД; blob в публичном бакете остаётся — он без ключа). */
+    @Transactional
+    public void deleteMedia(long mediaId) {
+        Long projectId = jdbc.query("select project_id from portfolio_media where id = ?",
+                rs -> rs.next() ? rs.getLong(1) : null, mediaId);
+        if (projectId == null) {
+            throw new NotFoundException("portfolio.media_not_found");
+        }
+        jdbc.update("delete from portfolio_media where id = ?", mediaId);
+        audit("portfolio.media_delete", projectId, Map.of("media_id", mediaId));
+    }
+
+    /** Удалить проект со всеми переводами, медиа, видами работ и историей slug. */
+    @Transactional
+    public void delete(long id) {
+        requireExists(id);
+        jdbc.update("delete from portfolio_media where project_id = ?", id);
+        jdbc.update("delete from portfolio_project_work_types where project_id = ?", id);
+        jdbc.update("delete from portfolio_translations where project_id = ?", id);
+        jdbc.update("delete from portfolio_slug_history where project_id = ?", id);
+        jdbc.update("delete from portfolio_projects where id = ?", id);
+        audit("portfolio.delete", id, Map.of());
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
+
+    private static PropertyType propertyType(String name) {
+        return name == null ? null : PropertyType.valueOf(name);
+    }
 
     private void saveWorkTypes(long id, java.util.Set<WorkType> workTypes) {
         if (workTypes == null) {

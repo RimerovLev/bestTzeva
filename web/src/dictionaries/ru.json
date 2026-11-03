@@ -14,6 +14,7 @@
   "header": {
     "contact": "Связаться",
     "phoneLabel": "Телефон",
+    "emailLabel": "Эл. почта",
     "switchToRu": "Русский",
     "switchToHe": "עברית",
     "languageMenu": "Выбор языка",
@@ -334,6 +335,15 @@
         }
       ]
     },
+    "social": {
+      "eyebrow": "Мы в соцсетях",
+      "title": { "a": "Наши работы", "hl": "в TikTok и Instagram" },
+      "body": "Короткие видео с объектов: до и после, подбор цвета и советы мастеров.",
+      "cta": "Подписаться @bestzeva",
+      "instagram": "Мы в Instagram @bestzeva_ltd",
+      "tiktokLabel": "TikTok @bestzeva",
+      "instagramLabel": "Instagram @bestzeva_ltd"
+    },
     "contact": {
       "eyebrow": "Связаться",
       "title": {
@@ -342,12 +352,13 @@
       },
       "body": "Оставьте телефон: перезвоним, уточним детали и договоримся о замере.",
       "phone": {
-        "phone": "+972 00 000 0000",
-        "tel": "+972000000000",
+        "phone": "+972 55-556-2263",
+        "tel": "+972555562263",
         "copy": "Скопировать",
         "copied": "Номер скопирован",
         "selected": "Номер выделен, скопируйте его"
       },
+      "email": "shafirtzeva@gmail.com",
       "form": {
         "name": "Имя",
         "namePlaceholder": "Например, Анна",
@@ -626,6 +637,7 @@
     "companyNumber": "Рег. номер",
     "address": "Адрес",
     "hours": "Часы работы",
+    "email": "Эл. почта",
     "navLabel": "Разделы в подвале"
   },
   "errors": {

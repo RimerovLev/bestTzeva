@@ -142,7 +142,79 @@ class PortfolioTest extends IntegrationTest {
         assertThat(published).isFalse();
     }
 
+    @Test
+    void admin_list_includes_unpublished_with_flag_and_media_count() throws Exception {
+        long pub = seedProject("al-pub-" + uid(), true, "APARTMENT", "Tel Aviv");
+        long draft = seedProject("al-draft-" + uid(), false, "HOUSE", "Haifa");
+        jdbcTemplate.update(
+                "insert into portfolio_media (project_id, url, kind, sort_order) values (?, 'http://x/a.jpg', 'AFTER', 1)", pub);
+
+        JsonNode list = json.readTree(rest.exchange("/api/v1/admin/portfolio", HttpMethod.GET,
+                new HttpEntity<>(managerHeaders()), String.class).getBody());
+        JsonNode pubNode = findById(list, pub);
+        assertThat(pubNode.get("published").asBoolean()).isTrue();
+        assertThat(pubNode.get("media_count").asInt()).isEqualTo(1);
+        assertThat(findById(list, draft).get("published").asBoolean()).isFalse(); // черновик виден админу
+    }
+
+    @Test
+    void admin_detail_returns_all_translations_and_media() throws Exception {
+        long id = seedProject("det-" + uid(), true, "OFFICE", "Eilat");
+        jdbcTemplate.update(
+                "insert into portfolio_translations (project_id, locale, title, description) values (?, 'ru', ?, ?)",
+                id, "Офис", "Покраска офиса");
+        jdbcTemplate.update("insert into portfolio_media (project_id, url, kind, sort_order, pair_group) values "
+                + "(?, 'http://x/b.jpg', 'BEFORE', 1, 'g1'), (?, 'http://x/a.jpg', 'AFTER', 2, 'g1')", id, id);
+
+        JsonNode d = json.readTree(rest.exchange("/api/v1/admin/portfolio/" + id, HttpMethod.GET,
+                new HttpEntity<>(managerHeaders()), String.class).getBody());
+        assertThat(d.get("published").asBoolean()).isTrue();
+        java.util.Set<String> locales = new java.util.HashSet<>();
+        d.get("translations").forEach(t -> locales.add(t.get("locale").asText()));
+        assertThat(locales).contains("he", "ru");
+        assertThat(d.get("media")).hasSize(2);
+    }
+
+    @Test
+    void admin_delete_media_removes_row() throws Exception {
+        long id = seedProject("dm-" + uid(), true, "APARTMENT", "Tel Aviv");
+        long mediaId = jdbcTemplate.queryForObject("insert into portfolio_media (project_id, url, kind, sort_order) "
+                + "values (?, 'http://x/a.jpg', 'AFTER', 1) returning id", Long.class, id);
+
+        ResponseEntity<String> resp = rest.exchange("/api/v1/admin/portfolio/media/" + mediaId,
+                HttpMethod.DELETE, new HttpEntity<>(managerHeaders()), String.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from portfolio_media where id = ?", Integer.class, mediaId))
+                .isZero();
+    }
+
+    @Test
+    void admin_delete_removes_project_and_children() throws Exception {
+        long id = seedProject("del-" + uid(), true, "HOUSE", "Haifa");
+        jdbcTemplate.update(
+                "insert into portfolio_media (project_id, url, kind, sort_order) values (?, 'http://x/a.jpg', 'AFTER', 1)", id);
+
+        ResponseEntity<String> resp = rest.exchange("/api/v1/admin/portfolio/" + id,
+                HttpMethod.DELETE, new HttpEntity<>(managerHeaders()), String.class);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from portfolio_projects where id = ?", Integer.class, id))
+                .isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from portfolio_media where project_id = ?", Integer.class, id))
+                .isZero();
+        assertThat(jdbcTemplate.queryForObject("select count(*) from portfolio_translations where project_id = ?", Integer.class, id))
+                .isZero();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────
+
+    private static JsonNode findById(JsonNode array, long id) {
+        for (JsonNode n : array) {
+            if (n.get("id").asLong() == id) {
+                return n;
+            }
+        }
+        throw new AssertionError("project not in admin list: " + id);
+    }
 
     private long seedProject(String slug, boolean published, String propertyType, String city) {
         long id = jdbcTemplate.queryForObject("""

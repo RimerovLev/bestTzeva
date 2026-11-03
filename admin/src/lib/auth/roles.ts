@@ -32,10 +32,13 @@ export const SECTIONS: Section[] = [
   { key: "catalog", path: "/catalog", roles: ["MANAGER", "ADMIN"] },
   { key: "categories", path: "/categories", roles: ["MANAGER", "ADMIN"] },
   { key: "colors", path: "/colors", roles: ["MANAGER", "ADMIN"] },
+  { key: "brands", path: "/brands", roles: ["MANAGER", "ADMIN"] },
   { key: "spam", path: "/spam", roles: ["MANAGER", "ADMIN"] },
   { key: "audit", path: "/audit", roles: ["ADMIN"] },
   { key: "privacy", path: "/privacy", roles: ["ADMIN"] },
   { key: "users", path: "/users", roles: ["ADMIN"] },
+  { key: "siteImages", path: "/site-images", roles: ["ADMIN"] },
+  { key: "portfolio", path: "/portfolio", roles: ["MANAGER", "ADMIN"] },
 ];
 
 /** Разделы, видимые роли, в порядке меню. */

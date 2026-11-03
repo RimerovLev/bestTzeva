@@ -24,13 +24,16 @@ function contentSecurityPolicy(): string {
   const api = origin(process.env.NEXT_PUBLIC_API_BASE_URL) || "http://localhost:8080";
   const plausible = origin(process.env.NEXT_PUBLIC_PLAUSIBLE_SRC) || "https://plausible.io";
   const media = origin(process.env.NEXT_PUBLIC_MEDIA_BASE_URL);
+  // TikTok-виджет (embed.js + iframe профиля). Нужны его origin'ы в script/img/connect/frame.
+  const tiktok = "https://www.tiktok.com https://lf16-tiktok-web.ttwstatic.com";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' ${plausible}`.trim(),
+    `script-src 'self' 'unsafe-inline' ${plausible} ${tiktok}`.replace(/\s+/g, " ").trim(),
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${api} ${media}`.replace(/\s+/g, " ").trim(),
+    `img-src 'self' data: blob: ${api} ${media} https://www.tiktok.com https://*.tiktokcdn.com`.replace(/\s+/g, " ").trim(),
     "font-src 'self'",
-    `connect-src 'self' ${api} ${plausible}`.replace(/\s+/g, " ").trim(),
+    `connect-src 'self' ${api} ${plausible} https://www.tiktok.com`.replace(/\s+/g, " ").trim(),
+    "frame-src https://www.tiktok.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

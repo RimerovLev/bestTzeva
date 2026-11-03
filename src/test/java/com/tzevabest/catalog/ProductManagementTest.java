@@ -148,6 +148,57 @@ class ProductManagementTest extends IntegrationTest {
         assertThat((Boolean) row.get("has_stock")).isEqualTo(hasStock);
     }
 
+    @Test
+    void admin_lists_brands_for_dropdown() throws Exception {
+        seedRefs();
+        ResponseEntity<String> resp = admin(HttpMethod.GET, "/api/v1/admin/brands", null);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        boolean found = false;
+        for (JsonNode b : json.readTree(resp.getBody())) {
+            if (b.get("id").asLong() == brandId) {
+                found = true;
+                assertThat(b.get("name").asText()).isEqualTo("B");
+            }
+        }
+        assertThat(found).isTrue();
+    }
+
+    @Test
+    void admin_creates_brand_and_it_appears_in_list() throws Exception {
+        ResponseEntity<String> resp = admin(HttpMethod.POST, "/api/v1/admin/brands", "{\"name\":\"Акрил Про\"}");
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        JsonNode created = json.readTree(resp.getBody());
+        assertThat(created.get("name").asText()).isEqualTo("Акрил Про");
+        long newId = created.get("id").asLong();
+        assertThat(newId).isPositive();
+
+        boolean inList = false;
+        for (JsonNode b : json.readTree(admin(HttpMethod.GET, "/api/v1/admin/brands", null).getBody())) {
+            if (b.get("id").asLong() == newId) {
+                inList = true;
+            }
+        }
+        assertThat(inList).isTrue();
+    }
+
+    @Test
+    void admin_soft_deletes_brand() throws Exception {
+        long id = json.readTree(admin(HttpMethod.POST, "/api/v1/admin/brands", "{\"name\":\"Удалить\"}").getBody())
+                .get("id").asLong();
+        ResponseEntity<String> del = admin(HttpMethod.DELETE, "/api/v1/admin/brands/" + id, null);
+        assertThat(del.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        boolean present = false;
+        for (JsonNode b : json.readTree(admin(HttpMethod.GET, "/api/v1/admin/brands", null).getBody())) {
+            if (b.get("id").asLong() == id) {
+                present = true;
+            }
+        }
+        assertThat(present).isFalse(); // исчез из выбора
+        Boolean active = jdbcTemplate.queryForObject("select is_active from brands where id = ?", Boolean.class, id);
+        assertThat(active).isFalse(); // деактивирован, не удалён физически
+    }
+
     private String productBody(String sku, List<ObjectNode> variants) {
         ObjectNode node = baseProduct(sku, variants);
         return node.toString();

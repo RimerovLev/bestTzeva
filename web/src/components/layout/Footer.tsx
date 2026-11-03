@@ -35,6 +35,7 @@ export function Footer({ locale, dict }: { locale: Locale; dict: Dictionary }) {
             <div><dt>{dict.footer.companyNumber}</dt><dd><bdi>00-0000000</bdi></dd></div>
             <div><dt>{dict.footer.address}</dt><dd>—</dd></div>
             <div><dt>{dict.footer.hours}</dt><dd>{dict.home.contactHoursValue}</dd></div>
+            <div><dt>{dict.footer.email}</dt><dd><a href={`mailto:${dict.home.contact.email}`} dir="ltr">{dict.home.contact.email}</a></dd></div>
           </dl>
           <small>
             © <bdi>{year}</bdi> {dict.meta.companyLegal} · {dict.meta.tagline}. {dict.footer.rights}

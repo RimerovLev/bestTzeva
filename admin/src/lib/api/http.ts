@@ -149,4 +149,4 @@ export function unwrap<T>(result: OpenApiResult<T>): T {
   return data as T;
 }
 
-export { API_BASE, refreshOnce, doRefresh };
+export { API_BASE, refreshOnce, doRefresh, authFetch };
