@@ -315,6 +315,26 @@
 .upload:focus-within { outline: 3px solid var(--blue); outline-offset: 3px; }
 .privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink-soft); margin: -8px 0 0; }
 .privacy svg { flex: none; margin-top: 2px; }
+
+/* Вторичная кнопка — бумажный фон с контуром (как .btn по умолчанию). */
+.btn-ghost { background: var(--paper); color: var(--ink); }
+
+/* Основная кнопка ИИ-рендера на всю ширину панели + подпись под ней. */
+.vz-render { width: 100%; }
+.vz-render-hint { margin: -8px 0 0; color: var(--ink-soft); }
+
+/* «Показать оригинал» — пилюля в углу холста, работает по удержанию. */
+.vz-compare {
+  position: absolute; right: 12px; bottom: 12px; z-index: 3; padding: 0;
+  border: 0; background: none; cursor: pointer; line-height: 0;
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.vz-compare .tag { position: static; display: inline-block; box-shadow: 2px 2px 0 var(--ink); }
+.vz-compare.on .tag { background: var(--yellow); }
+.vz-compare:focus-visible .tag { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* Один пункт в ряду действий (демо) — на всю ширину. */
+.actions-one { grid-template-columns: minmax(0, 1fr); }
 .lbl { font: 500 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 9px; }
 .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .seg button {

@@ -161,6 +161,17 @@ app:
     admin-url: ${APP_ADMIN_URL:http://localhost:5173}
     # URL витрины — для публичных страниц из писем (отписка).
     storefront-url: ${APP_STOREFRONT_URL:http://localhost:3000}
+  ai:
+    # OpenAI для «примерки цвета»: перекраска стен на фото комнаты (image-edit).
+    # Ключ — ТОЛЬКО из окружения (секрет). Пусто → эндпоинт вернёт 503 (фича выключена).
+    # Модель: gpt-image-1 требует верификации организации; gpt-image-2.5-flare работает без неё
+    # и лучше сохраняет сцену при перекраске. Сменить — через OPENAI_IMAGE_MODEL.
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      model: ${OPENAI_IMAGE_MODEL:gpt-image-2.5-flare}
+      quality: ${OPENAI_IMAGE_QUALITY:medium}
+      timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:120}
   notification:
     # Период разбора очереди уведомлений (transactional outbox, T-12.2).
     dispatch-interval: ${NOTIFICATION_DISPATCH_INTERVAL:PT30S}
