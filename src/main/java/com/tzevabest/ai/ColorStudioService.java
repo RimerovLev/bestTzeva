@@ -22,22 +22,26 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Iterator;
 import java.util.regex.Pattern;
 
 /**
- * «Примерка цвета»: отправляет фото комнаты в OpenAI Images Edit (gpt-image-1) с промптом «перекрась
- * только стены в цвет X, остальное сохрани». Возвращает фотореалистичный результат. Витрина делает
- * один вызов на комнату, а смену цвета — локально (по маске), поэтому расход на OpenAI минимален.
+ * «Примерка цвета»: отправляет фото комнаты в OpenAI Images Edit с промптом «перекрась только стены
+ * в цвет X, остальное сохрани». Возвращает фотореалистичный результат. Витрина делает один вызов на
+ * комнату, а смену цвета — локально (по маске), поэтому расход на OpenAI минимален.
  */
 @Service
 public class ColorStudioService {
 
     private static final Logger log = LoggerFactory.getLogger(ColorStudioService.class);
     private static final long MAX_BYTES = 12L * 1024 * 1024;
+    /** Потолок площади входа (пикс.): выше — отказ, чтобы распаковка не выела память (DoS). */
+    private static final long MAX_PIXELS = 50_000_000L;
     private static final Pattern HEX = Pattern.compile("^#?[0-9A-Fa-f]{6}$");
     private static final Pattern NAME_ALLOWED = Pattern.compile("[^\\p{L}0-9 .\\-]");
 
@@ -64,11 +68,18 @@ public class ColorStudioService {
         if (type == null || !type.startsWith("image/")) {
             throw new ValidationException("ai.invalid_image");
         }
+        // Размеры читаем из заголовка (без распаковки пикселей) и ограничиваем площадь: иначе
+        // маленький по весу, но огромный по разрешению PNG (напр. 50000×50000) заставил бы JVM
+        // при распаковке выделить гигабайты — отказ в обслуживании на публичном эндпоинте.
+        int[] dim = dimensions(data);
+        if (dim != null && (long) dim[0] * dim[1] > MAX_PIXELS) {
+            throw new ValidationException("ai.image_too_large");
+        }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("model", props.getModel());
         body.add("prompt", buildPrompt(hex, safeName));
-        body.add("size", sizeFor(data));
+        body.add("size", sizeFor(dim));
         body.add("quality", props.getQuality());
         body.add("n", "1");
         body.add("image", imagePart(data, type));
@@ -109,24 +120,45 @@ public class ColorStudioService {
                 + "light and soft shadows preserved. Photorealistic, high detail, same composition.";
     }
 
-    /** Размер вывода под ориентацию входа (gpt-image-1 поддерживает 1024², 1536×1024, 1024×1536). */
-    private String sizeFor(byte[] data) {
-        try {
-            BufferedImage img = ImageIO.read(new ByteArrayInputStream(data));
-            if (img != null && img.getWidth() > 0 && img.getHeight() > 0) {
-                int w = img.getWidth();
-                int h = img.getHeight();
-                if (w >= h * 1.2) {
-                    return "1536x1024";
-                }
-                if (h >= w * 1.2) {
-                    return "1024x1536";
-                }
+    /** Размер вывода под ориентацию входа (gpt-image поддерживает 1024², 1536×1024, 1024×1536). */
+    private String sizeFor(int[] dim) {
+        if (dim != null) {
+            int w = dim[0];
+            int h = dim[1];
+            if (w >= h * 1.2) {
+                return "1536x1024";
             }
-        } catch (IOException ignored) {
-            // неизвестный формат для ImageIO (напр. webp без плагина) — отдадим квадрат
+            if (h >= w * 1.2) {
+                return "1024x1536";
+            }
         }
         return "1024x1024";
+    }
+
+    /**
+     * Ширина и высота из заголовка изображения без распаковки пикселей (ImageReader читает только
+     * метаданные). null — формат без ридера в JVM (напр. webp): тогда ориентацию и потолок площади
+     * не проверяем, а на распаковку мы и не идём (байты уходят в OpenAI как есть).
+     */
+    private int[] dimensions(byte[] data) {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            if (iis == null) {
+                return null;
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(iis);
+                return new int[]{reader.getWidth(0), reader.getHeight(0)};
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     private HttpEntity<Resource> imagePart(byte[] data, String type) {

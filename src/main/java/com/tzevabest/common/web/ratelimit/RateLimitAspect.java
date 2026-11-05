@@ -89,6 +89,11 @@ public class RateLimitAspect {
     }
 
     private String resolveDimension(String key, HttpServletRequest request, Object[] args) {
+        if ("global".equals(key)) {
+            // Единый бюджет на эндпоинт для всех клиентов — потолок расходов на внешний платный
+            // вызов (его не обойти ротацией IP). Один общий слот на окно.
+            return "all";
+        }
         if ("ip".equals(key)) {
             return ipResolver.resolve(request);
         }

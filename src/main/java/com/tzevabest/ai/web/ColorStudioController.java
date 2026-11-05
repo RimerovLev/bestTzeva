@@ -23,7 +23,10 @@ public class ColorStudioController {
     private final ColorStudioService service;
 
     @PostMapping(path = "/render", consumes = "multipart/form-data")
+    // Два барьера: на один IP (защита от перебора) и общий потолок на эндпоинт (защита бюджета
+    // OpenAI от ботнета с ротацией IP — его 5/час/IP не ограничивают).
     @RateLimit(key = "ip", limit = 5, windowSeconds = 3600)
+    @RateLimit(key = "global", limit = 60, windowSeconds = 3600)
     public RoomRenderResult render(
             @RequestPart("file") MultipartFile file,
             @RequestParam("color") String color,
