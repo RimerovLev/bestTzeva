@@ -16,8 +16,22 @@
 # Медиа (MinIO): публичный бакет читается браузером, presigned-ссылки подписаны под этот же хост —
 # поэтому сохраняем Host (иначе SigV4 не сойдётся). Для масштаба предпочтительнее managed S3/CDN.
 {$MEDIA_DOMAIN} {
-	reverse_proxy minio:9000 {
-		header_up Host {host}
+	# Анонимный ЛИСТИНГ бакета закрываем: SeaweedFS отдаёт ListBucket по action Read, поэтому
+	# режем на прокси. Корень бакета — путь из одного сегмента (/bucket или /bucket/); объекты
+	# (/bucket/key) и presigned-ссылки (всегда к объекту) не затрагиваются. Подписанные запросы
+	# приложения несут заголовок Authorization (SigV4) — их пропускаем, чтобы не сломать серверные
+	# операции с бакетом.
+	@anon_bucket_list {
+		path_regexp ^/[^/]+/?$
+		not header Authorization *
+	}
+	handle @anon_bucket_list {
+		respond "Access Denied" 403
+	}
+	handle {
+		reverse_proxy minio:9000 {
+			header_up Host {host}
+		}
 	}
 }
 
