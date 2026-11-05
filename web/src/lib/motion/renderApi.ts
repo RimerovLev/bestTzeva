@@ -6,23 +6,25 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
-export type RenderError = "not_configured" | "rate_limited" | "failed" | "network" | "too_large";
+export type RenderError = "not_configured" | "rate_limited" | "failed" | "network" | "too_large" | "captcha";
 
 export type RenderResult =
   | { ok: true; image: string }
   | { ok: false; error: RenderError; retryAfter?: number };
 
-/** Отправить фото+цвет на рендер. name — человекочитаемое имя цвета (для подсказки модели). */
+/** Отправить фото+цвет на рендер. name — имя цвета (подсказка модели), captcha — токен Turnstile. */
 export async function renderRoom(
   file: Blob,
   colorHex: string,
   name: string,
+  captcha: string | null,
   signal?: AbortSignal,
 ): Promise<RenderResult> {
   const form = new FormData();
   form.append("file", file, "room.jpg");
   form.append("color", colorHex);
   if (name) form.append("name", name);
+  if (captcha) form.append("captcha", captcha);
 
   let res: Response;
   try {
@@ -57,6 +59,7 @@ export async function renderRoom(
     const ra = Number(res.headers.get("Retry-After"));
     return { ok: false, error: "rate_limited", retryAfter: Number.isFinite(ra) ? ra : undefined };
   }
+  if (code === "ai.captcha_required" || code === "ai.captcha_failed") return { ok: false, error: "captcha" };
   if (res.status === 413 || code === "ai.image_too_large") return { ok: false, error: "too_large" };
   if (code === "ai.not_configured" || res.status === 503) return { ok: false, error: "not_configured" };
   return { ok: false, error: "failed" };

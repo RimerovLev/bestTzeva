@@ -26,14 +26,16 @@ function contentSecurityPolicy(): string {
   const media = origin(process.env.NEXT_PUBLIC_MEDIA_BASE_URL);
   // TikTok-виджет (embed.js + iframe профиля). Нужны его origin'ы в script/img/connect/frame.
   const tiktok = "https://www.tiktok.com https://lf16-tiktok-web.ttwstatic.com";
+  // Cloudflare Turnstile (капча примерки цвета): скрипт + iframe челленджа.
+  const turnstile = "https://challenges.cloudflare.com";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' ${plausible} ${tiktok}`.replace(/\s+/g, " ").trim(),
+    `script-src 'self' 'unsafe-inline' ${plausible} ${tiktok} ${turnstile}`.replace(/\s+/g, " ").trim(),
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${api} ${media} https://www.tiktok.com https://*.tiktokcdn.com`.replace(/\s+/g, " ").trim(),
     "font-src 'self'",
-    `connect-src 'self' ${api} ${plausible} https://www.tiktok.com`.replace(/\s+/g, " ").trim(),
-    "frame-src https://www.tiktok.com",
+    `connect-src 'self' ${api} ${plausible} https://www.tiktok.com ${turnstile}`.replace(/\s+/g, " ").trim(),
+    `frame-src https://www.tiktok.com ${turnstile}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

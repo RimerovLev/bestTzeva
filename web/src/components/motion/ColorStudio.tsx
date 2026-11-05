@@ -7,6 +7,7 @@ import {
 } from "@/lib/motion/palette";
 import { ColorEngine } from "@/lib/motion/colorEngine";
 import { renderRoom } from "@/lib/motion/renderApi";
+import { TurnstileGate, type TurnstileHandle } from "./TurnstileGate";
 import { useMotion } from "./MotionProvider";
 import { ColorPicker } from "./ColorPicker";
 import { RAL_CLASSIC, nearestRal, ralHex } from "@/lib/motion/ral";
@@ -50,6 +51,7 @@ export interface ColorStudioText {
   toastRenderFailed: string;
   toastNotConfigured: string;
   toastRateLimited: string;
+  toastCaptcha: string;
   toastDemo: string;
   toastUploaded: string;
   toastBadFile: string;
@@ -72,6 +74,7 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
   const rootRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<ColorEngine | null>(null);
   const renderAbort = useRef<AbortController | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   /** Выбранный цвет: HEX и код RAL (null — произвольный цвет из пикера). */
   const [hex, setHex] = useState(() => swatchByCode(DEFAULT_SWATCH).hex);
@@ -148,13 +151,18 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
     const nm = textRef.current;
     const name = code ? (nm.names[code] ?? `RAL ${code}`) : "";
     try {
-      const res = await renderRoom(blob, hexRef.current, name, ac.signal);
+      // Токен капчи до платного вызова (null — капча выключена, бэкенд пропустит).
+      const captcha = (await turnstileRef.current?.getToken()) ?? null;
+      if (ac.signal.aborted) return;
+      const res = await renderRoom(blob, hexRef.current, name, captcha, ac.signal);
       if (ac.signal.aborted) return;
       if (res.ok) {
         await engine.setRender(res.image, hexRef.current);
         setCompare(false);
         setHint("hidden");
         say(nm.toastRendered);
+      } else if (res.error === "captcha") {
+        say(nm.toastCaptcha);
       } else if (res.error === "not_configured") {
         say(nm.toastNotConfigured);
       } else if (res.error === "rate_limited") {
@@ -304,6 +312,7 @@ export function ColorStudio({ locale, text }: { locale: Locale; text: ColorStudi
             </svg>
             {hasRender ? text.rerender : text.render}
           </button>
+          <TurnstileGate ref={turnstileRef} />
           <p className="small vz-render-hint">{text.renderHint}</p>
           <p className="privacy">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

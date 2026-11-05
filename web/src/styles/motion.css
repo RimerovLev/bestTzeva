@@ -335,6 +335,10 @@
 
 /* Один пункт в ряду действий (демо) — на всю ширину. */
 .actions-one { grid-template-columns: minmax(0, 1fr); }
+
+/* Невидимая капча Turnstile: место занимает, только если Cloudflare покажет челлендж. */
+.vz-turnstile { margin: -8px 0 0; }
+.vz-turnstile:empty { display: none; }
 .lbl { font: 500 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 9px; }
 .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .seg button {

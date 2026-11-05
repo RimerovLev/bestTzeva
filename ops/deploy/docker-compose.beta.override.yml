@@ -21,6 +21,8 @@ services:
       args:
         NEXT_PUBLIC_API_BASE_URL: https://${API_DOMAIN}
         NEXT_PUBLIC_SITE_URL: https://${WEB_DOMAIN}
+        # Turnstile site key публичный (вшивается в страницу). Secret — в .env (TURNSTILE_SECRET).
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
     environment:
       HOSTNAME: "0.0.0.0" # иначе Next standalone слушает только hostname контейнера, не 127.0.0.1
       PORT: "3000"
